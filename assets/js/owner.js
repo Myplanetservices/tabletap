@@ -4,7 +4,11 @@
    reports, settings and account. Everything reads and writes store.js.
    ========================================================================== */
 
+import { checkMongoHealth, syncWithMongo, renderMongoSettingsCard, pushOrderToMongo } from './mongo-sync.js';
+import { renderSyncDialog, pushToSheet, updateSyncChip, isSyncReady, uploadFileToDrive } from './google-sync.js';
 import * as store from './store.js';
+import { legacyBreakdown, sessionForTable, sessionOrders, sessionLines, closeSession, openSessionForTable, seatTable } from './store.js';
+import { computeBill } from './billing.js';
 import { requireRole, currentClient, changePassword, logout, stopImpersonation } from './auth.js';
 import { emit, on } from './realtime.js';
 import {
@@ -19,6 +23,165 @@ const money = (value) => formatMoney(value, settings.currency);
 const page = document.body.getAttribute('data-page');
 const host = document.querySelector('.app-shell__content-inner');
 const readOnly = !!client.restrictions.readOnly;
+
+function ordersOf() {
+  return store.ordersOf(client.id);
+}
+
+/* ---------- Notification Popover Implementation ---------- */
+function initNotificationDropdown() {
+  let bellBtn = document.querySelector('.app-shell__topbar-right button[aria-label*="Notification"]');
+  if (!bellBtn) {
+    const dot = document.querySelector('.app-shell__topbar-right .count-dot');
+    if (dot) bellBtn = dot.closest('button');
+  }
+  if (!bellBtn) {
+    bellBtn = document.querySelector('.app-shell__topbar-right button.btn--icon');
+  }
+  if (!bellBtn) return;
+
+  // Ensure bellBtn is wrapped in notif-dropdown
+  let container = bellBtn.closest('.notif-dropdown');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'notif-dropdown';
+    bellBtn.parentNode.insertBefore(container, bellBtn);
+    container.appendChild(bellBtn);
+  }
+
+  // Create or get popover
+  let popover = container.querySelector('.notif-popover');
+  if (!popover) {
+    popover = document.createElement('div');
+    popover.className = 'notif-popover';
+    popover.id = 'notif-popover-menu';
+    container.appendChild(popover);
+  }
+
+  function renderNotifItems() {
+    const pendingOrders = ordersOf().filter((o) => o.status === 'pending_approval');
+    const openCalls = store.query('waiterCalls', (c) => c.clientId === client.id && c.status === 'open');
+    const totalCount = pendingOrders.length + openCalls.length;
+
+    const dot = container.querySelector('.count-dot');
+    if (dot) {
+      dot.textContent = String(totalCount);
+      dot.hidden = totalCount === 0;
+    }
+
+    let itemsHtml = '';
+    pendingOrders.forEach((o) => {
+      itemsHtml += '<div class="notif-item">' +
+        '<div class="notif-item__icon"><i data-lucide="clock"></i></div>' +
+        '<div class="notif-item__content">' +
+          '<p class="notif-item__title">Order #' + o.number + ' needs approval</p>' +
+          '<p class="notif-item__sub">' + esc(o.tableName) + ' · ' + (o.items || []).length + ' items · ' + money(o.total) + '</p>' +
+          '<div class="notif-item__actions">' +
+            '<button class="btn btn--primary btn--sm" type="button" data-notif-approve="' + o.id + '">Approve</button>' +
+            '<button class="btn btn--secondary btn--sm" type="button" data-notif-reject="' + o.id + '">Reject</button>' +
+          '</div>' +
+        '</div></div>';
+    });
+
+    openCalls.forEach((c) => {
+      itemsHtml += '<div class="notif-item">' +
+        '<div class="notif-item__icon notif-item__icon--call"><i data-lucide="bell"></i></div>' +
+        '<div class="notif-item__content">' +
+          '<p class="notif-item__title">' + esc(c.tableName) + ' — ' + (c.type === 'bill' ? 'Bill requested' : 'Waiter call') + '</p>' +
+          '<p class="notif-item__sub">' + timeAgo(c.createdAt) + '</p>' +
+          '<div class="notif-item__actions">' +
+            '<button class="btn btn--secondary btn--sm" type="button" data-notif-call-done="' + c.id + '">Mark Done</button>' +
+          '</div>' +
+        '</div></div>';
+    });
+
+    if (!itemsHtml) {
+      itemsHtml = '<div class="notif-popover__empty"><p>No pending alerts. All orders and tables are up to date!</p></div>';
+    }
+
+    popover.innerHTML =
+      '<div class="notif-popover__header">' +
+        '<span class="notif-popover__title">Notifications <span class="badge badge--neutral">' + totalCount + '</span></span>' +
+        (totalCount > 0 ? '<button class="btn btn--sm text-xs" type="button" id="notif-clear-all">Approve all</button>' : '') +
+      '</div>' +
+      '<div class="notif-popover__body">' + itemsHtml + '</div>';
+
+    if (window.lucide) window.lucide.createIcons();
+
+    // Wire actions
+    popover.querySelectorAll('[data-notif-approve]').forEach((b) => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const ordId = b.getAttribute('data-notif-approve');
+        store.update('orders', ordId, { status: 'preparing' });
+        emit('order:update', { id: ordId, status: 'preparing' });
+        toast('Order approved and sent to kitchen pass', 'success');
+        refreshChrome();
+        renderNotifItems();
+        if (typeof render === 'function') render();
+      });
+    });
+
+    popover.querySelectorAll('[data-notif-reject]').forEach((b) => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const ordId = b.getAttribute('data-notif-reject');
+        store.update('orders', ordId, { status: 'rejected' });
+        emit('order:update', { id: ordId, status: 'rejected' });
+        toast('Order rejected', 'warning');
+        refreshChrome();
+        renderNotifItems();
+        if (typeof render === 'function') render();
+      });
+    });
+
+    popover.querySelectorAll('[data-notif-call-done]').forEach((b) => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const callId = b.getAttribute('data-notif-call-done');
+        store.update('waiterCalls', callId, { status: 'resolved' });
+        emit('call:done', { id: callId });
+        toast('Call marked as handled', 'neutral');
+        refreshChrome();
+        renderNotifItems();
+      });
+    });
+
+    const clearAllBtn = popover.querySelector('#notif-clear-all');
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pendingOrders.forEach((o) => {
+          store.update('orders', o.id, { status: 'preparing' });
+          emit('order:update', { id: o.id, status: 'preparing' });
+        });
+        toast('All pending orders approved!', 'success');
+        refreshChrome();
+        renderNotifItems();
+        if (typeof render === 'function') render();
+      });
+    }
+  }
+
+  bellBtn.onclick = (e) => {
+    e.stopPropagation();
+    const open = popover.classList.toggle('is-open');
+    if (open) renderNotifItems();
+  };
+
+  if (!window._notifClickBound) {
+    window._notifClickBound = true;
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('.notif-popover.is-open').forEach((p) => {
+        if (!p.closest('.notif-dropdown')?.contains(e.target)) {
+          p.classList.remove('is-open');
+        }
+      });
+    });
+  }
+
+  renderNotifItems();
+}
 
 function paint(html) {
   host.innerHTML = (readOnly ? '<div class="notice-banner mb-4"><i data-lucide="lock"></i><span>Your account is in read-only mode. Contact support to make changes.</span></div>' : '') + html;
@@ -46,11 +209,42 @@ function chart(cols, highlight = '') {
     '<span class="chart__label">' + esc(label) + '</span></div>').join('') + '</div>';
 }
 
-function ordersOf() {
-  return store.ordersOf(client.id);
+function breakdownOf(order) {
+  return order.breakdown || legacyBreakdown(order, settings);
+}
+
+function taxText(b) {
+  const parts = (b.taxes || []).map((t) => t.name + ' ' + t.rate + '%: ' + t.amount.toFixed(2));
+  const inside = (b.includedTaxes || []).map((t) => t.name + ' ' + t.rate + '%: ' + t.amount.toFixed(2) + ' (included)');
+  return parts.concat(inside).join('; ');
+}
+
+function chargeText(b) {
+  return (b.charges || []).map((c) => c.name + (c.type === 'percent' ? ' ' + c.value + '%' : ' fixed') + ': ' + c.amount.toFixed(2)).join('; ');
+}
+
+function breakdownHtml(order) {
+  const b = breakdownOf(order);
+  const rows = ['<div class="summary__row"><span>Subtotal</span><span>' + money(b.subtotal) + '</span></div>'];
+
+  if (!b.pricesIncludeTax) {
+    (b.taxes || []).forEach((t) => rows.push(
+      '<div class="summary__row"><span>' + esc(t.name) + ' ' + t.rate + '%</span><span>' + money(t.amount) + '</span></div>'));
+  }
+  (b.charges || []).forEach((c) => rows.push(
+    '<div class="summary__row"><span>' + esc(c.name) + (c.type === 'percent' ? ' ' + c.value + '%' : '') + '</span><span>' + money(c.amount) + '</span></div>'));
+
+  rows.push('<div class="summary__row summary__row--total"><span>Total</span><span>' + money(b.total) + '</span></div>');
+
+  if (b.pricesIncludeTax) {
+    (b.includedTaxes || []).forEach((t) => rows.push(
+      '<p class="summary__note">Includes ' + esc(t.name) + ' ' + t.rate + '%: ' + money(t.amount) + '</p>'));
+  }
+  return '<div class="summary">' + rows.join('') + '</div>';
 }
 
 function refreshChrome() {
+  initNotificationDropdown();
   const brandSub = document.querySelector('.app-shell__brand-sub');
   if (brandSub) brandSub.textContent = client.name;
   const ownerName = document.querySelector('.owner-name');
@@ -82,6 +276,132 @@ function refreshChrome() {
   }
 }
 
+function payMethodName(id) {
+  const hit = (settings.paymentMethods || []).find((m) => m.id === id);
+  if (hit) return hit.name;
+  return id ? id[0].toUpperCase() + id.slice(1) : 'Other';
+}
+
+function guestPayLine(call) {
+  let methodId = call && call.paymentMethod;
+  if (!methodId && call && call.sessionId) {
+    const session = store.getById('sessions', call.sessionId);
+    if (session) methodId = session.paymentMethod;
+  }
+  if (!methodId) return '';
+  const name = payMethodName(methodId);
+  return 'Guest will pay by ' + name + ' — ' + (methodId === 'card' ? 'bring card machine' : 'bring the bill');
+}
+
+/* ------------------------------------------------------------ bill modal -- */
+function openBillModal(sessionId, onDone) {
+  let session = store.getById('sessions', sessionId);
+  if (!session) return;
+
+  const hostEl = document.createElement('div');
+  hostEl.id = 'bill-modal-host';
+  document.body.appendChild(hostEl);
+
+  function close() {
+    hostEl.remove();
+  }
+
+  function draw() {
+    session = store.getById('sessions', sessionId) || session;
+    const orders = sessionOrders(session);
+    const bill = computeBill({
+      lines: sessionLines(session),
+      settings,
+      removedChargeIds: session.removedChargeIds,
+      addedChargeIds: session.addedChargeIds,
+      discount: session.discount,
+      tip: session.tip,
+    });
+
+    const orderRows = orders.map((order) =>
+      '<div class="status-item"><span><span class="status-item__qty">#' + order.number + '</span> ' +
+      order.items.map((i) => i.qty + '× ' + esc(i.name)).join(', ') + '</span>' +
+      '<span class="status-item__price">' + money(order.total) + '</span></div>').join('');
+
+    const rows = ['<div class="summary__row"><span>Subtotal</span><span>' + money(bill.subtotal) + '</span></div>'];
+    if (bill.discount.amount > 0) {
+      rows.push('<div class="summary__row"><span>Discount' + (bill.discount.reason ? ' <span class="muted">· ' + esc(bill.discount.reason) + '</span>' : '') + '</span><span>−' + money(bill.discount.amount) + '</span></div>');
+    }
+    bill.charges.forEach((c) => rows.push('<div class="summary__row"><span>' + esc(c.name) + '</span><span>' + money(c.amount) + '</span></div>'));
+    bill.taxes.forEach((t) => rows.push('<div class="summary__row"><span>' + esc(t.name) + ' ' + t.rate + '%</span><span>' + money(t.amount) + '</span></div>'));
+    if (bill.tip.amount > 0) rows.push('<div class="summary__row"><span>Tip</span><span>' + money(bill.tip.amount) + '</span></div>');
+    rows.push('<div class="summary__row summary__row--total"><span>Total</span><span>' + money(bill.total) + '</span></div>');
+    bill.includedTaxes.forEach((t) => rows.push('<p class="summary__note">Includes ' + esc(t.name) + ' ' + t.rate + '%: ' + money(t.amount) + '</p>'));
+
+    hostEl.innerHTML =
+      '<div class="modal is-open" role="dialog" aria-modal="true" aria-labelledby="bill-title"><div class="modal__dialog">' +
+      '<div class="modal__header"><div><p class="modal__title" id="bill-title">Bill · ' + esc(session.tableName) + '</p>' +
+      '<p class="muted text-xs">' + orders.length + (orders.length === 1 ? ' order' : ' orders') + ' · opened ' + formatTime(session.openedAt) + '</p></div>' +
+      '<button class="btn btn--icon" type="button" data-close aria-label="Close"><i data-lucide="x"></i></button></div>' +
+      '<div class="modal__body">' +
+      '<div class="status-items">' + (orderRows || '<p class="muted text-sm">No orders on this table yet.</p>') + '</div>' +
+      '<div class="summary mt-4">' + rows.join('') + '</div>' +
+      '<div class="bill-discount mt-6"><p class="label">Add discount</p>' +
+      '<div class="row row--wrap"><select class="select" id="discount-type" style="width:110px"><option value="percent">%</option><option value="amount">Amount</option></select>' +
+      '<input class="input" id="discount-value" type="number" min="0" step="0.5" placeholder="0" style="width:110px" value="' + (session.discount && session.discount.value ? session.discount.value : '') + '">' +
+      '<input class="input" id="discount-reason" type="text" placeholder="Reason (e.g. staff meal)" value="' + esc((session.discount && session.discount.reason) || '') + '">' +
+      '<button class="btn btn--secondary" type="button" data-apply-discount>Apply</button></div></div>' +
+      '<p class="label mt-6">Mark as paid</p>' +
+      (session.paymentMethod ? '<div class="notice-banner"><i data-lucide="wallet"></i><span>' + esc(guestPayLine({ sessionId: session.id, paymentMethod: session.paymentMethod })) + '</span></div>' : '') +
+      '<div class="row row--wrap mt-4">' +
+      (settings.paymentMethods || []).filter((m) => m.enabled).map((m) =>
+        '<button class="btn ' + (m.id === session.paymentMethod ? 'btn--primary' : 'btn--secondary') +
+        '" type="button" data-pay="' + m.id + '">' + esc(m.name) + '</button>').join('') +
+      '</div><p class="hint">Paying closes the session and frees ' + esc(session.tableName) + '.</p>' +
+      '</div></div></div>';
+
+    if (window.lucide) window.lucide.createIcons();
+
+    hostEl.querySelector('[data-close]').addEventListener('click', close);
+    hostEl.querySelector('.modal').addEventListener('click', (event) => { if (event.target.classList.contains('modal')) close(); });
+    hostEl.querySelector('#discount-type').value = (session.discount && session.discount.type) || 'percent';
+
+    hostEl.querySelector('[data-apply-discount]').addEventListener('click', () => {
+      const type = hostEl.querySelector('#discount-type').value;
+      const value = Number(hostEl.querySelector('#discount-value').value) || 0;
+      const reason = hostEl.querySelector('#discount-reason').value.trim();
+      store.update('sessions', sessionId, { discount: { type, value, reason } });
+      store.logActivity({ actor: session.name || 'Owner', clientId: client.id, type: 'Discount', details: 'Discount ' + (type === 'percent' ? value + '%' : money(value)) + ' on ' + session.tableName });
+      toast('Discount applied');
+      draw();
+    });
+
+    hostEl.querySelectorAll('[data-pay]').forEach((btn) => btn.addEventListener('click', () => {
+      const method = btn.getAttribute('data-pay');
+      const finalBill = computeBill({
+        lines: sessionLines(session),
+        settings,
+        removedChargeIds: session.removedChargeIds,
+        addedChargeIds: session.addedChargeIds,
+        discount: session.discount,
+        tip: session.tip,
+      });
+      closeSession(sessionId, { method, at: new Date().toISOString(), amount: finalBill.total }, finalBill);
+      store.logActivity({
+        actor: session.name || 'Owner',
+        clientId: client.id,
+        type: 'Payment',
+        details: session.tableName + ' paid by ' + method + ' · ' + money(finalBill.total),
+      });
+      emit('order:update', { clientId: client.id });
+      emit('session:paid', { clientId: client.id, sessionId });
+      emit('session:close', { clientId: client.id, sessionId, tableId: session.tableId });
+      toast(session.tableName + ' paid by ' + method + ' · ' + money(finalBill.total));
+      close();
+      if (onDone) onDone();
+      else if (page === 'orders') renderOrders();
+      else if (page === 'tables') renderTables();
+    }));
+  }
+
+  draw();
+}
+
 /* ------------------------------------------------------------ dashboard -- */
 function renderDashboard() {
   const orders = ordersOf();
@@ -102,17 +422,43 @@ function renderDashboard() {
   const top = Object.entries(topItems).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 5);
 
   const nowHour = new Date().getHours();
+  const greeting = nowHour < 12 ? 'Good morning' : (nowHour < 17 ? 'Good afternoon' : 'Good evening');
   const hours = Array.from({ length: 11 }, (_, i) => (nowHour - 10 + i + 24) % 24);
   const counts = hours.map((h) => today.filter((o) => new Date(o.createdAt).getHours() === h).length);
   const maxCount = Math.max(1, ...counts);
 
-  paint(head('Good evening, ' + session.name.split(' ')[0],
+  // Dynamic comparison vs yesterday
+  const yesterdayDate = new Date(Date.now() - 86400000);
+  const yesterday = orders.filter((o) => new Date(o.createdAt).toDateString() === yesterdayDate.toDateString());
+  const yestRevenue = yesterday.filter((o) => o.status !== 'rejected').reduce((sum, o) => sum + o.total, 0);
+
+  let ordersDelta = '';
+  let ordersDir = 'up';
+  if (yesterday.length > 0) {
+    const diff = Math.round(((today.length - yesterday.length) / yesterday.length) * 100);
+    ordersDelta = (diff >= 0 ? '+' : '') + diff + '%';
+    ordersDir = diff >= 0 ? 'up' : 'down';
+  } else if (today.length > 0) {
+    ordersDelta = '+' + today.length + ' orders';
+  }
+
+  let revDelta = '';
+  let revDir = 'up';
+  if (yestRevenue > 0) {
+    const diff = Math.round(((revenue - yestRevenue) / yestRevenue) * 100);
+    revDelta = (diff >= 0 ? '+' : '') + diff + '%';
+    revDir = diff >= 0 ? 'up' : 'down';
+  } else if (revenue > 0) {
+    revDelta = '+' + money(revenue);
+  }
+
+  paint(head(greeting + ', ' + session.name.split(' ')[0],
     'Here is how ' + client.name + ' is doing today, ' + new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + '.',
     '<a class="btn btn--secondary btn--sm" href="reports.html"><i data-lucide="trending-up"></i> Reports</a>' +
     '<a class="btn btn--primary btn--sm" href="orders.html"><i data-lucide="receipt"></i> View live orders</a>') +
     '<div class="stat-grid">' +
-    statCard("Today's orders", String(today.length), 'vs yesterday', '', 'up') +
-    statCard("Today's revenue", money(revenue), 'vs yesterday', '', 'up') +
+    statCard("Today's orders", String(today.length), 'vs yesterday', ordersDelta, ordersDir) +
+    statCard("Today's revenue", money(revenue), 'vs yesterday', revDelta, revDir) +
     statCard('Avg order value', money(avg), 'per order today') +
     statCard('Active tables', occupied + ' / ' + tables.length, (tables.length - occupied) + ' free right now') +
     '</div>' +
@@ -129,7 +475,9 @@ function renderDashboard() {
     '<span class="badge badge--warning">' + calls.length + ' open</span></div><div class="card__body" id="calls-host">' +
     (calls.length ? calls.map((call) =>
       '<div class="list-row"><div class="list-row__main"><p class="list-row__title">' + esc(call.tableName) + '</p>' +
-      '<p class="list-row__meta">' + (call.type === 'bill' ? 'Bill requested' : 'Call waiter') + ' · ' + timeAgo(call.createdAt) + '</p></div>' +
+      '<p class="list-row__meta">' + (call.type === 'bill'
+        ? 'Bill · ' + (guestPayLine(call) || 'Bill requested')
+        : 'Call waiter') + ' · ' + timeAgo(call.createdAt) + '</p></div>' +
       '<div class="list-row__side"><button class="btn btn--secondary btn--sm" type="button" data-done-call="' + call.id + '">Done</button></div></div>').join('')
       : '<p class="muted text-sm">No open calls.</p>') +
     '</div></div></div>' +
@@ -171,7 +519,10 @@ function renderOrders() {
   let active = 'all';
 
   paint(head('Live orders', 'Every open ticket for ' + client.name + ', updated as the kitchen works.',
-    '<button class="btn btn--secondary btn--sm" type="button" data-print><i data-lucide="printer"></i> Print all</button>') +
+    '<div class="row gap-2">' +
+    '<button class="btn btn--secondary btn--sm" type="button" data-export-live><i data-lucide="download"></i> Export CSV</button>' +
+    '<button class="btn btn--secondary btn--sm" type="button" data-print><i data-lucide="printer"></i> Print all</button>' +
+    '</div>') +
     '<div class="tabs" data-tabs><div class="tabs__list" role="tablist" aria-label="Order status">' +
     tabs.map(([key, label, count], i) =>
       '<button class="tab" role="tab" type="button" data-tab="' + key + '" aria-selected="' + (i === 0) + '" tabindex="' + (i === 0 ? 0 : -1) + '">' +
@@ -181,7 +532,9 @@ function renderOrders() {
     '<span class="badge badge--warning">' + calls.length + ' open</span></div><div class="card__body">' +
     (calls.length ? calls.map((call) =>
       '<div class="list-row"><div class="list-row__main"><p class="list-row__title">' + esc(call.tableName) + '</p>' +
-      '<p class="list-row__meta">' + (call.type === 'bill' ? 'Bill requested' : 'Call waiter') + ' · ' + timeAgo(call.createdAt) + '</p></div>' +
+      '<p class="list-row__meta">' + (call.type === 'bill'
+        ? 'Bill · ' + (guestPayLine(call) || 'Bill requested')
+        : 'Call waiter') + ' · ' + timeAgo(call.createdAt) + '</p></div>' +
       '<div class="list-row__side"><button class="btn btn--secondary btn--sm" type="button" data-done-call="' + call.id + '">Done</button></div></div>').join('')
       : '<p class="muted text-sm">No open calls.</p>') +
     '</div></div></div></div><div id="drawer-host"></div>');
@@ -190,12 +543,16 @@ function renderOrders() {
 
   function draw() {
     const rows = ordersOf().filter((o) => active === 'all' ? true : o.status === active);
-    cardsHost.innerHTML = rows.length ? rows.map((order) =>
-      '<div class="order-card"><div><p class="order-card__id">#' + order.number + ' ' + statusBadge(order.status) + '</p>' +
-      '<p class="order-card__meta">' + esc(order.tableName) + ' · ' + order.items.length + ' items · ' + timeAgo(order.createdAt) + '</p></div>' +
-      '<div class="order-card__side"><span class="order-card__total">' + money(order.total) + '</span>' +
-      '<button class="btn btn--secondary btn--sm" type="button" data-open="' + order.id + '">Details</button>' +
-      '<button class="btn btn--primary btn--sm" type="button" data-next="' + order.id + '">' + nextLabel(order) + '</button></div></div>').join('')
+    cardsHost.innerHTML = rows.length ? rows.map((order) => {
+      const session = order.sessionId ? store.getById('sessions', order.sessionId) : sessionForTable(client.id, order.tableId);
+      const billBtn = session && session.status === 'open'
+        ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '">View bill</button>' : '';
+      return '<div class="order-card"><div><p class="order-card__id">#' + order.number + ' ' + statusBadge(order.status) + '</p>' +
+        '<p class="order-card__meta">' + esc(order.tableName) + ' · ' + order.items.length + ' items · ' + timeAgo(order.createdAt) + '</p></div>' +
+        '<div class="order-card__side"><span class="order-card__total">' + money(order.total) + '</span>' + billBtn +
+        '<button class="btn btn--secondary btn--sm" type="button" data-open="' + order.id + '">Details</button>' +
+        '<button class="btn btn--primary btn--sm" type="button" data-next="' + order.id + '">' + nextLabel(order) + '</button></div></div>';
+    }).join('')
       : '<div class="empty"><span class="empty__icon"><i data-lucide="receipt"></i></span><p class="empty__title">Nothing here</p>' +
         '<p class="empty__text">No orders in this state right now.</p></div>';
     if (window.lucide) window.lucide.createIcons();
@@ -230,6 +587,8 @@ function renderOrders() {
     const rejectBtn = event.target.closest('[data-reject]');
 
     if (openBtn) openOrderDrawer(openBtn.getAttribute('data-open'));
+    const billBtn = event.target.closest('[data-bill]');
+    if (billBtn) openBillModal(billBtn.getAttribute('data-bill'));
     if (rejectBtn) {
       const ok = await confirmDialog('Reject this order? The guest will see that it was not accepted.', { confirmLabel: 'Reject order' });
       if (ok) setStatus(rejectBtn.getAttribute('data-reject'), 'rejected');
@@ -263,10 +622,7 @@ function renderOrders() {
         '</span><span class="status-item__price">' + money(item.price * item.qty) + '</span></div>').join('') +
       '</div>' +
       (order.note ? '<div class="cart-info mt-4"><i data-lucide="message-square"></i><span>' + esc(order.note) + '</span></div>' : '') +
-      '<div class="summary"><div class="summary__row"><span>Subtotal</span><span>' + money(order.subtotal) + '</span></div>' +
-      '<div class="summary__row"><span>Tax</span><span>' + money(order.tax) + '</span></div>' +
-      '<div class="summary__row"><span>Service charge</span><span>' + money(order.service) + '</span></div>' +
-      '<div class="summary__row summary__row--total"><span>Total</span><span>' + money(order.total) + '</span></div></div>' +
+      breakdownHtml(order) +
       '<p class="hint">' + (order.guestName ? 'Guest: ' + esc(order.guestName) + ' · ' : '') + 'Pay at counter</p></div>' +
       '<div class="drawer__footer"><div class="row">' +
       (order.status === 'pending_approval'
@@ -304,6 +660,29 @@ function renderOrders() {
     });
   });
 
+  const exportLiveBtn = host.querySelector('[data-export-live]');
+  if (exportLiveBtn) {
+    exportLiveBtn.addEventListener('click', () => {
+      const rows = ordersOf().filter((o) => active === 'all' ? true : o.status === active);
+      const csv = [['Order #', 'Date', 'Table', 'Items', 'Subtotal', 'Taxes', 'Charges', 'Total', 'Status']].concat(
+        rows.map((o) => {
+          const b = breakdownOf(o);
+          return ['#' + o.number, formatDateTime(o.createdAt), o.tableName, o.items.length,
+            b.subtotal.toFixed(2), taxText(b), chargeText(b), b.total.toFixed(2), o.status];
+        })
+      );
+      exportCSV(csv, client.slug + '-live-orders.csv');
+      toast('Live orders exported as CSV');
+    });
+  }
+
+  const printBtn = host.querySelector('[data-print]');
+  if (printBtn) {
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
   draw();
 }
 
@@ -328,7 +707,7 @@ function renderHistory() {
     '<span class="toolbar__spacer"></span><span class="muted text-xs" id="hist-count"></span></div>' +
     '<div class="table-wrap"><table class="table table-stack"><thead><tr>' +
     '<th scope="col">Order #</th><th scope="col">Date / time</th><th scope="col">Table</th><th scope="col">Items</th>' +
-    '<th scope="col" class="table__num">Total</th><th scope="col">Status</th></tr></thead>' +
+    '<th scope="col" class="table__num">Total</th><th scope="col">Status</th><th scope="col"></th></tr></thead>' +
     '<tbody id="hist-rows"></tbody></table></div>' +
     '<div class="row row--between mt-6"><span class="muted text-xs">20 orders per page</span>' +
     '<nav class="pagination" id="hist-pages" aria-label="Order history pages"></nav></div>' +
@@ -356,13 +735,19 @@ function renderHistory() {
     pageNo = Math.min(pageNo, pages);
     const slice = rows.slice((pageNo - 1) * perPage, pageNo * perPage);
 
-    rowsHost.innerHTML = slice.length ? slice.map((order) =>
-      '<tr><td data-label="Order" class="table__strong">#' + order.number + '</td>' +
-      '<td data-label="Date/time">' + formatDateTime(order.createdAt) + '</td>' +
-      '<td data-label="Table">' + esc(order.tableName) + '</td>' +
-      '<td data-label="Items">' + order.items.length + '</td>' +
-      '<td data-label="Total" class="table__num">' + money(order.total) + '</td>' +
-      '<td data-label="Status">' + statusBadge(order.status) + '</td></tr>').join('')
+    rowsHost.innerHTML = slice.length ? slice.map((order) => {
+      const session = order.sessionId ? store.getById('sessions', order.sessionId) : null;
+      const receipt = session && session.status === 'paid'
+        ? '<a class="card__link" href="receipt.html?session=' + session.id + '">Receipt</a>'
+        : (session && session.status === 'open' ? '<button class="card__link" type="button" data-bill="' + session.id + '">View bill</button>' : '');
+      return '<tr><td data-label="Order" class="table__strong">#' + order.number + '</td>' +
+        '<td data-label="Date/time">' + formatDateTime(order.createdAt) + '</td>' +
+        '<td data-label="Table">' + esc(order.tableName) + '</td>' +
+        '<td data-label="Items">' + order.items.length + '</td>' +
+        '<td data-label="Total" class="table__num">' + money(order.total) + '</td>' +
+        '<td data-label="Status">' + statusBadge(order.status) + '</td>' +
+        '<td data-label="">' + receipt + '</td></tr>';
+    }).join('')
       : '<tr><td colspan="6"><div class="empty"><span class="empty__icon"><i data-lucide="history"></i></span>' +
         '<p class="empty__title">No orders match those filters</p></div></td></tr>';
 
@@ -400,9 +785,18 @@ function renderHistory() {
     draw();
   }, 200));
 
+  rowsHost.addEventListener('click', (event) => {
+    const btn = event.target.closest('[data-bill]');
+    if (btn) openBillModal(btn.getAttribute('data-bill'), () => renderHistory());
+  });
+
   host.querySelector('[data-export]').addEventListener('click', () => {
-    const rows = [['Order #', 'Date', 'Table', 'Items', 'Total', 'Status']].concat(
-      filtered().map((o) => ['#' + o.number, formatDateTime(o.createdAt), o.tableName, o.items.length, o.total.toFixed(2), o.status])
+    const rows = [['Order #', 'Date', 'Table', 'Items', 'Subtotal', 'Taxes', 'Charges', 'Total', 'Status']].concat(
+      filtered().map((o) => {
+        const b = breakdownOf(o);
+        return ['#' + o.number, formatDateTime(o.createdAt), o.tableName, o.items.length,
+          b.subtotal.toFixed(2), taxText(b), chargeText(b), b.total.toFixed(2), o.status];
+      })
     );
     exportCSV(rows, client.slug + '-orders.csv');
     toast('CSV exported');
@@ -436,7 +830,13 @@ function renderMenu() {
     catList.innerHTML = cats.map((cat, index) =>
       '<div class="cat-item' + (cat.id === selectedCat?.id ? ' cat-item--active' : '') + '" data-cat="' + cat.id + '">' +
       '<div><p class="cat-item__name">' + esc(cat.name) + '</p>' +
-      '<p class="cat-item__count">' + store.query('items', (i) => i.categoryId === cat.id).length + ' items</p></div>' +
+      '<p class="cat-item__count">' + store.query('items', (i) => i.categoryId === cat.id).length + ' items</p>' +
+      '<select class="select cat-tax" data-cat-tax="' + cat.id + '" aria-label="Tax override for ' + esc(cat.name) + '">' +
+      '<option value="default"' + (!cat.taxOverride || cat.taxOverride === 'default' ? ' selected' : '') + '>Tax: default</option>' +
+      '<option value="none"' + (cat.taxOverride === 'none' ? ' selected' : '') + '>Tax: none</option>' +
+      (settings.taxes || []).filter((t) => t.enabled).map((t) =>
+        '<option value="' + t.id + '"' + (cat.taxOverride === t.id ? ' selected' : '') + '>Tax: ' + esc(t.name) + '</option>').join('') +
+      '</select></div>' +
       '<div class="cat-item__actions">' +
       '<button class="btn btn--icon btn--sm" type="button" data-move="up" data-id="' + cat.id + '" aria-label="Move up"><i data-lucide="arrow-up"></i></button>' +
       '<button class="btn btn--icon btn--sm" type="button" data-move="down" data-id="' + cat.id + '" aria-label="Move down"><i data-lucide="arrow-down"></i></button>' +
@@ -473,6 +873,14 @@ function renderMenu() {
 
     if (window.lucide) window.lucide.createIcons();
   }
+
+  catList.addEventListener('change', (event) => {
+    const select = event.target.closest('[data-cat-tax]');
+    if (!select) return;
+    store.update('categories', select.getAttribute('data-cat-tax'), { taxOverride: select.value });
+    emit('menu:update', { clientId: client.id });
+    toast('Category tax updated');
+  });
 
   catList.addEventListener('click', async (event) => {
     const row = event.target.closest('[data-cat]');
@@ -595,6 +1003,12 @@ function renderMenuItem() {
     [['veg', 'Veg'], ['vegan', 'Vegan'], ['gf', 'Gluten-free'], ['spicy', 'Spicy']].map(([key, label]) =>
       '<label class="check"><input type="checkbox" value="' + key + '"' + (item && item.tags.includes(key) ? ' checked' : '') + '>' +
       '<span class="check__text">' + label + '</span></label>').join('') + '</div></div>' +
+    '<div class="field"><label class="label" for="item-tax">Tax override</label><select class="select" id="item-tax">' +
+    '<option value="default">Default (restaurant rate)</option>' +
+    '<option value="none">No tax</option>' +
+    (settings.taxes || []).filter((t) => t.enabled).map((t) =>
+      '<option value="' + t.id + '">' + esc(t.name) + ' ' + t.rate + '% only</option>').join('') +
+    '</select><p class="hint">Beats the category override. Use it for alcohol or takeaway items.</p></div>' +
     '<div class="field"><label class="label" for="prep-time">Prep time (minutes)</label>' +
     '<input class="input" id="prep-time" type="number" min="1" value="' + (item ? item.prepTime : 12) + '">' +
     '<p class="hint">Used for the estimated time on the guest order page.</p></div>' +
@@ -642,6 +1056,9 @@ function renderMenuItem() {
       : '<p class="hint">No add-on groups yet.</p>';
     if (window.lucide) window.lucide.createIcons();
   }
+
+  const taxSelect = host.querySelector('#item-tax');
+  if (taxSelect && item && item.taxOverride) taxSelect.value = item.taxOverride;
 
   drawSizes();
   drawGroups();
@@ -692,11 +1109,14 @@ function renderMenuItem() {
     }
   });
 
-  host.querySelector('#pick-image').addEventListener('click', () => host.querySelector('#item-image').click());
+  const dropzoneEl = host.querySelector('.dropzone');
+  const imageInputEl = host.querySelector('#item-image');
+  const previewImgEl = host.querySelector('#item-image-preview');
 
-  host.querySelector('#item-image').addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  function handleImageFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      return toast('Please choose a valid JPG or PNG image.', 'warning');
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
@@ -708,13 +1128,35 @@ function renderMenuItem() {
         canvas.height = Math.round(img.height * scale);
         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
         imageData = canvas.toDataURL('image/jpeg', 0.82);
-        host.querySelector('#item-image-preview').src = imageData;
+        if (previewImgEl) previewImgEl.src = imageData;
         toast('Photo resized to ' + canvas.width + 'px wide');
       };
       img.src = reader.result;
     };
     reader.readAsDataURL(file);
+  }
+
+  host.querySelector('#pick-image').addEventListener('click', () => imageInputEl.click());
+  imageInputEl.addEventListener('change', (event) => {
+    if (event.target.files && event.target.files[0]) handleImageFile(event.target.files[0]);
   });
+
+  if (dropzoneEl) {
+    dropzoneEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzoneEl.classList.add('is-dragover');
+    });
+    dropzoneEl.addEventListener('dragleave', () => {
+      dropzoneEl.classList.remove('is-dragover');
+    });
+    dropzoneEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzoneEl.classList.remove('is-dragover');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleImageFile(e.dataTransfer.files[0]);
+      }
+    });
+  }
 
   host.querySelector('#item-form').addEventListener('submit', (event) => {
     event.preventDefault();
@@ -735,6 +1177,7 @@ function renderMenuItem() {
       sizes: sizes.map((s) => ({ id: s.id || 'sz_' + Math.random().toString(36).slice(2, 6), name: s.name, price: Number(s.price) })),
       addons: groups,
       available: host.querySelector('#item-available').checked,
+      taxOverride: host.querySelector('#item-tax').value,
     };
 
     if (item) {
@@ -752,6 +1195,193 @@ function renderMenuItem() {
   });
 }
 
+/* ------------------------------------------------------------- visit qr -- */
+function showVisitQr(table, session) {
+  const existing = document.getElementById('visit-qr-modal');
+  if (existing) existing.remove();
+
+  const url = new URL('../menu/index.html', window.location.href);
+  url.searchParams.set('r', client.slug);
+  url.searchParams.set('t', table.token);
+  url.searchParams.set('s', session.id);
+  url.searchParams.set('j', session.joinSecret);
+  const fullUrl = url.href;
+
+  const modal = document.createElement('div');
+  modal.className = 'visit-qr-modal';
+  modal.id = 'visit-qr-modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.innerHTML = `
+    <h2 class="visit-qr-modal__title">${esc(table.name)}</h2>
+    <p class="visit-qr-modal__sub">Scan with phone camera to connect &amp; order</p>
+    <div class="visit-qr-modal__qr" id="visit-qr-canvas"></div>
+    <p class="visit-qr-modal__key">Table key backup: <span class="visit-qr-modal__key-digits">${esc(session.tableKey || '----')}</span></p>
+    <button class="btn btn--secondary btn--lg" type="button" id="visit-qr-hide-btn" style="min-width: 160px;">Hide</button>
+  `;
+
+  document.body.appendChild(modal);
+
+  if (window.QRCode) {
+    new window.QRCode(modal.querySelector('#visit-qr-canvas'), {
+      text: fullUrl,
+      width: 260,
+      height: 260,
+      colorDark: '#0B0F0E',
+      colorLight: '#FFFFFF',
+      correctLevel: window.QRCode.CorrectLevel ? window.QRCode.CorrectLevel.M : 0,
+    });
+  }
+
+  modal.querySelector('#visit-qr-hide-btn').addEventListener('click', () => {
+    modal.remove();
+  });
+}
+
+function printVisitSlip(table, session) {
+  let slip = document.getElementById('visit-print-slip');
+  if (!slip) {
+    slip = document.createElement('div');
+    slip.id = 'visit-print-slip';
+    document.body.appendChild(slip);
+  }
+
+  const url = new URL('../menu/index.html', window.location.href);
+  url.searchParams.set('r', client.slug);
+  url.searchParams.set('t', table.token);
+  url.searchParams.set('s', session.id);
+  url.searchParams.set('j', session.joinSecret);
+  const fullUrl = url.href;
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  slip.innerHTML = `
+    <div class="slip-restaurant">${esc(client.name)}</div>
+    <div class="slip-table">${esc(table.name)}</div>
+    <div class="slip-tagline">Scan to order</div>
+    <div class="slip-qr" id="slip-qr-box"></div>
+    <div class="slip-key">KEY: ${esc(session.tableKey || '----')}</div>
+    <div class="slip-datetime">${dateStr}</div>
+  `;
+
+  if (window.QRCode) {
+    new window.QRCode(slip.querySelector('#slip-qr-box'), {
+      text: fullUrl,
+      width: 160,
+      height: 160,
+      colorDark: '#000000',
+      colorLight: '#FFFFFF',
+      correctLevel: window.QRCode.CorrectLevel ? window.QRCode.CorrectLevel.M : 0,
+    });
+  }
+
+  document.body.classList.add('printing-slip');
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => {
+      document.body.classList.remove('printing-slip');
+    }, 1000);
+  }, 250);
+}
+
+/* ---------------------------------------------------------------- floor ---- */
+function renderFloor() {
+  paint(head('Floor Plan', 'Live dining tables, guest seating, and visit QR codes.') +
+    '<div class="table-grid" id="floor-grid"></div><div id="modal-host"></div>');
+
+  const grid = host.querySelector('#floor-grid');
+
+  function draw() {
+    const tables = store.tablesOf(client.id);
+    grid.innerHTML = tables.map((table) => {
+      const session = sessionForTable(client.id, table.id);
+      const isOccupied = table.status === 'occupied' || (session && session.status === 'open');
+
+      return '<div class="card table-card"><div class="table-card__head"><div>' +
+        '<p class="table-card__num">' + esc(table.name) + '</p>' +
+        '<p class="table-card__seats">' + table.seats + ' seats · ' + (isOccupied ? 'Session active' : 'Ready') + '</p></div>' +
+        '<span class="badge badge--' + (isOccupied ? 'warning' : 'success') + '">' +
+        (isOccupied ? 'Occupied' : 'Free') + '</span></div>' +
+        '<div class="table-card__qr" data-view-qr="' + table.id + '"><i data-lucide="qr-code"></i></div>' +
+        (isOccupied && session && session.tableKey ? '<div class="text-xs muted text-center mt-1">Backup Key: <strong style="font-family:var(--font-mono);letter-spacing:2px;">' + esc(session.tableKey) + '</strong></div>' : '') +
+        '<div class="table-card__actions">' +
+        (isOccupied
+          ? '<button class="btn btn--primary btn--sm" type="button" data-show-visit="' + table.id + '"><i data-lucide="qr-code"></i> Show visit QR</button>' +
+            (session ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '"><i data-lucide="receipt"></i> View bill</button>' : '') +
+            '<button class="btn btn--danger btn--sm" type="button" data-close-table="' + table.id + '"><i data-lucide="check-circle"></i> Close table</button>'
+          : '<button class="btn btn--primary btn--sm" type="button" data-seat="' + table.id + '"><i data-lucide="user-check"></i> Seat guests</button>') +
+        '</div></div>';
+    }).join('');
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  grid.addEventListener('click', (event) => {
+    const seatBtn = event.target.closest('[data-seat]');
+    const showVisitBtn = event.target.closest('[data-show-visit]');
+    const closeBtn = event.target.closest('[data-close-table]');
+    const billBtn = event.target.closest('[data-bill]');
+    const viewQr = event.target.closest('[data-view-qr]');
+
+    if (seatBtn) {
+      const tableId = seatBtn.getAttribute('data-seat');
+      const table = store.getById('tables', tableId);
+      if (!table) return;
+      const session = seatTable(client.id, table);
+      emit('table:update', { tableId: table.id, clientId: client.id });
+      if (client.settings && client.settings.printVisitSlip) {
+        printVisitSlip(table, session);
+      }
+      showVisitQr(table, session);
+      draw();
+      toast('Guests seated at ' + table.name);
+    }
+
+    if (showVisitBtn) {
+      const tableId = showVisitBtn.getAttribute('data-show-visit');
+      const table = store.getById('tables', tableId);
+      if (!table) return;
+      let session = sessionForTable(client.id, table.id);
+      if (!session) session = openSessionForTable(client.id, table);
+      showVisitQr(table, session);
+    }
+
+    if (closeBtn) {
+      const tableId = closeBtn.getAttribute('data-close-table');
+      const table = store.getById('tables', tableId);
+      if (!table) return;
+      const session = sessionForTable(client.id, table.id);
+      if (session) {
+        closeSession(session.id, { method: 'Cash' }, { total: 0 });
+        emit('session:close', { sessionId: session.id, clientId: client.id, tableId: table.id });
+      } else {
+        store.update('tables', table.id, { status: 'free', tableKey: null, activeSecret: null });
+      }
+      emit('table:update', { tableId: table.id, clientId: client.id });
+      toast('Table ' + table.name + ' closed');
+      draw();
+    }
+
+    if (billBtn) {
+      location.href = 'receipt.html?session=' + billBtn.getAttribute('data-bill');
+    }
+
+    if (viewQr) {
+      const tableId = viewQr.getAttribute('data-view-qr');
+      const table = store.getById('tables', tableId);
+      if (!table) return;
+      let session = sessionForTable(client.id, table.id);
+      if (!session) session = openSessionForTable(client.id, table);
+      showVisitQr(table, session);
+    }
+  });
+
+  draw();
+  on('table:update', () => draw());
+  on('order:new', () => draw());
+}
+
 /* --------------------------------------------------------------- tables -- */
 function renderTables() {
   const usage = store.usageFor(client.id);
@@ -765,18 +1395,26 @@ function renderTables() {
 
   function draw() {
     const tables = store.tablesOf(client.id);
-    grid.innerHTML = tables.map((table) =>
-      '<div class="card table-card"><div class="table-card__head"><div>' +
+    grid.innerHTML = tables.map((table) => {
+      const session = sessionForTable(client.id, table.id);
+      const isOccupied = table.status === 'occupied' || (session && session.status === 'open');
+
+      return '<div class="card table-card"><div class="table-card__head"><div>' +
       '<p class="table-card__num">' + esc(table.name) + '</p>' +
       '<p class="table-card__seats">' + table.seats + ' seats · QR active</p></div>' +
-      '<span class="badge badge--' + (table.status === 'occupied' ? 'warning' : 'success') + '">' +
-      (table.status === 'occupied' ? 'Occupied' : 'Free') + '</span></div>' +
+      '<span class="badge badge--' + (isOccupied ? 'warning' : 'success') + '">' +
+      (isOccupied ? 'Occupied' : 'Free') + '</span></div>' +
       '<div class="table-card__qr"><i data-lucide="qr-code"></i></div>' +
       '<div class="table-card__actions">' +
+      (isOccupied
+        ? '<button class="btn btn--primary btn--sm" type="button" data-show-visit="' + table.id + '"><i data-lucide="qr-code"></i> Show visit QR</button>' +
+          (session ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '"><i data-lucide="receipt"></i> View bill</button>' : '')
+        : '<button class="btn btn--primary btn--sm" type="button" data-seat="' + table.id + '"><i data-lucide="user-check"></i> Seat guests</button>') +
       '<button class="btn btn--secondary btn--sm" type="button" data-view="' + table.id + '"><i data-lucide="eye"></i> View QR</button>' +
       '<button class="btn btn--icon btn--sm" type="button" data-edit="' + table.id + '" aria-label="Edit ' + esc(table.name) + '"><i data-lucide="pencil"></i></button>' +
       '<button class="btn btn--icon btn--sm" type="button" data-del="' + table.id + '" aria-label="Delete ' + esc(table.name) + '"><i data-lucide="trash-2"></i></button>' +
-      '</div></div>').join('');
+      '</div></div>';
+    }).join('');
     if (window.lucide) window.lucide.createIcons();
   }
 
@@ -836,9 +1474,39 @@ function renderTables() {
   }
 
   grid.addEventListener('click', async (event) => {
+    const seatBtn = event.target.closest('[data-seat]');
+    const showVisitBtn = event.target.closest('[data-show-visit]');
     const view = event.target.closest('[data-view]');
     const edit = event.target.closest('[data-edit]');
     const del = event.target.closest('[data-del]');
+
+    if (seatBtn) {
+      const table = store.getById('tables', seatBtn.getAttribute('data-seat'));
+      if (table) {
+        const session = seatTable(client.id, table);
+        emit('table:update', { tableId: table.id, clientId: client.id });
+        if (client.settings && client.settings.printVisitSlip) {
+          printVisitSlip(table, session);
+        }
+        showVisitQr(table, session);
+        draw();
+        toast('Guests seated at ' + table.name);
+      }
+      return;
+    }
+
+    if (showVisitBtn) {
+      const table = store.getById('tables', showVisitBtn.getAttribute('data-show-visit'));
+      if (table) {
+        let session = sessionForTable(client.id, table.id);
+        if (!session) session = openSessionForTable(client.id, table);
+        showVisitQr(table, session);
+      }
+      return;
+    }
+
+    const billBtn = event.target.closest('[data-bill]');
+    if (billBtn) openBillModal(billBtn.getAttribute('data-bill'));
 
     if (view) openQr(store.getById('tables', view.getAttribute('data-view')));
 
@@ -1027,6 +1695,30 @@ function renderReports() {
   const revenue = rows.reduce((sum, o) => sum + o.total, 0);
   const itemsSold = rows.reduce((sum, o) => sum + o.items.reduce((n, i) => n + i.qty, 0), 0);
 
+  let taxCollected = 0;
+  let chargesCollected = 0;
+  let discountsGiven = 0;
+  let tipsCollected = 0;
+  const methodNames = new Map((settings.paymentMethods || []).map((m) => [m.id, m.name]));
+  const payments = new Map();
+
+  store.query('sessions', (x) => x.clientId === client.id && x.status === 'paid' && new Date(x.closedAt) >= since)
+    .forEach((session) => {
+      const saved = session.bill || {};
+      discountsGiven += (saved.discount && saved.discount.amount) || 0;
+      tipsCollected += (saved.tip && saved.tip.amount) || 0;
+      const method = (session.payment && session.payment.method) || 'other';
+      const bucket = payments.get(method) || { count: 0, amount: 0 };
+      bucket.count += 1;
+      bucket.amount += (session.payment && session.payment.amount) || saved.total || 0;
+      payments.set(method, bucket);
+    });
+  rows.forEach((order) => {
+    const b = breakdownOf(order);
+    taxCollected += b.taxTotal || 0;
+    chargesCollected += b.chargeTotal || 0;
+  });
+
   const byDay = Array.from({ length: days }, (_, i) => {
     const date = new Date(Date.now() - (days - 1 - i) * 86400000);
     const key = date.toDateString();
@@ -1072,7 +1764,10 @@ function renderReports() {
     : '<tr><td colspan="3"><p class="muted text-sm">No data in this range.</p></td></tr>';
 
   paint(head('Reports', 'Sales for the last ' + days + ' days. Every number comes from real orders.',
-    '<button class="btn btn--secondary btn--sm" type="button" data-export><i data-lucide="download"></i> Export CSV</button>') +
+    '<div class="row gap-2">' +
+    '<button class="btn btn--secondary btn--sm" type="button" data-google-sync><i data-lucide="sheet"></i> Google Sheet Sync</button>' +
+    '<button class="btn btn--secondary btn--sm" type="button" data-export><i data-lucide="download"></i> Export CSV</button>' +
+    '</div>') +
     '<div class="card"><div class="card__body"><div class="toolbar">' +
     '<button class="chip chip--filter" type="button" aria-pressed="false">Today</button>' +
     '<button class="chip chip--filter" type="button" aria-pressed="true">7 days</button>' +
@@ -1083,6 +1778,10 @@ function renderReports() {
     statCard('Orders', String(rows.length), 'last ' + days + ' days') +
     statCard('Avg order value', money(rows.length ? revenue / rows.length : 0), 'per order') +
     statCard('Items sold', String(itemsSold), 'last ' + days + ' days') +
+    statCard('Tax collected', money(taxCollected), settings.pricesIncludeTax ? 'inside menu prices' : 'added on top') +
+    statCard('Charges collected', money(chargesCollected), 'service and fees') +
+    statCard('Discounts given', money(discountsGiven), 'on paid bills') +
+    statCard('Tips collected', money(tipsCollected), 'never taxed') +
     '</div>' +
     '<div class="card mt-4"><div class="card__header"><span class="card__title">Revenue by day</span>' +
     '<span class="muted text-xs">Best day: ' + esc(byDay.reduce((a, b) => (b[1] > a[1] ? b : a), byDay[0])[0]) + '</span></div>' +
@@ -1102,15 +1801,33 @@ function renderReports() {
     byHour.map(([label, count, total]) => '<tr><td class="table__strong">' + esc(label) + '</td>' +
       '<td class="table__num">' + count + '</td><td class="table__num">' + money(total) + '</td></tr>').join('') +
     '</tbody></table></div></div></div>' +
+    '<div class="card"><div class="card__header"><span class="card__title">Payments by method</span></div>' +
+    '<div class="card__body"><div class="table-wrap"><table class="table"><thead><tr><th scope="col">Method</th>' +
+    '<th scope="col" class="table__num">Bills</th><th scope="col" class="table__num">Amount</th></tr></thead><tbody>' +
+    Array.from(new Set([...(settings.paymentMethods || []).map((m) => m.id), ...payments.keys()])).map((key) => {
+      const bucket = payments.get(key) || { count: 0, amount: 0 };
+      const name = methodNames.get(key) || (key[0].toUpperCase() + key.slice(1));
+      return '<tr><td class="table__strong">' + esc(name) + '</td>' +
+        '<td class="table__num">' + bucket.count + '</td>' +
+        '<td class="table__num">' + money(bucket.amount) + '</td></tr>';
+    }).join('') +
+    '</tbody></table></div></div></div>' +
     '<div class="card"><div class="card__header"><span class="card__title">Orders by table</span></div>' +
     '<div class="card__body"><div class="table-wrap"><table class="table"><thead><tr><th scope="col">Table</th>' +
     '<th scope="col" class="table__num">Orders</th><th scope="col" class="table__num">Revenue</th></tr></thead><tbody>' +
     tableRows(Object.entries(byTable).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 8)) + '</tbody></table></div></div></div>' +
     '</div>');
 
+  const syncBtn = host.querySelector('[data-google-sync]');
+  if (syncBtn) syncBtn.addEventListener('click', () => renderSyncDialog());
+
   host.querySelector('[data-export]').addEventListener('click', () => {
-    const csv = [['Order #', 'Date', 'Table', 'Total', 'Status']].concat(
-      rows.map((o) => ['#' + o.number, formatDateTime(o.createdAt), o.tableName, o.total.toFixed(2), o.status])
+    const csv = [['Order #', 'Date', 'Table', 'Subtotal', 'Taxes', 'Charges', 'Total', 'Status']].concat(
+      rows.map((o) => {
+        const b = breakdownOf(o);
+        return ['#' + o.number, formatDateTime(o.createdAt), o.tableName, b.subtotal.toFixed(2),
+          taxText(b), chargeText(b), b.total.toFixed(2), o.status];
+      })
     );
     exportCSV(csv, client.slug + '-report.csv');
     toast('Report exported');
@@ -1124,7 +1841,7 @@ function renderSettings() {
 
   paint(head('Settings', 'Restaurant profile, ordering rules, hours and branding.') +
     '<div class="tabs" data-tabs><div class="tabs__list" role="tablist" aria-label="Settings sections">' +
-    ['Restaurant profile|profile', 'Ordering|ordering', 'Opening hours|hours', 'Branding|branding', 'Notifications|notify'].map((pair, i) => {
+    ['Restaurant profile|profile', 'Ordering|ordering', 'Security|security', 'Opening hours|hours', 'Branding|branding', 'Notifications|notify', 'Cloud & Sync|sync'].map((pair, i) => {
       const [label, key] = pair.split('|');
       return '<button class="tab" role="tab" type="button" data-tab="' + key + '" aria-selected="' + (i === 0) + '" tabindex="' + (i === 0 ? 0 : -1) + '">' + label + '</button>';
     }).join('') + '</div>' +
@@ -1144,6 +1861,23 @@ function renderSettings() {
     '</div><div class="row mt-6" style="justify-content:flex-end"><button class="btn btn--primary" type="button" data-save="profile">Save profile</button></div>' +
     '</div></div></div>' +
 
+    '<div class="tab-panel" data-panel="security" hidden><div class="card"><div class="card__body">' +
+    '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Print visit QR slip</p>' +
+    '<p class="list-row__meta">Automatically print an 80mm thermal slip with Visit QR and table key when seating guests.</p></div>' +
+    '<label class="switch"><input type="checkbox" id="set-print-slip"' + (settings.printVisitSlip ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Print visit QR slip</span></label></div>' +
+    '<div class="row mt-6" style="justify-content:flex-end"><button class="btn btn--primary" type="button" data-save="security">Save security</button></div>' +
+    '</div></div></div>' +
+
+    '<div class="tab-panel" data-panel="sync" hidden><div class="card"><div class="card__body">' +
+    '<h3 class="card__title mb-2">Google Sheets & Google Drive Integration</h3>' +
+    '<p class="muted text-sm mb-4">Export and continuously sync your live orders, menu catalog, tables, and daily revenue reports to your restaurant\'s Google Spreadsheet. Back up your database to Google Drive.</p>' +
+    '<div class="row gap-3">' +
+    '<button class="btn btn--primary" type="button" id="open-sync-dlg-btn"><i data-lucide="sheet"></i> Configure Google Sync</button>' +
+    '<button class="btn btn--secondary" type="button" id="backup-drive-btn"><i data-lucide="cloud"></i> Backup to Google Drive</button>' +
+    '</div></div></div>' +
+    renderMongoSettingsCard() +
+    '</div>' +
+
     '<div class="tab-panel" data-panel="ordering" hidden><div class="card"><div class="card__body">' +
     '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Accept orders</p>' +
     '<p class="list-row__meta">When off, guests see “Ordering is paused” instead of the menu.</p></div>' +
@@ -1151,12 +1885,61 @@ function renderSettings() {
     '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Staff must approve orders before the kitchen</p>' +
     '<p class="list-row__meta">New orders wait for approval on the Live orders page.</p></div>' +
     '<label class="switch"><input type="checkbox" id="set-approval"' + (settings.approval ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Require approval</span></label></div>' +
+    '<div class="tax-section">' +
+    '<div class="tax-section__head"><span class="label" style="margin:0">Taxes &amp; charges</span>' +
+    '<span class="muted text-xs">Applied to the guest menu, cart and every new order.</span></div>' +
+    '<label class="switch tax-inclusive"><input type="checkbox" id="set-inclusive"' + (settings.pricesIncludeTax ? ' checked' : '') + '>' +
+    '<span class="switch__track"></span><span class="switch__label">Menu prices already include tax</span></label>' +
+    '<p class="hint">On: tax is inside the price (UK, South Africa). Off: tax is added on top (USA, India).</p>' +
+
+    '<div class="tax-list-head"><span>Tax</span><span>Rate</span><span>On</span><span></span></div>' +
+    '<div id="tax-rows"></div>' +
+    '<button class="btn btn--secondary btn--sm mt-2" type="button" data-add-tax><i data-lucide="plus"></i> Add tax</button>' +
+
+    '<div class="tax-list-head mt-6"><span>Charge</span><span>Type &amp; value</span><span>On</span><span></span></div>' +
+    '<div id="charge-rows"></div>' +
+    '<button class="btn btn--secondary btn--sm mt-2" type="button" data-add-charge><i data-lucide="plus"></i> Add charge</button>' +
+
     '<div class="form-grid form-grid--2 mt-6">' +
-    '<div class="field"><label class="label" for="set-tax">Tax (%)</label><input class="input" id="set-tax" type="number" step="0.5" value="' + settings.tax + '"></div>' +
-    '<div class="field"><label class="label" for="set-service">Service charge (%)</label><input class="input" id="set-service" type="number" step="0.5" value="' + settings.service + '"></div>' +
+    '<div class="field"><label class="label" for="set-taxlabel">Tax number label</label>' +
+    '<input class="input" id="set-taxlabel" type="text" value="' + esc((settings.taxNumber && settings.taxNumber.label) || 'GSTIN') + '" placeholder="GSTIN, VAT no., Tax ID"></div>' +
+    '<div class="field"><label class="label" for="set-taxvalue">Tax registration number</label>' +
+    '<input class="input" id="set-taxvalue" type="text" value="' + esc((settings.taxNumber && settings.taxNumber.value) || '') + '"></div>' +
+    '</div>' +
+
+    '<div class="tax-section__head mt-6"><span class="label" style="margin:0">Tips</span>' +
+    '<span class="muted text-xs">Offered on the guest bill, never taxed.</span></div>' +
+    '<label class="switch"><input type="checkbox" id="set-tips"' + (settings.tips && settings.tips.enabled ? ' checked' : '') + '>' +
+    '<span class="switch__track"></span><span class="switch__label">Let guests add a tip</span></label>' +
+    '<p class="hint">Turn off if guests add tips on your card machine.</p>' +
+    '<div class="form-grid form-grid--2 mt-4">' +
+    '<div class="field"><label class="label" for="set-tippresets">Preset percentages</label>' +
+    '<input class="input" id="set-tippresets" type="text" value="' + esc(((settings.tips && settings.tips.presets) || [10, 15, 20]).join(', ')) + '" placeholder="10, 15, 20">' +
+    '<p class="hint">Comma separated.</p></div>' +
+    '<div class="field"><label class="switch"><input type="checkbox" id="set-tipcustom"' +
+    (settings.tips && settings.tips.allowCustom === false ? '' : ' checked') + '>' +
+    '<span class="switch__track"></span><span class="switch__label">Allow a custom tip amount</span></label></div>' +
+    '</div>' +
+
+    '<div class="tax-section__head mt-6"><span class="label" style="margin:0">Payments</span>' +
+    '<span class="muted text-xs">The methods a guest can pick when asking for the bill.</span></div>' +
+    '<div class="tax-list-head"><span>Method</span><span></span><span>On</span><span></span></div>' +
+    '<div id="pay-rows"></div>' +
+    '<button class="btn btn--secondary btn--sm mt-2" type="button" data-add-method><i data-lucide="plus"></i> Add method</button>' +
+    '<div class="field mt-6"><label class="label" for="set-paynote">Bill footer text</label>' +
+    '<input class="input" id="set-paynote" type="text" value="' + esc(settings.paymentNote || 'Your waiter will bring the card machine to your table.') + '"></div>' +
+
+    '<div class="form-grid form-grid--2 mt-6">' +
+    '<div class="field"><label class="label" for="set-rounding">Rounding</label><select class="select" id="set-rounding">' +
+    [['none', 'None'], ['0.05', 'Nearest 0.05'], ['1', 'Nearest whole number']]
+      .map(([v, label]) => '<option value="' + v + '"' + ((settings.rounding || 'none') === v ? ' selected' : '') + '>' + label + '</option>').join('') +
+    '</select></div>' +
     '<div class="field"><label class="label" for="set-currency">Currency</label><select class="select" id="set-currency">' +
     ['$', '₹', '£', '€'].map((c) => '<option' + (settings.currency === c ? ' selected' : '') + '>' + c + '</option>').join('') +
     '</select></div></div>' +
+
+    '<div class="tax-preview" id="tax-preview" aria-live="polite"></div>' +
+    '</div>' +
     '<div class="row mt-6" style="justify-content:flex-end"><button class="btn btn--primary" type="button" data-save="ordering">Save ordering</button></div>' +
     '</div></div></div>' +
 
@@ -1202,6 +1985,165 @@ function renderSettings() {
     });
   });
 
+  /* ---------------------------------------------- taxes & charges editor -- */
+  let taxDraft = {
+    taxes: (settings.taxes || []).map((t) => ({ ...t })),
+    charges: (settings.charges || []).map((c) => ({ ...c })),
+  };
+  let payDraft = (settings.paymentMethods || []).map((m) => ({ ...m }));
+  const payRowsHost = host.querySelector('#pay-rows');
+  const taxRowsHost = host.querySelector('#tax-rows');
+  const chargeRowsHost = host.querySelector('#charge-rows');
+  const previewHost = host.querySelector('#tax-preview');
+  const newId = (prefix) => prefix + '_' + Math.random().toString(36).slice(2, 8);
+
+  function drawTaxRows() {
+    taxRowsHost.innerHTML = taxDraft.taxes.length
+      ? taxDraft.taxes.map((t) =>
+        '<div class="tax-row">' +
+        '<input class="input" type="text" value="' + esc(t.name) + '" data-tax-name="' + t.id + '" placeholder="VAT, GST, Sales tax" aria-label="Tax name">' +
+        '<div class="tax-row__value"><input class="input" type="number" step="0.01" min="0" value="' + t.rate + '" data-tax-rate="' + t.id + '" aria-label="Tax rate"><span>%</span></div>' +
+        '<label class="switch"><input type="checkbox" data-tax-on="' + t.id + '"' + (t.enabled ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Tax on</span></label>' +
+        '<button class="btn btn--icon btn--sm" type="button" data-tax-del="' + t.id + '" aria-label="Delete tax"><i data-lucide="trash-2"></i></button>' +
+        '</div>').join('')
+      : '<p class="hint">No taxes yet — add one to charge tax on top of the menu.</p>';
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function drawChargeRows() {
+    chargeRowsHost.innerHTML = taxDraft.charges.length
+      ? taxDraft.charges.map((c) =>
+        '<div class="tax-row tax-row--charge">' +
+        '<input class="input" type="text" value="' + esc(c.name) + '" data-charge-name="' + c.id + '" placeholder="Service charge, Packing fee" aria-label="Charge name">' +
+        '<div class="tax-row__value">' +
+        '<select class="select" data-charge-type="' + c.id + '" aria-label="Charge type">' +
+        '<option value="percent"' + (c.type !== 'fixed' ? ' selected' : '') + '>%</option>' +
+        '<option value="fixed"' + (c.type === 'fixed' ? ' selected' : '') + '>Fixed</option></select>' +
+        '<input class="input" type="number" step="0.01" min="0" value="' + c.value + '" data-charge-value="' + c.id + '" aria-label="Charge value"></div>' +
+        '<label class="switch"><input type="checkbox" data-charge-on="' + c.id + '"' + (c.enabled ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Charge on</span></label>' +
+        '<button class="btn btn--icon btn--sm" type="button" data-charge-del="' + c.id + '" aria-label="Delete charge"><i data-lucide="trash-2"></i></button>' +
+        '<div class="tax-row__opts">' +
+        '<label class="check check--sm"><input type="checkbox" data-charge-removable="' + c.id + '"' + (c.customerCanRemove !== false ? ' checked' : '') + '><span class="check__text">Customer can remove this charge</span></label>' +
+        '<label class="check check--sm"><input type="checkbox" data-charge-default="' + c.id + '"' + (c.addedByDefault !== false ? ' checked' : '') + '><span class="check__text">Added by default</span></label>' +
+        '<label class="check check--sm"><input type="checkbox" data-charge-tax="' + c.id + '"' + (c.applyTax !== false ? ' checked' : '') + '><span class="check__text">Apply tax on this charge</span></label>' +
+        '</div>' +
+        '</div>').join('')
+      : '<p class="hint">No charges yet.</p>';
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function drawPayRows() {
+    payRowsHost.innerHTML = payDraft.length
+      ? payDraft.map((m) =>
+        '<div class="tax-row tax-row--pay">' +
+        '<input class="input" type="text" value="' + esc(m.name) + '" data-pay-name="' + m.id + '" placeholder="Card, Cash, UPI" aria-label="Payment method name">' +
+        '<span></span>' +
+        '<label class="switch"><input type="checkbox" data-pay-on="' + m.id + '"' + (m.enabled ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Method on</span></label>' +
+        '<button class="btn btn--icon btn--sm" type="button" data-pay-del="' + m.id + '" aria-label="Delete method"><i data-lucide="trash-2"></i></button>' +
+        '</div>').join('')
+      : '<p class="hint">No payment methods — guests will not be asked how they want to pay.</p>';
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function taxConfigFromForm() {
+    return {
+      currency: host.querySelector('#set-currency').value,
+      pricesIncludeTax: host.querySelector('#set-inclusive').checked,
+      rounding: host.querySelector('#set-rounding').value,
+      taxes: taxDraft.taxes,
+      charges: taxDraft.charges,
+    };
+  }
+
+  function drawPreview() {
+    const config = taxConfigFromForm();
+    const money = (v) => formatMoney(v, config.currency);
+    const totals = computeBill({ lines: [{ amount: 20, taxOverride: 'default' }], settings: config });
+    const rows = ['<div class="tax-preview__row"><span>Menu subtotal</span><span>' + money(20) + '</span></div>'];
+
+    if (!totals.pricesIncludeTax) {
+      totals.taxes.forEach((t) => rows.push(
+        '<div class="tax-preview__row"><span>' + esc(t.name) + ' ' + t.rate + '%</span><span>' + money(t.amount) + '</span></div>'));
+    }
+    totals.charges.forEach((c) => rows.push(
+      '<div class="tax-preview__row"><span>' + esc(c.name) + (c.type === 'percent' ? ' ' + c.value + '%' : '') + '</span><span>' + money(c.amount) + '</span></div>'));
+    rows.push('<div class="tax-preview__row tax-preview__row--total"><span>Guest pays</span><span>' + money(totals.total) + '</span></div>');
+    if (totals.pricesIncludeTax) {
+      totals.includedTaxes.forEach((t) => rows.push(
+        '<p class="tax-preview__note">Includes ' + esc(t.name) + ' ' + t.rate + '%: ' + money(t.amount) + '</p>'));
+    }
+    previewHost.innerHTML = '<p class="tax-preview__title">Example: a $20.00 order</p>' + rows.join('');
+  }
+
+  function syncTaxDraft(target) {
+    const pick = (attr) => target.getAttribute(attr);
+    if (pick('data-tax-name')) { const row = taxDraft.taxes.find((t) => t.id === pick('data-tax-name')); if (row) row.name = target.value; }
+    if (pick('data-tax-rate')) { const row = taxDraft.taxes.find((t) => t.id === pick('data-tax-rate')); if (row) row.rate = Number(target.value) || 0; }
+    if (pick('data-tax-on')) { const row = taxDraft.taxes.find((t) => t.id === pick('data-tax-on')); if (row) row.enabled = target.checked; }
+    if (pick('data-charge-name')) { const row = taxDraft.charges.find((c) => c.id === pick('data-charge-name')); if (row) row.name = target.value; }
+    if (pick('data-charge-value')) { const row = taxDraft.charges.find((c) => c.id === pick('data-charge-value')); if (row) row.value = Number(target.value) || 0; }
+    if (pick('data-charge-type')) { const row = taxDraft.charges.find((c) => c.id === pick('data-charge-type')); if (row) row.type = target.value; }
+    if (pick('data-pay-name')) { const row = payDraft.find((m) => m.id === pick('data-pay-name')); if (row) row.name = target.value; }
+    if (pick('data-pay-on')) { const row = payDraft.find((m) => m.id === pick('data-pay-on')); if (row) row.enabled = target.checked; }
+    if (pick('data-charge-on')) { const row = taxDraft.charges.find((c) => c.id === pick('data-charge-on')); if (row) row.enabled = target.checked; }
+    if (pick('data-charge-removable')) { const row = taxDraft.charges.find((c) => c.id === pick('data-charge-removable')); if (row) row.customerCanRemove = target.checked; }
+    if (pick('data-charge-default')) { const row = taxDraft.charges.find((c) => c.id === pick('data-charge-default')); if (row) row.addedByDefault = target.checked; }
+    if (pick('data-charge-tax')) { const row = taxDraft.charges.find((c) => c.id === pick('data-charge-tax')); if (row) row.applyTax = target.checked; }
+  }
+
+  host.querySelector('[data-panel="ordering"]').addEventListener('input', (event) => {
+    syncTaxDraft(event.target);
+    drawPreview();
+  });
+  host.querySelector('[data-panel="ordering"]').addEventListener('change', (event) => {
+    syncTaxDraft(event.target);
+    drawPreview();
+  });
+
+  host.querySelector('[data-panel="ordering"]').addEventListener('click', (event) => {
+    const addMethod = event.target.closest('[data-add-method]');
+    const delMethod = event.target.closest('[data-pay-del]');
+
+    if (addMethod) {
+      payDraft.push({ id: newId('pay'), name: 'New method', enabled: true });
+      drawPayRows();
+    }
+    if (delMethod) {
+      payDraft = payDraft.filter((m) => m.id !== delMethod.getAttribute('data-pay-del'));
+      drawPayRows();
+    }
+
+    const addTax = event.target.closest('[data-add-tax]');
+    const addCharge = event.target.closest('[data-add-charge]');
+    const delTax = event.target.closest('[data-tax-del]');
+    const delCharge = event.target.closest('[data-charge-del]');
+
+    if (addTax) {
+      taxDraft.taxes.push({ id: newId('tax'), name: 'New tax', rate: 0, enabled: true });
+      drawTaxRows(); drawPreview();
+    }
+    if (addCharge) {
+      taxDraft.charges.push({
+        id: newId('chg'), name: 'New charge', type: 'percent', value: 0, enabled: true,
+        customerCanRemove: true, addedByDefault: true, applyTax: true,
+      });
+      drawChargeRows(); drawPreview();
+    }
+    if (delTax) {
+      taxDraft.taxes = taxDraft.taxes.filter((t) => t.id !== delTax.getAttribute('data-tax-del'));
+      drawTaxRows(); drawPreview();
+    }
+    if (delCharge) {
+      taxDraft.charges = taxDraft.charges.filter((c) => c.id !== delCharge.getAttribute('data-charge-del'));
+      drawChargeRows(); drawPreview();
+    }
+  });
+
+  drawTaxRows();
+  drawChargeRows();
+  drawPayRows();
+  drawPreview();
+
   host.querySelector('#set-accent').addEventListener('input', (event) => {
     host.querySelector('#set-accent-text').value = event.target.value;
     host.querySelector('.phone-preview').style.setProperty('--preview-accent', event.target.value);
@@ -1228,9 +2170,25 @@ function renderSettings() {
       if (which === 'ordering') {
         next.acceptOrders = host.querySelector('#set-accept').checked;
         next.approval = host.querySelector('#set-approval').checked;
-        next.tax = Number(host.querySelector('#set-tax').value);
-        next.service = Number(host.querySelector('#set-service').value);
         next.currency = host.querySelector('#set-currency').value;
+        next.pricesIncludeTax = host.querySelector('#set-inclusive').checked;
+        next.rounding = host.querySelector('#set-rounding').value;
+        next.taxes = taxDraft.taxes.map((t) => ({ ...t }));
+        next.charges = taxDraft.charges.map((c) => ({ ...c }));
+        next.taxNumber = {
+          label: host.querySelector('#set-taxlabel').value.trim() || 'GSTIN',
+          value: host.querySelector('#set-taxvalue').value.trim(),
+        };
+        const presets = host.querySelector('#set-tippresets').value
+          .split(',').map((n) => Number(n.trim())).filter((n) => n > 0);
+        next.tips = {
+          enabled: host.querySelector('#set-tips').checked,
+          presets: presets.length ? presets : [10, 15, 20],
+          allowCustom: host.querySelector('#set-tipcustom').checked,
+        };
+        next.paymentMethods = payDraft.map((m) => ({ ...m }));
+        next.paymentNote = host.querySelector('#set-paynote').value.trim()
+          || 'Your waiter will bring the card machine to your table.';
         store.update('clients', client.id, { settings: next });
         emit('settings:update', { clientId: client.id });
         toast('Ordering settings saved');
@@ -1254,6 +2212,11 @@ function renderSettings() {
         next.sound = host.querySelector('#set-sound').checked;
         store.update('clients', client.id, { settings: next });
         toast('Notifications saved');
+      }
+      if (which === 'security') {
+        next.printVisitSlip = host.querySelector('#set-print-slip').checked;
+        store.update('clients', client.id, { settings: next });
+        toast('Security settings saved');
       }
       store.logActivity({ actor: session.name, clientId: client.id, type: 'Settings', details: 'Settings saved (' + which + ')' });
     });
@@ -1342,6 +2305,7 @@ const PAGES = {
   dashboard: renderDashboard,
   orders: renderOrders,
   'order-history': renderHistory,
+  floor: renderFloor,
   menu: renderMenu,
   'menu-item': renderMenuItem,
   tables: renderTables,
@@ -1373,6 +2337,6 @@ if (render) {
 }
 
 /* Live updates from other tabs */
-on('order:new', () => { if (['dashboard', 'orders'].includes(page)) { refreshChrome(); PAGES[page](); } });
-on('order:update', () => { if (['dashboard', 'orders'].includes(page)) { refreshChrome(); PAGES[page](); } });
-on('call:new', () => { if (['dashboard', 'orders'].includes(page)) { refreshChrome(); PAGES[page](); } });
+on('order:new', () => { if (['dashboard', 'orders', 'floor'].includes(page)) { refreshChrome(); PAGES[page](); } });
+on('order:update', () => { if (['dashboard', 'orders', 'floor'].includes(page)) { refreshChrome(); PAGES[page](); } });
+on('call:new', () => { if (['dashboard', 'orders', 'floor'].includes(page)) { refreshChrome(); PAGES[page](); } });

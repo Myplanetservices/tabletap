@@ -4,8 +4,10 @@
    Vanilla ES module. No build step, no backend.
    ========================================================================== */
 
+import { computeBill } from './billing.js';
+
 const KEY = 'tqr_db';
-const VERSION = 6;
+const VERSION = 7;
 
 let cache = null;
 
@@ -205,6 +207,7 @@ function seed() {
     items: [],
     orders: [],
     waiterCalls: [],
+    sessions: [],
     invites: [],
     activity: [],
     notes: [],
@@ -243,8 +246,26 @@ function seed() {
       },
       settings: {
         currency: '$',
-        tax: 8,
-        service: 5,
+        pricesIncludeTax: false,
+        taxes: [
+          { id: 'tax_sales', name: 'Sales tax', rate: 8, enabled: true },
+        ],
+        charges: [
+          {
+            id: 'chg_service', name: 'Service charge', type: 'percent', value: 5, enabled: true,
+            customerCanRemove: true, addedByDefault: true, applyTax: true,
+          },
+        ],
+        taxNumber: { label: 'GSTIN', value: '27AAAPL1234C1ZV' },
+        tips: { enabled: false, presets: [10, 15, 20], allowCustom: true },
+        paymentMethods: [
+          { id: 'card', name: 'Card', enabled: true },
+          { id: 'cash', name: 'Cash', enabled: true },
+          { id: 'upi', name: 'UPI', enabled: false },
+          { id: 'other', name: 'Other', enabled: false },
+        ],
+        paymentNote: 'Your waiter will bring the card machine to your table.',
+        rounding: 'none',
         accent: '#7A2E2B',
         acceptOrders: status !== 'suspended',
         approval: false,
@@ -323,10 +344,9 @@ function seed() {
 
   // Orders
   const item = (name, qty, price, extra = {}) => ({ name, qty, price, ...extra });
+  const oliveSettings = data.clients[0].settings;
   const mkOrder = (number, tableName, status, agoMin, items, opts = {}) => {
-    const subtotal = items.reduce((sum, it) => sum + it.price * it.qty, 0);
-    const tax = Math.round(subtotal * 0.08 * 100) / 100;
-    const service = Math.round(subtotal * 0.05 * 100) / 100;
+    const totals = computeBill({ lines: items.map((it) => ({ amount: it.price * it.qty, taxOverride: 'default' })), settings: oliveSettings });
     data.orders.push({
       id: 'ord_' + number,
       clientId: 'cli_olive-table',
@@ -336,10 +356,11 @@ function seed() {
       items,
       note: opts.note || '',
       guestName: opts.guestName || '',
-      subtotal,
-      tax,
-      service,
-      total: Math.round((subtotal + tax + service) * 100) / 100,
+      subtotal: totals.subtotal,
+      tax: totals.taxTotal,
+      service: totals.chargeTotal,
+      total: totals.total,
+      breakdown: totals,
       status,
       createdAt: mins(agoMin),
       updatedAt: mins(Math.max(0, agoMin - 2)),
@@ -402,11 +423,79 @@ function seed() {
       createdAt: new Date(Date.now() - 86400000 - i * 1800000).toISOString(),
       updatedAt: new Date(Date.now() - 86400000 - i * 1800000 + 900000).toISOString(),
     };
-    o.subtotal = o.items.reduce((s, it) => s + it.price * it.qty, 0);
-    o.tax = Math.round(o.subtotal * 0.08 * 100) / 100;
-    o.service = Math.round(o.subtotal * 0.05 * 100) / 100;
-    o.total = Math.round((o.subtotal + o.tax + o.service) * 100) / 100;
+    const totals = computeBill({ lines: o.items.map((it) => ({ amount: it.price * it.qty, taxOverride: 'default' })), settings: oliveSettings });
+    o.subtotal = totals.subtotal;
+    o.tax = totals.taxTotal;
+    o.service = totals.chargeTotal;
+    o.total = totals.total;
+    o.breakdown = totals;
     data.orders.push(o);
+  }
+
+  // Open table sessions for today's live orders
+  const liveStatuses = ['new', 'pending_approval', 'preparing', 'ready'];
+  const byTable = new Map();
+  data.orders
+    .filter((o) => liveStatuses.includes(o.status))
+    .forEach((o) => {
+      if (!byTable.has(o.tableName)) byTable.set(o.tableName, []);
+      byTable.get(o.tableName).push(o);
+    });
+  byTable.forEach((orders, tableName) => {
+    const table = data.tables.find((t) => t.clientId === 'cli_olive-table' && t.name === tableName);
+    if (!table) return;
+    const demoKey = String(1000 + (data.sessions.length + 1) * 739 % 9000);
+    const demoSecret = 'sec_' + tableName.toLowerCase().replace(/\s+/g, '-') + '_init';
+    data.sessions.push({
+      id: 'ses_' + tableName.toLowerCase().replace(/\s+/g, '-'),
+      clientId: 'cli_olive-table',
+      tableId: table.id,
+      tableName,
+      tableKey: demoKey,
+      joinSecret: demoSecret,
+      status: 'open',
+      openedAt: orders[orders.length - 1].createdAt,
+      closedAt: null,
+      orderIds: orders.map((o) => o.id),
+      removedChargeIds: [],
+      addedChargeIds: [],
+      discount: { type: 'percent', value: 0, reason: '' },
+      tip: { type: 'percent', value: 0 },
+      bill: null,
+      payment: null,
+    });
+    table.status = 'occupied';
+    table.tableKey = demoKey;
+    table.activeSecret = demoSecret;
+  });
+
+  // One paid session from yesterday, so reports have payment data
+  const yOrders = data.orders.filter((o) => o.number >= 1020 && o.number < 1034).slice(0, 3);
+  if (yOrders.length) {
+    const t5 = data.tables.find((t) => t.clientId === 'cli_olive-table' && t.name === 'Table 5');
+    const paidBill = computeBill({
+      lines: yOrders.flatMap((o) => o.items.map((it) => ({ amount: it.price * it.qty }))),
+      settings: oliveSettings,
+      discount: { type: 'percent', value: 10, reason: 'Regular guest' },
+      tip: { type: 'percent', value: 15 },
+    });
+    data.sessions.push({
+      id: 'ses_paid_yesterday',
+      clientId: 'cli_olive-table',
+      tableId: t5 ? t5.id : 'tbl_olive-table_5',
+      tableName: 'Table 5',
+      status: 'paid',
+      openedAt: days(1),
+      closedAt: days(1),
+      orderIds: yOrders.map((o) => o.id),
+      removedChargeIds: [],
+      addedChargeIds: [],
+      discount: { type: 'percent', value: 10, reason: 'Regular guest' },
+      tip: { type: 'percent', value: 15 },
+      bill: paidBill,
+      payment: { method: 'card', at: days(1), amount: paidBill.total },
+    });
+    yOrders.forEach((o) => { o.sessionId = 'ses_paid_yesterday'; });
   }
 
   // Waiter calls
@@ -484,6 +573,153 @@ function seed() {
   });
 
   return data;
+}
+
+/* ------------------------------------------------------ taxes & charges --- */
+/** The tax override that applies to an item: item beats category beats default. */
+export function resolveTaxOverride(item, category) {
+  const own = item && item.taxOverride ? item.taxOverride : 'default';
+  if (own !== 'default') return own;
+  const inherited = category && category.taxOverride ? category.taxOverride : 'default';
+  return inherited;
+}
+
+/** A saved breakdown for old orders that were placed before taxes were itemised. */
+export function legacyBreakdown(order, settings) {
+  const subtotal = round2(order.subtotal || 0);
+  const tax = round2(order.tax || 0);
+  const service = round2(order.service || 0);
+  const currency = (settings && settings.currency) || '$';
+  return {
+    pricesIncludeTax: false,
+    rounding: 'none',
+    subtotal,
+    taxes: tax > 0 ? [{ id: 'legacy_tax', name: 'Tax', rate: 0, amount: tax }] : [],
+    includedTaxes: [],
+    charges: service > 0 ? [{ id: 'legacy_service', name: 'Service charge', type: 'percent', value: 0, amount: service }] : [],
+    taxTotal: tax,
+    chargeTotal: service,
+    total: round2(order.total || subtotal + tax + service),
+    currency,
+  };
+}
+
+/* ------------------------------------------------------- table sessions --- */
+export function generateTableKey() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+export function generateJoinSecret() {
+  return 'sec_' + Math.random().toString(36).slice(2, 10);
+}
+
+export function sessionForTable(clientId, tableId) {
+  return query('sessions', (s) => s.clientId === clientId && s.tableId === tableId && s.status === 'open')[0] || null;
+}
+
+export function openSessionForTable(clientId, table) {
+  const existing = sessionForTable(clientId, table.id);
+  if (existing) {
+    if (!existing.tableKey || !existing.joinSecret) {
+      const key = existing.tableKey || generateTableKey();
+      const secret = existing.joinSecret || generateJoinSecret();
+      update('sessions', existing.id, { tableKey: key, joinSecret: secret });
+      update('tables', table.id, { tableKey: key, activeSecret: secret });
+    }
+    return getById('sessions', existing.id);
+  }
+  const key = generateTableKey();
+  const secret = generateJoinSecret();
+  const session = insert('sessions', {
+    clientId,
+    tableId: table.id,
+    tableName: table.name,
+    tableKey: key,
+    joinSecret: secret,
+    status: 'open',
+    openedAt: new Date().toISOString(),
+    closedAt: null,
+    orderIds: [],
+    removedChargeIds: [],
+    addedChargeIds: [],
+    discount: { type: 'percent', value: 0, reason: '' },
+    tip: { type: 'percent', value: 0 },
+    bill: null,
+    payment: null,
+  });
+  update('tables', table.id, { status: 'occupied', tableKey: key, activeSecret: secret });
+  return session;
+}
+
+export function seatTable(clientId, table) {
+  const key = generateTableKey();
+  const secret = generateJoinSecret();
+  const existing = sessionForTable(clientId, table.id);
+
+  let session;
+  if (existing) {
+    session = update('sessions', existing.id, {
+      tableKey: key,
+      joinSecret: secret,
+      openedAt: new Date().toISOString(),
+    });
+  } else {
+    session = insert('sessions', {
+      clientId,
+      tableId: table.id,
+      tableName: table.name,
+      tableKey: key,
+      joinSecret: secret,
+      status: 'open',
+      openedAt: new Date().toISOString(),
+      closedAt: null,
+      orderIds: [],
+      removedChargeIds: [],
+      addedChargeIds: [],
+      discount: { type: 'percent', value: 0, reason: '' },
+      tip: { type: 'percent', value: 0 },
+      bill: null,
+      payment: null,
+    });
+  }
+  update('tables', table.id, { status: 'occupied', tableKey: key, activeSecret: secret });
+  return session;
+}
+
+export function sessionOrders(session) {
+  if (!session) return [];
+  return (session.orderIds || [])
+    .map((id) => getById('orders', id))
+    .filter((order) => order && order.status !== 'rejected');
+}
+
+export function sessionLines(session) {
+  return sessionOrders(session).flatMap((order) =>
+    (order.items || []).map((item) => ({
+      amount: item.price * item.qty,
+      taxOverride: item.taxOverride || 'default',
+    }))
+  );
+}
+
+export function addOrderToSession(sessionId, orderId) {
+  const session = getById('sessions', sessionId);
+  if (!session) return null;
+  return update('sessions', sessionId, { orderIds: [...(session.orderIds || []), orderId] });
+}
+
+export function closeSession(sessionId, payment, bill) {
+  const session = getById('sessions', sessionId);
+  if (!session) return null;
+  const closed = update('sessions', sessionId, {
+    status: 'paid',
+    closedAt: new Date().toISOString(),
+    joinSecret: 'closed_' + Math.random().toString(36).slice(2, 8),
+    payment,
+    bill,
+  });
+  update('tables', session.tableId, { status: 'free', tableKey: null, activeSecret: null });
+  return closed;
 }
 
 /* ------------------------------------------------------- small utilities -- */

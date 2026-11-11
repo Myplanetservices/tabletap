@@ -23,6 +23,7 @@
         <span class="badge badge--success"><span class="dot" aria-hidden="true"></span> Open now</span>
         <span class="pill-table" id="menu-table"><i data-lucide="utensils"></i> Table 7</span>
       </div>
+      <p class="menu-priceline" id="menu-priceline"></p>
     </div>
   </header>
 
@@ -51,7 +52,7 @@
 
   <div class="float-actions">
     <button class="btn" type="button" data-call="waiter"><i data-lucide="bell"></i> Call waiter</button>
-    <button class="btn" type="button" data-call="bill"><i data-lucide="receipt"></i> Ask for bill</button>
+    <a class="btn" href="bill.html" id="ask-bill-link"><i data-lucide="receipt"></i> Ask for bill</a>
   </div>
 
   <a class="cart-bar" id="cart-bar" href="cart.html" hidden>
@@ -100,6 +101,7 @@
 <script src="../assets/js/file-check.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script>if(window.lucide)lucide.createIcons();</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="../assets/js/ui.js"></script>
 <script type="module" src="../assets/js/customer.js"></script>
 </body>

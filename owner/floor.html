@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Floor Plan — TableTap</title>
+<meta name="description" content="TableTap dining room floor plan and guest seating.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="floor">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="owner-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap</span>
+        <span class="app-shell__brand-sub">The Olive Table</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Owner">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Service</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="orders.html"><i data-lucide="receipt"></i><span class="nav-link__text">Live Orders</span></a>
+        <a class="nav-link" href="order-history.html"><i data-lucide="history"></i><span class="nav-link__text">Order History</span></a>
+        <a class="nav-link" href="floor.html" aria-current="page"><i data-lucide="layout-grid"></i><span class="nav-link__text">Floor Plan</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="menu.html"><i data-lucide="book-open"></i><span class="nav-link__text">Menu</span></a>
+        <a class="nav-link" href="tables.html"><i data-lucide="qr-code"></i><span class="nav-link__text">Tables & QR</span></a>
+        <a class="nav-link" href="staff.html"><i data-lucide="users"></i><span class="nav-link__text">Staff</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Business</p>
+        <a class="nav-link" href="reports.html"><i data-lucide="trending-up"></i><span class="nav-link__text">Reports</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+        <a class="nav-link" href="account.html"><i data-lucide="user"></i><span class="nav-link__text">Account</span></a>
+      </div>
+    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">AR</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Ananya Rao</span>
+          <span class="app-shell__brand-sub">Owner</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="owner-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Floor Plan</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search</label>
+          <input class="input" id="global-search" type="search" placeholder="Search orders, tables">
+        </div>
+        <button class="btn btn--icon" type="button" aria-label="Notifications, 3 unread">
+          <i data-lucide="bell"></i><span class="count-dot">3</span>
+        </button>
+        <span class="status-pill"><span class="dot" aria-hidden="true"></span> Ordering ON</span>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+        <div class="page-head">
+          <div>
+            <h1 class="page-head__title">Floor Plan</h1>
+            <p class="page-head__sub">Live dining tables, guest seating, and visit QR codes.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card__body">
+            <p class="muted text-sm" style="text-align:center;padding:2rem;">Loading dining room floor…</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="print-slip-host"></div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/owner.js"></script>
+</body>
+</html>

@@ -27,6 +27,7 @@
         <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
         <a class="nav-link" href="orders.html"><i data-lucide="receipt"></i><span class="nav-link__text">Live Orders</span></a>
         <a class="nav-link" href="order-history.html"><i data-lucide="history"></i><span class="nav-link__text">Order History</span></a>
+        <a class="nav-link" href="floor.html"><i data-lucide="layout-grid"></i><span class="nav-link__text">Floor Plan</span></a>
       </div>
       <div class="app-shell__nav-group">
         <p class="app-shell__nav-label">Manage</p>
@@ -88,6 +89,7 @@
         <div class="tabs__list" role="tablist" aria-label="Settings sections">
           <button class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel-profile" id="tab-profile" tabindex="0">Restaurant profile</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-ordering" id="tab-ordering" tabindex="-1">Ordering</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-security" id="tab-security" tabindex="-1">Security</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-hours" id="tab-hours" tabindex="-1">Opening hours</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-branding" id="tab-branding" tabindex="-1">Branding</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-notify" id="tab-notify" tabindex="-1">Notifications</button>
@@ -150,6 +152,23 @@
               </div>
               <div class="row mt-6" style="justify-content:flex-end">
                 <button class="btn btn--primary" type="button">Save ordering</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-security" aria-labelledby="tab-security" hidden>
+          <div class="card">
+            <div class="card__body">
+              <div class="list-row">
+                <div class="list-row__main">
+                  <p class="list-row__title">Print visit QR slip</p>
+                  <p class="list-row__meta">Automatically print an 80mm thermal slip with Visit QR and table key when seating guests.</p>
+                </div>
+                <label class="switch"><input type="checkbox" id="set-print-slip"><span class="switch__track"></span><span class="sr-only">Print visit QR slip</span></label>
+              </div>
+              <div class="row mt-6" style="justify-content:flex-end">
+                <button class="btn btn--primary" type="button" data-save="security">Save security</button>
               </div>
             </div>
           </div>

@@ -160,20 +160,42 @@ export function closeDrawer(id) {
 
 /* ------------------------------------------------------------------ CSV --- */
 export function exportCSV(rows, filename = 'tabletap-export.csv') {
-  const body = rows.map((row) => row.map((cell) => {
-    const value = cell == null ? '' : String(cell);
-    return /[",\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
-  }).join(',')).join('\n');
+  try {
+    const body = rows.map((row) => row.map((cell) => {
+      const value = cell == null ? '' : String(cell);
+      return /[",\n\r]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
+    }).join(',')).join('\r\n');
 
-  const blob = new Blob(['\uFEFF' + body], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
+    const blob = new Blob(['\uFEFF' + body], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename || 'tabletap-export.csv');
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      if (link.parentNode) link.parentNode.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 1000);
+  } catch (err) {
+    console.error('exportCSV error:', err);
+    try {
+      const body = rows.map((row) => row.map((cell) => {
+        const value = cell == null ? '' : String(cell);
+        return /[",\n\r]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
+      }).join(',')).join('\r\n');
+      const csvUri = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(body);
+      const link = document.createElement('a');
+      link.href = csvUri;
+      link.download = filename || 'tabletap-export.csv';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => link.remove(), 1000);
+    } catch (e) {
+      alert('Could not export CSV: ' + err.message);
+    }
+  }
 }
 
 /* -------------------------------------------------------------- misc ------ */

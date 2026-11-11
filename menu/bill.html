@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your bill — The Olive Table</title>
+<meta name="description" content="Your table bill at The Olive Table.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="menu-page" data-page="bill">
+<div class="menu-app">
+
+  <div class="menu-topbar">
+    <a class="btn btn--icon" href="index.html" aria-label="Back to the menu">
+      <i data-lucide="arrow-left"></i>
+    </a>
+    <div>
+      <p class="menu-topbar__title">The Olive Table</p>
+      <p class="menu-topbar__meta">Your bill</p>
+    </div>
+  </div>
+
+  <div class="status-body" id="bill-body"></div>
+
+</div>
+
+<script src="../assets/js/file-check.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script type="module" src="../assets/js/customer.js"></script>
+</body>
+</html>

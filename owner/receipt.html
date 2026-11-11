@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Receipt — TableTap</title>
+<meta name="description" content="Printable receipt.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="receipt">
+<div class="receipt-page">
+  <div class="receipt" id="receipt"></div>
+  <div class="receipt-actions">
+    <button class="btn btn--primary" type="button" id="print-receipt"><i data-lucide="printer"></i> Print</button>
+    <a class="btn btn--secondary" href="order-history.html">Back to order history</a>
+  </div>
+</div>
+<script src="../assets/js/file-check.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script type="module" src="../assets/js/receipt.js"></script>
+</body>
+</html>

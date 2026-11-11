@@ -37,12 +37,7 @@
         </div>
       </div>
 
-      <div class="summary">
-        <div class="summary__row"><span>Subtotal</span><span id="sum-subtotal">$0.00</span></div>
-        <div class="summary__row"><span id="sum-tax-label">Tax (8%)</span><span id="sum-tax">$0.00</span></div>
-        <div class="summary__row"><span id="sum-service-label">Service charge (5%)</span><span id="sum-service">$0.00</span></div>
-        <div class="summary__row summary__row--total"><span>Total</span><span id="sum-total">$0.00</span></div>
-      </div>
+      <div class="summary" id="sum-lines"></div>
 
       <div class="cart-info">
         <i data-lucide="info"></i>
@@ -72,6 +67,7 @@
 <script src="../assets/js/file-check.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script>if(window.lucide)lucide.createIcons();</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="../assets/js/ui.js"></script>
 <script type="module" src="../assets/js/customer.js"></script>
 </body>
