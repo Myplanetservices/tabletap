@@ -11,6 +11,7 @@ import { emit } from './realtime.js';
 import {
   formatMoney, formatDateTime, timeAgo, toast, confirmDialog, exportCSV,
   debounce, esc, qs, initials, statusBadge, openModal, closeModal,
+  renderPaginationHtml,
 } from './helpers.js';
 
 const session = requireRole('admin');
@@ -221,11 +222,7 @@ function renderClients() {
     countHost.textContent = rows.length + ' clients · ' + rows.filter((c) => c.status === 'active').length + ' active · ' +
       rows.filter((c) => c.status === 'suspended').length + ' suspended';
 
-    pagesHost.innerHTML =
-      '<button class="page' + (pageNo === 1 ? ' page--disabled' : '') + '" type="button" data-page="' + (pageNo - 1) + '" aria-label="Previous"><i data-lucide="chevron-left"></i></button>' +
-      Array.from({ length: pages }, (_, i) => i + 1).map((n) =>
-        '<button class="page" type="button" data-page="' + n + '"' + (n === pageNo ? ' aria-current="page"' : '') + '>' + n + '</button>').join('') +
-      '<button class="page' + (pageNo === pages ? ' page--disabled' : '') + '" type="button" data-page="' + (pageNo + 1) + '" aria-label="Next"><i data-lucide="chevron-right"></i></button>';
+    pagesHost.innerHTML = renderPaginationHtml(pageNo, pages);
 
     if (window.lucide) window.lucide.createIcons();
   }
@@ -246,7 +243,7 @@ function renderClients() {
 
   pagesHost.addEventListener('click', (event) => {
     const btn = event.target.closest('[data-page]');
-    if (!btn) return;
+    if (!btn || btn.classList.contains('page--disabled') || btn.disabled) return;
     pageNo = Math.max(1, Number(btn.getAttribute('data-page')));
     draw();
   });
@@ -623,9 +620,18 @@ function renderInvites() {
     '<span class="muted text-xs" id="inv-count"></span></div><div class="card__body"><div class="table-wrap">' +
     '<table class="table table-stack"><thead><tr><th scope="col">Email</th><th scope="col">Restaurant</th>' +
     '<th scope="col">Sent</th><th scope="col">Expires</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead>' +
-    '<tbody id="inv-rows"></tbody></table></div></div></div>');
+    '<tbody id="inv-rows"></tbody></table></div>' +
+    '<div class="row row--between mt-6" style="margin-top:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
+    '<span class="muted text-xs" id="inv-page-count"></span>' +
+    '<nav class="pagination" id="inv-pages" aria-label="Invite pages"></nav></div>' +
+    '</div></div>');
 
   const rowsHost = host.querySelector('#inv-rows');
+  const pagesHost = host.querySelector('#inv-pages');
+  const pageCountHost = host.querySelector('#inv-page-count');
+
+  let pageNo = 1;
+  const perPage = 10;
 
   function preview() {
     const name = host.querySelector('#inv-rest').value || 'Tiffin & Chai';
@@ -653,7 +659,11 @@ function renderInvites() {
 
   function draw() {
     const invites = store.getAll('invites').slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    rowsHost.innerHTML = invites.map((invite) => {
+    const totalPages = Math.max(1, Math.ceil(invites.length / perPage));
+    pageNo = Math.min(pageNo, totalPages);
+    const slice = invites.slice((pageNo - 1) * perPage, pageNo * perPage);
+
+    rowsHost.innerHTML = slice.map((invite) => {
       const expired = new Date(invite.expiresAt) < new Date() && invite.status === 'pending';
       const status = expired ? 'expired' : invite.status;
       const tone = { pending: 'warning', accepted: 'success', expired: 'neutral', revoked: 'danger' }[status] || 'neutral';
@@ -668,9 +678,27 @@ function renderInvites() {
         '<button class="btn btn--icon btn--sm" type="button" data-revoke="' + invite.id + '" aria-label="Revoke invite"><i data-lucide="ban"></i></button>' +
         '</div></td></tr>';
     }).join('');
+
     host.querySelector('#inv-count').textContent = invites.length + ' invites · ' +
       invites.filter((i) => i.status === 'pending').length + ' pending';
+    if (pageCountHost) {
+      pageCountHost.textContent = invites.length
+        ? 'Showing ' + ((pageNo - 1) * perPage + 1) + '–' + Math.min(pageNo * perPage, invites.length) + ' of ' + invites.length
+        : '0 invites';
+    }
+    if (pagesHost) {
+      pagesHost.innerHTML = renderPaginationHtml(pageNo, totalPages);
+    }
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  if (pagesHost) {
+    pagesHost.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-page]');
+      if (!btn || btn.classList.contains('page--disabled') || btn.disabled) return;
+      pageNo = Math.max(1, Number(btn.getAttribute('data-page')));
+      draw();
+    });
   }
 
   host.querySelector('[data-send]').addEventListener('click', () => {
@@ -788,11 +816,7 @@ function renderActivity() {
     }).join('') : '<tr><td colspan="6"><p class="muted text-sm">No events match those filters.</p></td></tr>';
 
     host.querySelector('#a-count').textContent = rows.length + ' events';
-    pagesHost.innerHTML =
-      '<button class="page' + (pageNo === 1 ? ' page--disabled' : '') + '" type="button" data-page="' + (pageNo - 1) + '" aria-label="Previous"><i data-lucide="chevron-left"></i></button>' +
-      Array.from({ length: pages }, (_, i) => i + 1).map((n) =>
-        '<button class="page" type="button" data-page="' + n + '"' + (n === pageNo ? ' aria-current="page"' : '') + '>' + n + '</button>').join('') +
-      '<button class="page' + (pageNo === pages ? ' page--disabled' : '') + '" type="button" data-page="' + (pageNo + 1) + '" aria-label="Next"><i data-lucide="chevron-right"></i></button>';
+    pagesHost.innerHTML = renderPaginationHtml(pageNo, pages);
     if (window.lucide) window.lucide.createIcons();
   }
 
@@ -806,7 +830,7 @@ function renderActivity() {
 
   pagesHost.addEventListener('click', (event) => {
     const btn = event.target.closest('[data-page]');
-    if (!btn) return;
+    if (!btn || btn.classList.contains('page--disabled') || btn.disabled) return;
     pageNo = Math.max(1, Number(btn.getAttribute('data-page')));
     draw();
   });

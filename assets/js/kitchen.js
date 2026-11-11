@@ -6,7 +6,7 @@
 import * as store from './store.js';
 import { requireRole, currentClient, logout } from './auth.js';
 import { emit, on } from './realtime.js';
-import { esc, timeAgo, toast, confirmDialog, initials, formatMoney } from './helpers.js';
+import { esc, timeAgo, toast, confirmDialog, initials, formatMoney, renderPaginationHtml } from './helpers.js';
 
 const session = requireRole('kitchen');
 const client = currentClient();
@@ -457,6 +457,11 @@ if (page === 'kitchen-completed') {
   const rowsHost = document.getElementById('k-rows');
   const search = document.getElementById('k-search');
   const summary = document.getElementById('k-summary');
+  const pagesHost = document.getElementById('k-pages');
+  const countText = document.getElementById('k-count-text');
+
+  let pageNo = 1;
+  const perPage = 10;
 
   function drawCompleted() {
     const term = (search.value || '').trim().toLowerCase();
@@ -464,9 +469,18 @@ if (page === 'kitchen-completed') {
       .filter((o) => o.status === 'served' && new Date(o.createdAt).toDateString() === new Date().toDateString())
       .filter((o) => !term || o.tableName.toLowerCase().includes(term) || String(o.number).includes(term));
 
-    summary.textContent = 'Today · ' + served.length + ' orders served';
+    const totalPages = Math.max(1, Math.ceil(served.length / perPage));
+    pageNo = Math.min(pageNo, totalPages);
+    const slice = served.slice((pageNo - 1) * perPage, pageNo * perPage);
 
-    rowsHost.innerHTML = served.length ? served.map((order) =>
+    summary.textContent = 'Today · ' + served.length + ' orders served';
+    if (countText) {
+      countText.textContent = served.length
+        ? 'Showing ' + ((pageNo - 1) * perPage + 1) + '–' + Math.min(pageNo * perPage, served.length) + ' of ' + served.length
+        : '0 orders';
+    }
+
+    rowsHost.innerHTML = slice.length ? slice.map((order) =>
       '<div class="k-row"><div><p class="k-row__table">' + esc(order.tableName) + '</p>' +
       '<p class="k-row__meta">Order #' + order.number + ' · ' + new Date(order.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + '</p></div>' +
       '<p class="k-row__items">' + order.items.map((i) => i.qty + '× ' + esc(i.name)).join(' · ') + '</p>' +
@@ -474,7 +488,20 @@ if (page === 'kitchen-completed') {
     ).join('') : '<div class="empty"><span class="empty__icon"><i data-lucide="check"></i></span>' +
       '<p class="empty__title">Nothing served yet today</p><p class="empty__text">Orders appear here as soon as they are marked served.</p></div>';
 
+    if (pagesHost) {
+      pagesHost.innerHTML = renderPaginationHtml(pageNo, totalPages);
+    }
+
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  if (pagesHost) {
+    pagesHost.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-page]');
+      if (!btn || btn.classList.contains('page--disabled') || btn.disabled) return;
+      pageNo = Math.max(1, Number(btn.getAttribute('data-page')));
+      drawCompleted();
+    });
   }
 
   rowsHost.addEventListener('click', (event) => {
@@ -488,7 +515,10 @@ if (page === 'kitchen-completed') {
     drawCompleted();
   });
 
-  search.addEventListener('input', drawCompleted);
+  search.addEventListener('input', () => {
+    pageNo = 1;
+    drawCompleted();
+  });
   on('order:update', drawCompleted);
   drawCompleted();
 } else {

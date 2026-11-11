@@ -14,6 +14,7 @@ import { emit, on } from './realtime.js';
 import {
   formatMoney, formatDateTime, formatTime, timeAgo, toast, confirmDialog,
   exportCSV, debounce, esc, qs, initials, statusBadge, isToday, openDrawer, closeDrawer,
+  renderPaginationHtml,
 } from './helpers.js';
 
 const session = requireRole('owner');
@@ -527,7 +528,11 @@ function renderOrders() {
     tabs.map(([key, label, count], i) =>
       '<button class="tab" role="tab" type="button" data-tab="' + key + '" aria-selected="' + (i === 0) + '" tabindex="' + (i === 0 ? 0 : -1) + '">' +
       label + ' <span class="muted">(' + count + ')</span></button>').join('') +
-    '</div><div class="tab-panel" role="tabpanel"><div class="card"><div class="card__body" id="order-cards"></div></div>' +
+    '</div><div class="tab-panel" role="tabpanel"><div class="card"><div class="card__body" id="order-cards"></div>' +
+    '<div class="row row--between mt-4" id="order-pagination-row" style="padding:0 var(--s-6) var(--s-4);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
+    '<span class="muted text-xs" id="order-count-text"></span>' +
+    '<nav class="pagination" id="order-pages" aria-label="Order pages"></nav></div>' +
+    '</div>' +
     '<div class="card mt-6"><div class="card__header"><span class="card__title">Waiter calls &amp; bill requests</span>' +
     '<span class="badge badge--warning">' + calls.length + ' open</span></div><div class="card__body">' +
     (calls.length ? calls.map((call) =>
@@ -540,10 +545,28 @@ function renderOrders() {
     '</div></div></div></div><div id="drawer-host"></div>');
 
   const cardsHost = host.querySelector('#order-cards');
+  const countText = host.querySelector('#order-count-text');
+  const pagesHost = host.querySelector('#order-pages');
+
+  let pageNo = 1;
+  const perPage = 10;
 
   function draw() {
     const rows = ordersOf().filter((o) => active === 'all' ? true : o.status === active);
-    cardsHost.innerHTML = rows.length ? rows.map((order) => {
+    const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
+    pageNo = Math.min(pageNo, totalPages);
+    const slice = rows.slice((pageNo - 1) * perPage, pageNo * perPage);
+
+    if (countText) {
+      countText.textContent = rows.length
+        ? 'Showing ' + ((pageNo - 1) * perPage + 1) + '–' + Math.min(pageNo * perPage, rows.length) + ' of ' + rows.length + ' orders'
+        : '0 orders';
+    }
+    if (pagesHost) {
+      pagesHost.innerHTML = renderPaginationHtml(pageNo, totalPages);
+    }
+
+    cardsHost.innerHTML = slice.length ? slice.map((order) => {
       const session = order.sessionId ? store.getById('sessions', order.sessionId) : sessionForTable(client.id, order.tableId);
       const billBtn = session && session.status === 'open'
         ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '">View bill</button>' : '';
@@ -556,6 +579,15 @@ function renderOrders() {
       : '<div class="empty"><span class="empty__icon"><i data-lucide="receipt"></i></span><p class="empty__title">Nothing here</p>' +
         '<p class="empty__text">No orders in this state right now.</p></div>';
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  if (pagesHost) {
+    pagesHost.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-page]');
+      if (!btn || btn.classList.contains('page--disabled') || btn.disabled) return;
+      pageNo = Math.max(1, Number(btn.getAttribute('data-page')));
+      draw();
+    });
   }
 
   function nextLabel(order) {
@@ -574,6 +606,7 @@ function renderOrders() {
     const tab = event.target.closest('[data-tab]');
     if (!tab) return;
     active = tab.getAttribute('data-tab');
+    pageNo = 1;
     host.querySelectorAll('[data-tab]').forEach((t) => {
       t.setAttribute('aria-selected', String(t === tab));
       t.tabIndex = t === tab ? 0 : -1;
@@ -755,19 +788,14 @@ function renderHistory() {
       ? 'Showing ' + ((pageNo - 1) * perPage + 1) + '–' + Math.min(pageNo * perPage, rows.length) + ' of ' + rows.length
       : 'No orders';
 
-    pagesHost.innerHTML =
-      '<button class="page' + (pageNo === 1 ? ' page--disabled' : '') + '" type="button" data-page="' + (pageNo - 1) + '" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>' +
-      Array.from({ length: pages }, (_, i) => i + 1).slice(0, 5).map((n) =>
-        '<button class="page" type="button" data-page="' + n + '"' + (n === pageNo ? ' aria-current="page"' : '') + '>' + n + '</button>').join('') +
-      (pages > 5 ? '<span class="page page--disabled">…</span><button class="page" type="button" data-page="' + pages + '">' + pages + '</button>' : '') +
-      '<button class="page' + (pageNo === pages ? ' page--disabled' : '') + '" type="button" data-page="' + (pageNo + 1) + '" aria-label="Next page"><i data-lucide="chevron-right"></i></button>';
+    pagesHost.innerHTML = renderPaginationHtml(pageNo, pages);
 
     if (window.lucide) window.lucide.createIcons();
   }
 
   pagesHost.addEventListener('click', (event) => {
     const btn = event.target.closest('[data-page]');
-    if (!btn) return;
+    if (!btn || btn.classList.contains('page--disabled') || btn.disabled) return;
     pageNo = Math.max(1, Number(btn.getAttribute('data-page')));
     draw();
   });
@@ -820,10 +848,18 @@ function renderMenu() {
     '<span class="badge badge--neutral" id="cat-badge"></span></div>' +
     '<input class="input" type="search" id="item-search" placeholder="Search items" aria-label="Search items" style="height:32px;min-height:32px;width:180px;font-size:0.8125rem">' +
     '</div><div class="card__body"><div id="item-list"></div>' +
+    '<div class="row row--between mt-3" id="menu-pagination-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:0.75rem;">' +
+    '<span class="muted text-xs" id="item-count-text"></span>' +
+    '<nav class="pagination" id="item-pages" aria-label="Menu item pages"></nav></div>' +
     '<a class="btn btn--secondary btn--block mt-4" href="menu-item.html"><i data-lucide="plus"></i> Add item</a></div></div></div>');
 
   const catList = host.querySelector('#cat-list');
   const itemList = host.querySelector('#item-list');
+  const itemPages = host.querySelector('#item-pages');
+  const countText = host.querySelector('#item-count-text');
+
+  let itemPage = 1;
+  const itemsPerPage = 8;
 
   function drawCats() {
     const cats = store.categoriesOf(client.id);
@@ -849,13 +885,28 @@ function renderMenu() {
   function drawItems() {
     if (!selectedCat) {
       itemList.innerHTML = '<p class="muted text-sm">Add a category first.</p>';
+      if (itemPages) itemPages.innerHTML = '';
+      if (countText) countText.textContent = '';
       return;
     }
     host.querySelector('#cat-title').textContent = selectedCat.name;
     const items = store.query('items', (i) => i.categoryId === selectedCat.id && (!term || i.name.toLowerCase().includes(term)));
     host.querySelector('#cat-badge').textContent = items.length + ' items';
 
-    itemList.innerHTML = items.length ? items.map((item) => {
+    const totalPages = Math.max(1, Math.ceil(items.length / itemsPerPage));
+    itemPage = Math.min(itemPage, totalPages);
+    const slice = items.slice((itemPage - 1) * itemsPerPage, itemPage * itemsPerPage);
+
+    if (countText) {
+      countText.textContent = items.length > itemsPerPage
+        ? 'Showing ' + ((itemPage - 1) * itemsPerPage + 1) + '–' + Math.min(itemPage * itemsPerPage, items.length) + ' of ' + items.length
+        : '';
+    }
+    if (itemPages) {
+      itemPages.innerHTML = renderPaginationHtml(itemPage, totalPages);
+    }
+
+    itemList.innerHTML = slice.length ? slice.map((item) => {
       const tags = (item.tags || []).map((t) =>
         '<span class="tag tag--' + t + '">' + ({ veg: 'Veg', vegan: 'Vegan', gf: 'Gluten-free', spicy: 'Spicy' }[t]) + '</span>').join('');
       return '<div class="item-row"><img class="item-row__img" src="' + esc(item.image) + '" alt="' + esc(item.name) + '">' +
@@ -872,6 +923,15 @@ function renderMenu() {
       '<p class="empty__text">Add your first dish to this category.</p></div>';
 
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  if (itemPages) {
+    itemPages.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-page]');
+      if (!btn || btn.classList.contains('page--disabled') || btn.disabled) return;
+      itemPage = Math.max(1, Number(btn.getAttribute('data-page')));
+      drawItems();
+    });
   }
 
   catList.addEventListener('change', (event) => {
@@ -929,6 +989,7 @@ function renderMenu() {
 
     if (row) {
       selectedCat = store.getById('categories', row.getAttribute('data-cat'));
+      itemPage = 1;
       drawCats();
       drawItems();
     }
@@ -965,6 +1026,7 @@ function renderMenu() {
 
   host.querySelector('#item-search').addEventListener('input', debounce((event) => {
     term = event.target.value.trim().toLowerCase();
+    itemPage = 1;
     drawItems();
   }, 200));
 
@@ -1388,14 +1450,36 @@ function renderTables() {
   paint(head('Tables & QR codes', store.tablesOf(client.id).length + ' tables, each with its own QR code and secret link.',
     '<button class="btn btn--secondary btn--sm" type="button" data-print-all><i data-lucide="printer"></i> Print all QR codes</button>' +
     '<button class="btn btn--primary btn--sm" type="button" data-add-table><i data-lucide="plus"></i> Add table</button>') +
-    '<div class="table-grid" id="table-grid"></div><div id="modal-host"></div>');
+    '<div class="table-grid" id="table-grid"></div>' +
+    '<div class="row row--between mt-6" id="table-pagination-row" style="margin-top:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
+    '<span class="muted text-xs" id="table-count-text"></span>' +
+    '<nav class="pagination" id="table-pages" aria-label="Table pages"></nav></div>' +
+    '<div id="modal-host"></div>');
 
   const grid = host.querySelector('#table-grid');
   const modalHost = host.querySelector('#modal-host');
+  const pagesHost = host.querySelector('#table-pages');
+  const countText = host.querySelector('#table-count-text');
+
+  let pageNo = 1;
+  const perPage = 12;
 
   function draw() {
     const tables = store.tablesOf(client.id);
-    grid.innerHTML = tables.map((table) => {
+    const totalPages = Math.max(1, Math.ceil(tables.length / perPage));
+    pageNo = Math.min(pageNo, totalPages);
+    const slice = tables.slice((pageNo - 1) * perPage, pageNo * perPage);
+
+    if (countText) {
+      countText.textContent = tables.length > perPage
+        ? 'Showing ' + ((pageNo - 1) * perPage + 1) + '–' + Math.min(pageNo * perPage, tables.length) + ' of ' + tables.length + ' tables'
+        : tables.length + ' tables';
+    }
+    if (pagesHost) {
+      pagesHost.innerHTML = renderPaginationHtml(pageNo, totalPages);
+    }
+
+    grid.innerHTML = slice.map((table) => {
       const session = sessionForTable(client.id, table.id);
       const isOccupied = table.status === 'occupied' || (session && session.status === 'open');
 
@@ -1416,6 +1500,15 @@ function renderTables() {
       '</div></div>';
     }).join('');
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  if (pagesHost) {
+    pagesHost.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-page]');
+      if (!btn || btn.classList.contains('page--disabled') || btn.disabled) return;
+      pageNo = Math.max(1, Number(btn.getAttribute('data-page')));
+      draw();
+    });
   }
 
   function menuLink(table) {

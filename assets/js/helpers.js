@@ -237,3 +237,33 @@ export function statusBadge(status) {
   const [tone, label] = map[status] || ['neutral', status];
   return '<span class="badge badge--' + tone + '">' + esc(label) + '</span>';
 }
+
+export function renderPaginationHtml(pageNo, totalPages) {
+  if (totalPages <= 1) return '';
+  const prevDisabled = pageNo <= 1;
+  const nextDisabled = pageNo >= totalPages;
+
+  let pages = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (pageNo > 3) pages.push('…');
+    const start = Math.max(2, pageNo - 1);
+    const end = Math.min(totalPages - 1, pageNo + 1);
+    for (let i = start; i <= end; i++) {
+      if (!pages.includes(i)) pages.push(i);
+    }
+    if (pageNo < totalPages - 2) pages.push('…');
+    if (!pages.includes(totalPages)) pages.push(totalPages);
+  }
+
+  return (
+    '<button class="page' + (prevDisabled ? ' page--disabled' : '') + '" type="button" data-page="' + (pageNo - 1) + '" aria-label="Previous page"' + (prevDisabled ? ' disabled' : '') + '><i data-lucide="chevron-left"></i></button>' +
+    pages.map((p) => {
+      if (p === '…') return '<span class="page page--disabled">…</span>';
+      return '<button class="page' + (p === pageNo ? ' page--active' : '') + '" type="button" data-page="' + p + '"' + (p === pageNo ? ' aria-current="page"' : '') + '>' + p + '</button>';
+    }).join('') +
+    '<button class="page' + (nextDisabled ? ' page--disabled' : '') + '" type="button" data-page="' + (pageNo + 1) + '" aria-label="Next page"' + (nextDisabled ? ' disabled' : '') + '><i data-lucide="chevron-right"></i></button>'
+  );
+}
