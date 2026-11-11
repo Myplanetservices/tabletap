@@ -282,7 +282,13 @@ function initMenu(ctx) {
   if (window.lucide) window.lucide.createIcons();
 
   const categories = query('categories', (c) => c.clientId === client.id).sort((a, b) => a.position - b.position);
-  const items = query('items', (i) => i.clientId === client.id);
+  let items = query('items', (i) => i.clientId === client.id);
+
+  on('menu:update', (payload) => {
+    if (payload && payload.clientId && payload.clientId !== client.id) return;
+    items = query('items', (i) => i.clientId === client.id);
+    render();
+  });
 
   const sectionsHost = document.getElementById('menu-sections');
   const chipsHost = document.getElementById('menu-chips');
@@ -386,6 +392,10 @@ function initMenu(ctx) {
     if (!card) return;
     const item = getById('items', card.getAttribute('data-item'));
     if (!item) return;
+    if (item.available === false) {
+      toast('“' + item.name + '” is currently sold out', 'warning');
+      return;
+    }
     currentItem = item;
     sheetQty = 1;
     openItemSheet(item);
@@ -455,6 +465,12 @@ function initMenu(ctx) {
 
   document.getElementById('sheet-add').addEventListener('click', () => {
     if (!currentItem) return;
+    const freshItem = getById('items', currentItem.id);
+    if (freshItem && freshItem.available === false) {
+      toast('“' + currentItem.name + '” just sold out in the kitchen.', 'warning');
+      closeDrawer('item-sheet');
+      return;
+    }
     const selected = sheet.querySelector('input[name="sheet-size"]:checked');
     const sizes = currentItem.sizes && currentItem.sizes.length ? currentItem.sizes : [{ id: 'base', name: 'Regular', price: currentItem.price }];
     const size = sizes.find((s) => s.id === selected?.value) || sizes[0];
@@ -573,6 +589,10 @@ function initCart(ctx) {
   on('session:paid', (payload) => {
     if (sParam && payload && payload.sessionId === sParam) renderVisitEnded();
   });
+  on('menu:update', (payload) => {
+    if (payload && payload.clientId && payload.clientId !== client.id) return;
+    render();
+  });
 
   const backLink = document.querySelector('.menu-bar__back, [data-back], .cart-head__back');
   if (backLink) {
@@ -596,19 +616,25 @@ function initCart(ctx) {
   emptyBlock.hidden = true;
 
   function render() {
-    list.innerHTML = cart.items.map((row, index) =>
-      '<div class="cart-item"><div class="cart-item__body">' +
-      '<p class="cart-item__name">' + esc(row.name) + '</p>' +
-      '<p class="cart-item__opts">' + esc(row.size) + (row.addons.length ? ' · ' + esc(row.addons.join(', ')) : '') + '</p>' +
-      (row.note ? '<p class="cart-item__opts">Note: ' + esc(row.note) + '</p>' : '') +
-      '<div class="cart-item__row"><div class="qty">' +
-      '<button class="qty__btn" type="button" data-dec="' + index + '" aria-label="Decrease quantity">−</button>' +
-      '<span class="qty__val">' + row.qty + '</span>' +
-      '<button class="qty__btn" type="button" data-inc="' + index + '" aria-label="Increase quantity">+</button>' +
-      '</div><span class="cart-item__price">' + money(row.price * row.qty) + '</span></div></div>' +
-      '<button class="cart-item__remove" type="button" data-remove="' + index + '">' +
-      '<i data-lucide="trash-2"></i> Remove</button></div>'
-    ).join('');
+    list.innerHTML = cart.items.map((row, index) => {
+      const dbItem = row.itemId ? getById('items', row.itemId) : null;
+      const isSoldOut = dbItem && dbItem.available === false;
+      return '<div class="cart-item' + (isSoldOut ? ' cart-item--sold-out' : '') + '"><div class="cart-item__body">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+        '<p class="cart-item__name"' + (isSoldOut ? ' style="color:var(--danger);"' : '') + '>' + esc(row.name) + '</p>' +
+        (isSoldOut ? '<span class="sold-out-flag">Sold out</span>' : '') +
+        '</div>' +
+        '<p class="cart-item__opts">' + esc(row.size) + (row.addons.length ? ' · ' + esc(row.addons.join(', ')) : '') + '</p>' +
+        (row.note ? '<p class="cart-item__opts">Note: ' + esc(row.note) + '</p>' : '') +
+        (isSoldOut ? '<p class="text-xs" style="color:var(--danger);margin-top:4px;">This dish just sold out in the kitchen. Please remove it before placing your order.</p>' : '') +
+        '<div class="cart-item__row"><div class="qty">' +
+        '<button class="qty__btn" type="button" data-dec="' + index + '" aria-label="Decrease quantity">−</button>' +
+        '<span class="qty__val">' + row.qty + '</span>' +
+        '<button class="qty__btn" type="button" data-inc="' + index + '" aria-label="Increase quantity">+</button>' +
+        '</div><span class="cart-item__price">' + money(row.price * row.qty) + '</span></div></div>' +
+        '<button class="cart-item__remove" type="button" data-remove="' + index + '">' +
+        '<i data-lucide="trash-2"></i> Remove</button></div>';
+    }).join('');
 
     const totals = cartTotals(cart, settings);
     const lines = [];
@@ -685,6 +711,17 @@ function initCart(ctx) {
     const recentTableOrders = query('orders', (o) => o.tableId === table.id && new Date(o.createdAt).getTime() >= oneMinuteAgo);
     if (recentTableOrders.length >= 5) {
       toast('Too many orders at once - please wait a moment.', 'warning');
+      return;
+    }
+
+    // Check if any items in cart were marked unavailable / sold out
+    const unavailableInCart = cart.items.find((row) => {
+      const dbItem = row.itemId ? getById('items', row.itemId) : null;
+      return dbItem && dbItem.available === false;
+    });
+    if (unavailableInCart) {
+      toast('“' + unavailableInCart.name + '” is sold out. Please remove it from your cart.', 'error');
+      render();
       return;
     }
 

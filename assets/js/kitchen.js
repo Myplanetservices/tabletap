@@ -6,7 +6,7 @@
 import * as store from './store.js';
 import { requireRole, currentClient, logout } from './auth.js';
 import { emit, on } from './realtime.js';
-import { esc, timeAgo, toast, confirmDialog, initials } from './helpers.js';
+import { esc, timeAgo, toast, confirmDialog, initials, formatMoney } from './helpers.js';
 
 const session = requireRole('kitchen');
 const client = currentClient();
@@ -87,6 +87,194 @@ if (fsBtn) {
     }
   });
 }
+
+/* ------------------------------------------- 86 / Sold Out Items Manager ---- */
+function update86ButtonBadge() {
+  const btn = document.getElementById('k-86-btn');
+  if (!btn) return;
+  const soldOutCount = store.query('items', (i) => i.clientId === client.id && i.available === false).length;
+  if (soldOutCount > 0) {
+    btn.innerHTML = '<i data-lucide="ban"></i> 86 Items <span class="badge badge--danger" style="margin-left:4px;padding:2px 6px;font-size:0.75rem;">' + soldOutCount + '</span>';
+  } else {
+    btn.innerHTML = '<i data-lucide="ban"></i> 86 Items';
+  }
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function open86Modal() {
+  const host = document.getElementById('k-modal-host');
+  if (!host) return;
+
+  const cats = store.query('categories', (c) => c.clientId === client.id).sort((a, b) => a.position - b.position);
+  const catMap = Object.fromEntries(cats.map((c) => [c.id, c.name]));
+
+  let filterCat = 'all';
+  let searchTerm = '';
+  let showOnlySoldOut = false;
+
+  function renderList() {
+    let items = store.query('items', (i) => i.clientId === client.id);
+    if (filterCat !== 'all') {
+      items = items.filter((i) => i.categoryId === filterCat);
+    }
+    if (showOnlySoldOut) {
+      items = items.filter((i) => i.available === false);
+    }
+    if (searchTerm) {
+      items = items.filter((i) =>
+        i.name.toLowerCase().includes(searchTerm) ||
+        (i.description || '').toLowerCase().includes(searchTerm) ||
+        (catMap[i.categoryId] || '').toLowerCase().includes(searchTerm)
+      );
+    }
+
+    const soldOutTotal = store.query('items', (i) => i.clientId === client.id && i.available === false).length;
+    const countEl = host.querySelector('#k-86-count-text');
+    if (countEl) {
+      countEl.textContent = soldOutTotal > 0
+        ? soldOutTotal + ' dish' + (soldOutTotal > 1 ? 'es' : '') + ' currently 86’d (Sold Out)'
+        : 'All dishes available · Guest menus reflect availability instantly';
+    }
+
+    const listEl = host.querySelector('#k-86-item-list');
+    if (!listEl) return;
+
+    if (!items.length) {
+      listEl.innerHTML = '<div style="padding:2.5rem 1rem;text-align:center;color:var(--muted);">' +
+        '<i data-lucide="check-circle" style="width:32px;height:32px;margin:0 auto 0.5rem;display:block;opacity:0.6;"></i>' +
+        '<p style="font-weight:500;">No dishes found</p>' +
+        '<p style="font-size:0.8rem;margin-top:2px;">Try changing your search or filter above.</p></div>';
+      if (window.lucide) window.lucide.createIcons();
+      return;
+    }
+
+    listEl.innerHTML = items.map((item) => {
+      const isAvailable = item.available !== false;
+      const catName = catMap[item.categoryId] || 'Dish';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid ' + (isAvailable ? 'var(--line)' : 'var(--danger-wash)') + ';background:' + (isAvailable ? 'var(--paper)' : 'rgba(239,68,68,0.12)') + ';border-radius:var(--radius-md);margin-bottom:8px;">' +
+        '<div style="display:flex;align-items:center;gap:12px;min-width:0;">' +
+        (item.image ? '<img src="' + esc(item.image) + '" alt="" style="width:42px;height:42px;border-radius:6px;object-fit:cover;flex-shrink:0;">' : '<div style="width:42px;height:42px;border-radius:6px;background:var(--bg-sunken);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0;"><i data-lucide="utensils" style="width:18px;height:18px;"></i></div>') +
+        '<div style="min-width:0;">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+        '<span style="font-weight:600;font-size:0.95rem;' + (isAvailable ? '' : 'text-decoration:line-through;color:var(--muted);') + '">' + esc(item.name) + '</span>' +
+        (!isAvailable ? '<span class="badge badge--danger" style="font-size:0.6875rem;padding:2px 6px;">86 / SOLD OUT</span>' : '') +
+        '</div>' +
+        '<div style="font-size:0.8125rem;color:var(--muted);margin-top:2px;">' + esc(catName) + ' · ' + formatMoney(item.price, settings.currency) + '</div>' +
+        '</div>' +
+        '</div>' +
+        '<div style="flex-shrink:0;">' +
+        '<label class="switch" title="' + (isAvailable ? 'Mark Sold Out (86)' : 'Make Available') + '">' +
+        '<input type="checkbox" data-86-item="' + item.id + '"' + (isAvailable ? ' checked' : '') + ' aria-label="' + esc(item.name) + ' available">' +
+        '<span class="switch__track"></span>' +
+        '</label>' +
+        '</div>' +
+        '</div>';
+    }).join('');
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  host.innerHTML = '<div class="modal is-open" id="k-86-modal" role="dialog" aria-modal="true" aria-labelledby="k-86-title">' +
+    '<div class="modal__dialog" style="max-width:560px;display:flex;flex-direction:column;max-height:88vh;">' +
+    '<div class="modal__header" style="border-bottom:1px solid var(--line);padding-bottom:1rem;">' +
+    '<div>' +
+    '<h3 class="modal__title" id="k-86-title" style="display:flex;align-items:center;gap:8px;">' +
+    '<i data-lucide="ban" style="color:var(--danger);width:20px;height:20px;"></i>' +
+    '86 Items / Dish Availability' +
+    '</h3>' +
+    '<p style="font-size:0.8125rem;color:var(--muted);margin-top:3px;" id="k-86-count-text">' +
+    'Toggle dishes off when sold out. Guest menus update instantly.' +
+    '</p>' +
+    '</div>' +
+    '<button class="btn btn--icon" type="button" id="k-86-close" aria-label="Close dialog"><i data-lucide="x"></i></button>' +
+    '</div>' +
+
+    '<div style="padding:1rem var(--s-6) 0.5rem;display:flex;flex-direction:column;gap:8px;">' +
+    '<input type="search" id="k-86-search" class="input" placeholder="Search dish name or category..." style="width:100%;font-size:0.875rem;" autocomplete="off">' +
+    '<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;" id="k-86-chips">' +
+    '<button class="chip chip--active" type="button" data-86-filter="all">All</button>' +
+    '<button class="chip" type="button" data-86-filter="sold-out" style="color:var(--danger);">Sold Out Only</button>' +
+    cats.map((c) => '<button class="chip" type="button" data-86-cat="' + c.id + '">' + esc(c.name) + '</button>').join('') +
+    '</div>' +
+    '</div>' +
+
+    '<div class="modal__body" id="k-86-item-list" style="overflow-y:auto;flex:1;min-height:240px;padding-top:0.5rem;">' +
+    '</div>' +
+
+    '<div class="modal__footer" style="display:flex;justify-content:space-between;align-items:center;">' +
+    '<span style="font-size:0.75rem;color:var(--muted);">Switch OFF = Sold out · Switch ON = Available</span>' +
+    '<button class="btn btn--primary" type="button" id="k-86-done">Done</button>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
+
+  if (window.lucide) window.lucide.createIcons();
+  renderList();
+
+  const modalEl = host.querySelector('#k-86-modal');
+  const searchInput = host.querySelector('#k-86-search');
+
+  searchInput.addEventListener('input', (e) => {
+    searchTerm = e.target.value.trim().toLowerCase();
+    renderList();
+  });
+
+  host.querySelector('#k-86-chips').addEventListener('click', (e) => {
+    const btnFilter = e.target.closest('[data-86-filter]');
+    const btnCat = e.target.closest('[data-86-cat]');
+    if (btnFilter) {
+      const type = btnFilter.getAttribute('data-86-filter');
+      showOnlySoldOut = (type === 'sold-out');
+      filterCat = 'all';
+      host.querySelectorAll('#k-86-chips .chip').forEach((c) => c.classList.remove('chip--active'));
+      btnFilter.classList.add('chip--active');
+      renderList();
+      return;
+    }
+    if (btnCat) {
+      filterCat = btnCat.getAttribute('data-86-cat');
+      showOnlySoldOut = false;
+      host.querySelectorAll('#k-86-chips .chip').forEach((c) => c.classList.remove('chip--active'));
+      btnCat.classList.add('chip--active');
+      renderList();
+    }
+  });
+
+  host.querySelector('#k-86-item-list').addEventListener('change', (event) => {
+    const box = event.target.closest('[data-86-item]');
+    if (!box) return;
+    const itemId = box.getAttribute('data-86-item');
+    const available = box.checked;
+    const updated = store.update('items', itemId, { available });
+    emit('menu:update', { clientId: client.id, itemId, available });
+    store.logActivity({
+      actor: (session.name || 'Kitchen') + ' · Pass',
+      clientId: client.id,
+      type: 'Menu',
+      details: (updated?.name || 'Item') + (available ? ' marked available' : ' marked SOLD OUT (86)'),
+    });
+    toast((updated?.name || 'Item') + (available ? ' is now available' : ' marked SOLD OUT (86)'), available ? 'success' : 'danger');
+    update86ButtonBadge();
+    renderList();
+  });
+
+  function closeModal() {
+    host.innerHTML = '';
+  }
+
+  host.querySelector('#k-86-close').addEventListener('click', closeModal);
+  host.querySelector('#k-86-done').addEventListener('click', closeModal);
+  modalEl.addEventListener('click', (e) => {
+    if (e.target === modalEl) closeModal();
+  });
+}
+
+const btn86 = document.getElementById('k-86-btn');
+if (btn86) {
+  update86ButtonBadge();
+  btn86.addEventListener('click', open86Modal);
+}
+on('menu:update', () => update86ButtonBadge());
 
 /* ------------------------------------------------------------- tickets ---- */
 function elapsedMinutes(order) {
