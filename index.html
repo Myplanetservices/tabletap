@@ -21,6 +21,7 @@
     <nav class="site-nav" aria-label="Main">
       <ul class="site-nav__list">
         <li><a class="site-nav__link" href="#how-it-works">How it works</a></li>
+        <li><a class="site-nav__link" href="#menu-preview">Guest menu</a></li>
         <li><a class="site-nav__link" href="#features">Features</a></li>
         <li><a class="site-nav__link" href="#pricing">Pricing</a></li>
         <li><a class="site-nav__link" href="#faq">FAQ</a></li>
@@ -40,6 +41,7 @@
     <nav aria-label="Mobile">
       <ul class="mobile-nav__list">
         <li><a class="mobile-nav__link" href="#how-it-works">How it works</a></li>
+        <li><a class="mobile-nav__link" href="#menu-preview">Guest menu</a></li>
         <li><a class="mobile-nav__link" href="#features">Features</a></li>
         <li><a class="mobile-nav__link" href="#pricing">Pricing</a></li>
         <li><a class="mobile-nav__link" href="#faq">FAQ</a></li>
@@ -146,6 +148,203 @@
     </div>
   </section>
 
+  <!-- Menu Preview: What guests see when they scan -->
+  <section class="section section--alt" id="menu-preview">
+    <div class="container">
+      <div class="section-head section-head--center">
+        <span class="badge badge--success" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:0.75rem;margin-bottom:0.75rem;">
+          <span class="dot dot--live"></span> Real Guest Experience
+        </span>
+        <h2 class="section-title">What your guests see when they scan</h2>
+        <p class="section-sub">
+          No app downloads, no account setup, no phone number verification. In under a second, guests have your full menu on their phone with their table already locked in.
+        </p>
+      </div>
+
+      <div class="menu-showcase">
+        <!-- Left: Interactive Phone Viewport -->
+        <div class="menu-phone-wrap">
+          <div class="menu-phone">
+            <div class="menu-phone__speaker"></div>
+            
+            <div class="menu-phone__screen">
+              <!-- Status bar -->
+              <div class="menu-phone__status">
+                <span>9:41</span>
+                <span style="display:flex;align-items:center;gap:4px;">
+                  <i data-lucide="wifi" style="width:12px;height:12px;"></i>
+                  <i data-lucide="battery" style="width:12px;height:12px;"></i>
+                </span>
+              </div>
+
+              <!-- Brand Header -->
+              <div class="menu-phone__brand">
+                <img class="menu-phone__cover" src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=600&q=70" alt="The Olive Table dining room">
+                <div class="menu-phone__brand-overlay">
+                  <div class="menu-phone__brand-info">
+                    <h3 class="menu-phone__brand-title">The Olive Table</h3>
+                    <p class="menu-phone__brand-sub">Mediterranean · Bandra West</p>
+                  </div>
+                  <span class="badge badge--success" style="font-size:0.6875rem;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;">
+                    <i data-lucide="check-circle" style="width:11px;height:11px;"></i> Table 7
+                  </span>
+                </div>
+              </div>
+
+              <!-- Quick Table Actions -->
+              <div class="menu-phone__actions">
+                <span class="menu-phone__pill"><i data-lucide="bell"></i> Call waiter</span>
+                <span class="menu-phone__pill"><i data-lucide="receipt"></i> Request bill</span>
+              </div>
+
+              <!-- Category Chips -->
+              <div class="menu-phone__chips">
+                <span class="menu-phone__chip menu-phone__chip--active">All</span>
+                <span class="menu-phone__chip">Mains</span>
+                <span class="menu-phone__chip">Pizza</span>
+                <span class="menu-phone__chip">Desserts</span>
+                <span class="menu-phone__chip">Drinks</span>
+              </div>
+
+              <!-- Live Dishes -->
+              <div class="menu-phone__items">
+                <!-- Item 1: Margherita -->
+                <div class="menu-phone__item">
+                  <img class="menu-phone__item-img" src="https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=150&q=70" alt="Margherita Pizza">
+                  <div class="menu-phone__item-body">
+                    <div class="menu-phone__item-header">
+                      <span class="menu-phone__item-name">Margherita Pizza</span>
+                      <span class="tag tag--veg" style="font-size:0.625rem;padding:1px 5px;">Veg</span>
+                    </div>
+                    <p class="menu-phone__item-desc">San Marzano tomato, fior di latte and fresh basil on 48h dough.</p>
+                    <div class="menu-phone__item-footer">
+                      <span class="menu-phone__item-price">$13.00</span>
+                      <span class="menu-phone__add-btn"><i data-lucide="plus"></i> Add</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Item 2: Lamb Shoulder -->
+                <div class="menu-phone__item">
+                  <img class="menu-phone__item-img" src="https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=150&q=70" alt="Slow-braised lamb shoulder">
+                  <div class="menu-phone__item-body">
+                    <div class="menu-phone__item-header">
+                      <span class="menu-phone__item-name">Slow-braised Lamb Shoulder</span>
+                    </div>
+                    <p class="menu-phone__item-desc">Six hours in the oven, served on orzo with gremolata and pan juices.</p>
+                    <div class="menu-phone__item-footer">
+                      <span class="menu-phone__item-price">$24.00</span>
+                      <span class="menu-phone__add-btn"><i data-lucide="plus"></i> Add</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Item 3: Sold out demonstration -->
+                <div class="menu-phone__item menu-phone__item--sold-out">
+                  <img class="menu-phone__item-img" src="https://images.unsplash.com/photo-1519676867240-f03562e64548?auto=format&fit=crop&w=150&q=70" alt="Baklava Cheesecake">
+                  <div class="menu-phone__item-body">
+                    <div class="menu-phone__item-header">
+                      <span class="menu-phone__item-name" style="text-decoration:line-through;color:var(--muted);">Baklava Cheesecake</span>
+                      <span class="sold-out-flag">Sold out</span>
+                    </div>
+                    <p class="menu-phone__item-desc">Pistachio, filo pastry, honey syrup. Marked 86'd on pass.</p>
+                    <div class="menu-phone__item-footer">
+                      <span class="menu-phone__item-price" style="color:var(--muted);">$9.50</span>
+                      <span class="menu-phone__add-btn" style="opacity:0.4;cursor:not-allowed;"><i data-lucide="ban"></i> 86'd</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Item 4: Drink -->
+                <div class="menu-phone__item">
+                  <img class="menu-phone__item-img" src="https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=150&q=70" alt="House Lemonade">
+                  <div class="menu-phone__item-body">
+                    <div class="menu-phone__item-header">
+                      <span class="menu-phone__item-name">House Lemonade</span>
+                      <span class="tag tag--vegan" style="font-size:0.625rem;padding:1px 5px;">Vegan</span>
+                    </div>
+                    <p class="menu-phone__item-desc">Pressed lemon, fresh rosemary syrup, pink peppercorn.</p>
+                    <div class="menu-phone__item-footer">
+                      <span class="menu-phone__item-price">$4.50</span>
+                      <span class="menu-phone__add-btn"><i data-lucide="plus"></i> Add</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sticky Cart Bar -->
+              <div class="menu-phone__cart-bar">
+                <div class="menu-phone__cart-info">
+                  <span class="badge badge--success" style="font-size:0.625rem;padding:2px 6px;">2 items</span>
+                  <span class="menu-phone__cart-total">$17.50</span>
+                </div>
+                <span class="menu-phone__cart-action">
+                  View order <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Live QR Scanner Card & Explanatory Highlights -->
+        <div class="menu-showcase__content">
+          <div class="menu-qr-card">
+            <div class="menu-qr-card__head">
+              <span class="badge badge--neutral">Live Interactive Demo</span>
+              <span class="muted text-xs">Table 7 · The Olive Table</span>
+            </div>
+            <div class="menu-qr-card__body">
+              <div class="menu-qr-code" id="homepage-qr-code" title="Scan to open live Table 7 menu"></div>
+              <div class="menu-qr-card__info">
+                <h4 style="font-size:1.125rem;font-weight:600;margin-bottom:6px;">Scan with your phone</h4>
+                <p class="text-sm muted" style="margin-bottom:14px;line-height:1.45;">
+                  Point your phone camera at this QR code to test the live guest ordering experience right now on Table 7.
+                </p>
+                <a class="btn btn--primary btn--sm" href="menu/index.html?r=olive-table&t=oli-7" target="_blank" rel="noopener">
+                  <i data-lucide="external-link"></i> Open Table 7 Menu in Browser
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="menu-benefits">
+            <div class="benefit-row">
+              <div class="benefit-icon"><i data-lucide="zap"></i></div>
+              <div>
+                <h4 class="benefit-title">Sub-Second Load Time (0.8s)</h4>
+                <p class="benefit-text">Zero framework bloat. Opens in milliseconds even in basement dining rooms with spotty 3G coverage.</p>
+              </div>
+            </div>
+
+            <div class="benefit-row">
+              <div class="benefit-icon"><i data-lucide="shield-check"></i></div>
+              <div>
+                <h4 class="benefit-title">Tamper-Proof Table ID</h4>
+                <p class="benefit-text">Table 7 is pre-locked into the link with session-join secrets. Guests cannot accidentally or maliciously order to other tables.</p>
+              </div>
+            </div>
+
+            <div class="benefit-row">
+              <div class="benefit-icon"><i data-lucide="sliders-horizontal"></i></div>
+              <div>
+                <h4 class="benefit-title">Dietary Filters & Custom Notes</h4>
+                <p class="benefit-text">One-tap filters for Veg, Vegan, Gluten-Free, and Spicy. Diners customize sizes, add toppings, and leave kitchen notes.</p>
+              </div>
+            </div>
+
+            <div class="benefit-row">
+              <div class="benefit-icon"><i data-lucide="users"></i></div>
+              <div>
+                <h4 class="benefit-title">Shared Table Bills (One-Tap Join)</h4>
+                <p class="benefit-text">Dining companions scan the primary diner's phone to join the open session and order together onto one combined ticket.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- How it works: a service line -->
   <section class="section" id="how-it-works">
     <div class="container">
@@ -183,48 +382,93 @@
     </div>
   </section>
 
-  <!-- Features: a spec sheet, read in one pass -->
+  <!-- Features: Comprehensive Product Suite -->
   <section class="section" id="features">
     <div class="container">
-      <div class="section-head">
-        <h2 class="section-title">One small system, three rooms</h2>
-        <p class="section-sub">The floor, the pass and the back office see the same order at the same moment.</p>
+      <div class="section-head section-head--center">
+        <span class="badge badge--neutral" style="margin-bottom:0.75rem;">Complete Hospitality Suite</span>
+        <h2 class="section-title">Built for the floor, the pass & the back office</h2>
+        <p class="section-sub">
+          Every tool your venue needs to take orders faster, accelerate table turnover, and eliminate communication friction between staff and guests.
+        </p>
       </div>
 
-      <div class="features">
-        <article class="feature">
-          <div>
-            <span class="feature__icon"><i data-lucide="smartphone"></i></span>
-            <h3 class="feature__title">For guests</h3>
-          </div>
-          <ul class="feature__list">
-            <li><i data-lucide="check"></i> Opens in under a second, even on patchy 3G — nothing to install.</li>
-            <li><i data-lucide="check"></i> Allergens, spice level and “contains dairy” on every dish.</li>
-            <li><i data-lucide="check"></i> A second round, the bill, or a waiter — without flagging anyone down.</li>
+      <div class="feature-cards-grid" style="margin-top:3rem;">
+        <!-- Feature 1: Guest Self-Ordering -->
+        <article class="f-card">
+          <div class="f-card__icon"><i data-lucide="smartphone"></i></div>
+          <h3 class="f-card__title">Guest Self-Ordering</h3>
+          <p class="f-card__desc">Browser-native digital menu with sub-second loading speed, zero apps required, and high-resolution dish photography.</p>
+          <ul class="f-card__list">
+            <li><i data-lucide="check"></i> 0.8s load time on any mobile browser</li>
+            <li><i data-lucide="check"></i> Veg, Vegan, GF, and Spicy dietary tags</li>
+            <li><i data-lucide="check"></i> Multi-size portions & modifier groups</li>
+            <li><i data-lucide="check"></i> Custom preparation notes per item</li>
           </ul>
         </article>
 
-        <article class="feature">
-          <div>
-            <span class="feature__icon"><i data-lucide="chef-hat"></i></span>
-            <h3 class="feature__title">For the pass</h3>
-          </div>
-          <ul class="feature__list">
-            <li><i data-lucide="check"></i> A dark board built to be read from two metres away.</li>
-            <li><i data-lucide="check"></i> New-order chime, and a timer on every ticket that colours as it waits.</li>
-            <li><i data-lucide="check"></i> Tap an item off on a tablet, even with wet hands.</li>
+        <!-- Feature 2: Live Kitchen KDS -->
+        <article class="f-card">
+          <div class="f-card__icon"><i data-lucide="chef-hat"></i></div>
+          <h3 class="f-card__title">Live Kitchen Pass (KDS)</h3>
+          <p class="f-card__desc">High-contrast dark-mode ticket board designed to be read across the line, with audio chimes and progress tracking.</p>
+          <ul class="f-card__list">
+            <li><i data-lucide="check"></i> New &rarr; Preparing &rarr; Ready &rarr; Served pipeline</li>
+            <li><i data-lucide="check"></i> Web Audio chimes on new ticket arrival</li>
+            <li><i data-lucide="check"></i> Colour-coded timers (10m amber / 20m red)</li>
+            <li><i data-lucide="check"></i> Pass-side 86 / Sold-Out instant toggle</li>
           </ul>
         </article>
 
-        <article class="feature">
-          <div>
-            <span class="feature__icon"><i data-lucide="trending-up"></i></span>
-            <h3 class="feature__title">For owners</h3>
-          </div>
-          <ul class="feature__list">
-            <li><i data-lucide="check"></i> Change a price, a photo, or mark a dish sold out from your phone.</li>
-            <li><i data-lucide="check"></i> Today's takings, best-sellers and slow movers without a spreadsheet.</li>
-            <li><i data-lucide="check"></i> One lifetime price per restaurant. No commission on orders.</li>
+        <!-- Feature 3: Visit QR Security -->
+        <article class="f-card">
+          <div class="f-card__icon"><i data-lucide="shield-alert"></i></div>
+          <h3 class="f-card__title">Fraud-Proof Visit QR</h3>
+          <p class="f-card__desc">Cryptographically secured session secrets prevent stale QR links, remote spamming, and prank ordering.</p>
+          <ul class="f-card__list">
+            <li><i data-lucide="check"></i> Dynamic join secrets generated on seating</li>
+            <li><i data-lucide="check"></i> Old visit QR links auto-expire on bill close</li>
+            <li><i data-lucide="check"></i> 80mm thermal slip printing support</li>
+            <li><i data-lucide="check"></i> Velocity limits (max 5 orders/min per table)</li>
+          </ul>
+        </article>
+
+        <!-- Feature 4: Table & Floor Management -->
+        <article class="f-card">
+          <div class="f-card__icon"><i data-lucide="layout-grid"></i></div>
+          <h3 class="f-card__title">Floor & Table Control</h3>
+          <p class="f-card__desc">Live visual floor plan showing open tables, occupied sessions, waiter calls, and counter checkout status.</p>
+          <ul class="f-card__list">
+            <li><i data-lucide="check"></i> Interactive floor map with live occupancy</li>
+            <li><i data-lucide="check"></i> 4-digit backup Table Key entry</li>
+            <li><i data-lucide="check"></i> Waiter call & bill request alerts</li>
+            <li><i data-lucide="check"></i> Staff accounts with 4-digit PIN security</li>
+          </ul>
+        </article>
+
+        <!-- Feature 5: Flexible Billing & Taxes -->
+        <article class="f-card">
+          <div class="f-card__icon"><i data-lucide="receipt"></i></div>
+          <h3 class="f-card__title">Billing, Taxes & Tips</h3>
+          <p class="f-card__desc">Full compliance with regional taxes, optional service charges, tip presets, and print-ready digital receipts.</p>
+          <ul class="f-card__list">
+            <li><i data-lucide="check"></i> Inclusive or exclusive tax handling (GST/VAT)</li>
+            <li><i data-lucide="check"></i> Configurable tip presets (10%, 15%, 20%)</li>
+            <li><i data-lucide="check"></i> Optional service charge toggle</li>
+            <li><i data-lucide="check"></i> Itemized digital receipt generation</li>
+          </ul>
+        </article>
+
+        <!-- Feature 6: Realtime Cloud & Analytics -->
+        <article class="f-card">
+          <div class="f-card__icon"><i data-lucide="database"></i></div>
+          <h3 class="f-card__title">Cloud Database & Analytics</h3>
+          <p class="f-card__desc">Powered by live MongoDB Atlas with 2-way Google Sheets export and comprehensive shift analytics.</p>
+          <ul class="f-card__list">
+            <li><i data-lucide="check"></i> Live MongoDB Atlas cloud cluster backend</li>
+            <li><i data-lucide="check"></i> 1-click Google Sheets 2-way synchronization</li>
+            <li><i data-lucide="check"></i> Sales by day, top dishes & peak hours</li>
+            <li><i data-lucide="check"></i> Offline-first resilience via local cache</li>
           </ul>
         </article>
       </div>
@@ -391,8 +635,22 @@
 </footer>
 
 <script src="assets/js/file-check.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<script>if(window.lucide)lucide.createIcons();</script>
+<script>
+  if (window.lucide) lucide.createIcons();
+  if (window.QRCode && document.getElementById('homepage-qr-code')) {
+    const demoUrl = window.location.origin + window.location.pathname.replace('index.html', '').replace(/\/$/, '') + '/menu/index.html?r=olive-table&t=oli-7';
+    new QRCode(document.getElementById('homepage-qr-code'), {
+      text: demoUrl,
+      width: 124,
+      height: 124,
+      colorDark: '#0F1114',
+      colorLight: '#FFFFFF',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  }
+</script>
 <script src="assets/js/ui.js"></script>
 </body>
 </html>
