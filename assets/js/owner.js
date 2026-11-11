@@ -1955,6 +1955,24 @@ function renderSettings() {
     '</div></div></div>' +
 
     '<div class="tab-panel" data-panel="security" hidden><div class="card"><div class="card__body">' +
+    '<h3 class="card__title mb-4" style="font-size:1.05rem;">Anti-Spam & Payment Security</h3>' +
+    '<div class="list-row"><div class="list-row__main"><p class="list-row__title">GPS Geofence Protection</p>' +
+    '<p class="list-row__meta">Restricts table orders to customers physically inside your restaurant radius. Stops remote photo pranksters.</p></div>' +
+    '<label class="switch"><input type="checkbox" id="set-geofence"' + (settings.geofence?.enabled !== false ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">GPS Geofence</span></label></div>' +
+    '<div class="form-grid form-grid--3 mt-3 mb-4" style="background:var(--surface-2, #F8F6F1); padding:1rem; border-radius:10px;">' +
+    '<div class="field"><label class="label" for="set-geo-lat">Latitude</label><input class="input" id="set-geo-lat" type="number" step="0.0001" value="' + (settings.geofence?.lat || 19.0596) + '"></div>' +
+    '<div class="field"><label class="label" for="set-geo-lng">Longitude</label><input class="input" id="set-geo-lng" type="number" step="0.0001" value="' + (settings.geofence?.lng || 72.8295) + '"></div>' +
+    '<div class="field"><label class="label" for="set-geo-radius">Radius (meters)</label><input class="input" id="set-geo-radius" type="number" step="10" value="' + (settings.geofence?.radiusMeters || 250) + '"></div>' +
+    '</div>' +
+    '<hr class="my-4" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">' +
+    '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Pay-at-Order Enforcement (Apple Pay / UPI / Card)</p>' +
+    '<p class="list-row__meta">Require customers to pay upfront with Apple Pay, UPI, or Card before the order fires to the kitchen. Zero unpaid food cooked.</p></div>' +
+    '<label class="switch"><input type="checkbox" id="set-pay-order"' + (settings.payAtOrder?.enabled !== false ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Pay at order</span></label></div>' +
+    '<hr class="my-4" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">' +
+    '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Floor Plan Seated Check</p>' +
+    '<p class="list-row__meta">Warn kitchen staff if an order arrives for a table marked Vacant on the Floor Plan so ghost orders are caught immediately.</p></div>' +
+    '<label class="switch"><input type="checkbox" id="set-seated-check"' + (settings.seatedCheck?.enabled !== false ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Seated check</span></label></div>' +
+    '<hr class="my-4" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">' +
     '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Print visit QR slip</p>' +
     '<p class="list-row__meta">Automatically print an 80mm thermal slip with Visit QR and table key when seating guests.</p></div>' +
     '<label class="switch"><input type="checkbox" id="set-print-slip"' + (settings.printVisitSlip ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Print visit QR slip</span></label></div>' +
@@ -2307,9 +2325,24 @@ function renderSettings() {
         toast('Notifications saved');
       }
       if (which === 'security') {
-        next.printVisitSlip = host.querySelector('#set-print-slip').checked;
+        next.printVisitSlip = host.querySelector('#set-print-slip') ? host.querySelector('#set-print-slip').checked : false;
+        next.geofence = {
+          enabled: host.querySelector('#set-geofence') ? host.querySelector('#set-geofence').checked : true,
+          lat: parseFloat(host.querySelector('#set-geo-lat')?.value) || 19.0596,
+          lng: parseFloat(host.querySelector('#set-geo-lng')?.value) || 72.8295,
+          radiusMeters: parseInt(host.querySelector('#set-geo-radius')?.value, 10) || 250,
+          name: settings.geofence?.name || 'Restaurant Premises',
+        };
+        next.payAtOrder = {
+          enabled: host.querySelector('#set-pay-order') ? host.querySelector('#set-pay-order').checked : true,
+          methods: ['apple_pay', 'upi', 'card', 'counter'],
+        };
+        next.seatedCheck = {
+          enabled: host.querySelector('#set-seated-check') ? host.querySelector('#set-seated-check').checked : true,
+        };
         store.update('clients', client.id, { settings: next });
-        toast('Security settings saved');
+        emit('settings:update', { clientId: client.id });
+        toast('Security & anti-spam settings saved');
       }
       store.logActivity({ actor: session.name, clientId: client.id, type: 'Settings', details: 'Settings saved (' + which + ')' });
     });

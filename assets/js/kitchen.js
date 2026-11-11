@@ -308,10 +308,30 @@ function ticketHtml(order, column) {
     else if (column === 'preparing') action = window.TableTapI18n.t('kitchen.action_ready', 'Mark ready');
     else action = window.TableTapI18n.t('kitchen.action_served', 'Served');
   }
+
+  const table = order.tableId ? store.getById('tables', order.tableId) : null;
+  const isVacantOnFloor = (table && table.status === 'free') && !order.staffConfirmed;
+
+  const vacantAlertHtml = isVacantOnFloor ?
+    '<div class="k-ticket__vacant-warning" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 8px; margin: 8px 0; text-align: left;">' +
+    '<div style="font-size: 0.75rem; font-weight: 700; color: #DC2626; display: flex; align-items: center; gap: 4px;">' +
+    '<i data-lucide="alert-triangle" style="width: 14px; height: 14px;"></i> Floor Plan Alert: ' + esc(order.tableName) + ' is VACANT' +
+    '</div>' +
+    '<p style="font-size: 0.7rem; color: var(--text-muted); margin: 3px 0 6px 0;">Verify party is seated before cooking:</p>' +
+    '<div style="display: flex; gap: 6px;">' +
+    '<button class="btn btn--primary btn--sm" type="button" data-confirm-seat="' + order.id + '">Confirm Seated & Cook</button>' +
+    '<button class="btn btn--danger btn--sm" type="button" data-reject-ghost="' + order.id + '">Reject Ghost</button>' +
+    '</div></div>' : '';
+
+  const payBadge = order.paid
+    ? '<span style="background: rgba(16,185,129,0.15); color: #059669; border: 1px solid rgba(16,185,129,0.3); padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="shield-check" style="width:12px;height:12px;"></i> PAID (' + esc((order.paymentMethod || 'apple_pay').toUpperCase()) + ')</span>'
+    : '<span style="background: rgba(245,158,11,0.15); color: #D97706; border: 1px solid rgba(245,158,11,0.3); padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="clock" style="width:12px;height:12px;"></i> PAY WAITER</span>';
+
   return '<article class="k-ticket' + (order.__flash ? ' k-ticket--flash' : '') + '" data-order="' + order.id + '">' +
     '<div class="k-ticket__head"><div><p class="k-ticket__table">' + esc(order.tableName) + '</p>' +
-    '<p class="k-ticket__meta">Order #' + order.number + '</p></div>' +
+    '<p class="k-ticket__meta">Order #' + order.number + ' · ' + payBadge + '</p></div>' +
     '<span class="k-timer' + timerClass(minutes) + '" data-timer="' + order.id + '"><i data-lucide="timer"></i> ' + minutes + ' min</span></div>' +
+    vacantAlertHtml +
     '<div class="k-items">' + itemsHtml(order) + '</div>' +
     (order.note ? '<p class="k-note">' + esc(order.note) + '</p>' : '') +
     (order.guestName ? '<p class="k-guest">Guest: ' + esc(order.guestName) + '</p>' : '') +
@@ -333,7 +353,7 @@ let activeTab = 'new';
 
 function ordersFor(status) {
   return store.ordersOf(client.id)
-    .filter((o) => o.status === status)
+    .filter((o) => o.status === status && o.status !== 'voided')
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 }
 
@@ -397,6 +417,42 @@ document.querySelectorAll('[data-k-tab]').forEach((tab) => {
 /* Actions */
 if (columnsHost) {
   columnsHost.addEventListener('click', async (event) => {
+    const confirmSeatBtn = event.target.closest('[data-confirm-seat]');
+    if (confirmSeatBtn) {
+      const id = confirmSeatBtn.getAttribute('data-confirm-seat');
+      const order = store.getById('orders', id);
+      if (order) {
+        store.update('orders', id, { staffConfirmed: true });
+        if (order.tableId) {
+          store.update('tables', order.tableId, { status: 'occupied' });
+          emit('table:update', { tableId: order.tableId, clientId: client.id });
+        }
+        emit('order:update', { orderId: id, clientId: client.id });
+        toast(order.tableName + ' seated & confirmed for cooking');
+        draw();
+      }
+      return;
+    }
+
+    const rejectGhostBtn = event.target.closest('[data-reject-ghost]');
+    if (rejectGhostBtn) {
+      const id = rejectGhostBtn.getAttribute('data-reject-ghost');
+      const order = store.getById('orders', id);
+      if (order) {
+        store.update('orders', id, { status: 'voided' });
+        emit('order:update', { orderId: id, clientId: client.id });
+        store.logActivity({
+          actor: session.name || 'Kitchen Staff',
+          clientId: client.id,
+          type: 'Security',
+          details: 'Ghost order #' + order.number + ' on vacant ' + order.tableName + ' rejected by staff',
+        });
+        toast('Ghost order #' + order.number + ' rejected and voided');
+        draw();
+      }
+      return;
+    }
+
     const action = event.target.closest('[data-action]');
     const item = event.target.closest('[data-item]');
 

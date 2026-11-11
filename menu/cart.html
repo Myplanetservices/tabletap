@@ -23,6 +23,8 @@
 
   <div class="cart-body">
 
+    <div id="cart-geofence-banner"></div>
+
     <div id="cart-filled">
       <div class="cart-list" id="cart-list"></div>
 
@@ -39,9 +41,40 @@
 
       <div class="summary" id="sum-lines"></div>
 
-      <div class="cart-info">
-        <i data-lucide="info"></i>
-        <span>Pay at the counter or to your waiter. No card details needed here.</span>
+      <div class="pay-at-order-card" style="margin-top: 1.25rem; padding: 1.1rem; background: var(--surface-2, #F8F6F1); border-radius: 14px; border: 1px solid var(--border, rgba(0,0,0,0.08));">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+          <span style="font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted, #777); display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="shield-check" style="width: 16px; height: 16px; color: #10B981;"></i> Pay-at-Order Protection
+          </span>
+          <span style="font-size: 0.75rem; background: rgba(16,185,129,0.12); color: #059669; font-weight: 600; padding: 2px 8px; border-radius: 999px;">Encrypted 256-bit</span>
+        </div>
+        
+        <div class="pay-method-grid" id="pay-methods-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 0.75rem;">
+          <label class="pay-method-btn is-selected" data-method="apple_pay" style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fff; border: 2px solid var(--primary, #8C3A27); border-radius: 10px; cursor: pointer;">
+            <input type="radio" name="pay-method" value="apple_pay" checked style="accent-color: var(--primary, #8C3A27);">
+            <span style="font-size: 1.1rem;">🍏</span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text, #1A1A1A);">Apple Pay</span>
+          </label>
+          <label class="pay-method-btn" data-method="upi" style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fff; border: 1px solid var(--border, rgba(0,0,0,0.12)); border-radius: 10px; cursor: pointer;">
+            <input type="radio" name="pay-method" value="upi" style="accent-color: var(--primary, #8C3A27);">
+            <span style="font-size: 1.1rem;">📱</span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text, #1A1A1A);">UPI / GPay</span>
+          </label>
+          <label class="pay-method-btn" data-method="card" style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fff; border: 1px solid var(--border, rgba(0,0,0,0.12)); border-radius: 10px; cursor: pointer;">
+            <input type="radio" name="pay-method" value="card" style="accent-color: var(--primary, #8C3A27);">
+            <span style="font-size: 1.1rem;">💳</span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text, #1A1A1A);">Debit / Card</span>
+          </label>
+          <label class="pay-method-btn" data-method="counter" style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fff; border: 1px solid var(--border, rgba(0,0,0,0.12)); border-radius: 10px; cursor: pointer;">
+            <input type="radio" name="pay-method" value="counter" style="accent-color: var(--primary, #8C3A27);">
+            <span style="font-size: 1.1rem;">💵</span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text, #1A1A1A);">Pay Waiter</span>
+          </label>
+        </div>
+
+        <p class="text-xs" id="pay-method-desc" style="color: var(--text-muted, #666); margin: 0; line-height: 1.4;">
+          Instant 1-tap checkout via Apple Pay. Order is verified and fired straight to the chef.
+        </p>
       </div>
     </div>
 
@@ -69,6 +102,6 @@
 <script>if(window.lucide)lucide.createIcons();</script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="../assets/js/ui.js"></script>
-<script type="module" src="../assets/js/customer.js?v=20261112c"></script>
+<script type="module" src="../assets/js/customer.js?v=20261112d"></script>
 </body>
 </html>

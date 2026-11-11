@@ -235,6 +235,211 @@ function showShareQrModal(client, table, session) {
   modal.querySelector('#close-share-modal-btn').addEventListener('click', () => modal.remove());
 }
 
+/* ------------------------------------------------------------- geofence ---- */
+function getDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return Math.round(R * c);
+}
+
+function initGeofenceBanner(client, table, bannerContainerId) {
+  const container = document.getElementById(bannerContainerId);
+  if (!container) return;
+  const settings = client.settings || {};
+  const geo = settings.geofence || { enabled: true, lat: 19.0596, lng: 72.8295, radiusMeters: 250 };
+  if (geo.enabled === false) return;
+
+  const isOverridden = localStorage.getItem('tqr_geo_override') === 'true';
+
+  function applyVerifiedBadge() {
+    const tableBadge = document.getElementById('menu-table') || document.getElementById('cart-table');
+    if (tableBadge && !tableBadge.querySelector('.geo-verified-pill')) {
+      const span = document.createElement('span');
+      span.className = 'geo-verified-pill';
+      span.style.cssText = 'background: #10B981; color: #fff; font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; vertical-align: middle;';
+      span.innerHTML = '✓ 📍 On-Premise';
+      tableBadge.appendChild(span);
+    }
+  }
+
+  if (isOverridden) {
+    applyVerifiedBadge();
+    return;
+  }
+
+  function showRemoteAlert(km) {
+    container.innerHTML = `
+      <div class="geofence-alert" style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 10px 14px; margin: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.82rem; color: #92400E;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.25rem;">📍</span>
+          <div>
+            <strong>Remote Location:</strong> Dine-in table ordering is restricted to physical tables inside The Olive Table.
+            <span style="display: block; font-size: 0.73rem; color: #B45309; margin-top: 2px;">(Device is ${km || 'outside'} away from restaurant GPS coordinates)</span>
+          </div>
+        </div>
+        <button type="button" class="btn btn--sm" id="btn-geo-sim" style="background: #D97706; color: #fff; border: none; font-size: 0.75rem; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap;">
+          Demo: Test Inside
+        </button>
+      </div>
+    `;
+    const btn = container.querySelector('#btn-geo-sim');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        localStorage.setItem('tqr_geo_override', 'true');
+        toast('GPS Geofence: Simulated as seated at ' + table.name);
+        container.innerHTML = '';
+        applyVerifiedBadge();
+      });
+    }
+  }
+
+  if (!navigator.geolocation) {
+    showRemoteAlert();
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const dist = getDistanceMeters(pos.coords.latitude, pos.coords.longitude, geo.lat, geo.lng);
+      if (dist <= geo.radiusMeters) {
+        localStorage.setItem('tqr_geo_override', 'true');
+        applyVerifiedBadge();
+      } else {
+        showRemoteAlert((dist / 1000).toFixed(1) + ' km');
+      }
+    },
+    () => {
+      showRemoteAlert('outside');
+    },
+    { timeout: 3500, maximumAge: 60000 }
+  );
+}
+
+/* -------------------------------------------------------- pay at order ---- */
+function showPaymentModal(method, totals, settings, table, onConfirm) {
+  const existing = document.getElementById('pay-modal-sheet');
+  if (existing) existing.remove();
+
+  const money = (val) => formatMoney(val, settings.currency);
+  const modal = document.createElement('div');
+  modal.className = 'modal is-open';
+  modal.id = 'pay-modal-sheet';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+
+  let bodyHtml = '';
+  if (method === 'apple_pay') {
+    bodyHtml = `
+      <div style="text-align: center; padding: 0.5rem 0 1rem 0;">
+        <div style="font-size: 2rem; margin-bottom: 0.25rem;"> Pay</div>
+        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">The Olive Table</h3>
+        <p class="muted text-xs" style="margin-bottom: 1.25rem;">Dine-in Order · ${esc(table.name)}</p>
+
+        <div style="background: var(--surface-2, #F8F6F1); border-radius: 12px; padding: 12px 16px; margin-bottom: 1.25rem; text-align: left; font-size: 0.85rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span class="muted">Card</span>
+            <span style="font-weight: 600;">Apple Card (•••• 1092)</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span class="muted">Items & Taxes</span>
+            <span style="font-weight: 600;">${money(totals.total)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border, rgba(0,0,0,0.08)); padding-top: 6px; font-weight: 700; font-size: 0.95rem;">
+            <span>Total to Pay</span>
+            <span style="color: var(--primary, #8C3A27);">${money(totals.total)}</span>
+          </div>
+        </div>
+
+        <button class="btn btn--block btn--lg" id="confirm-apple-pay-btn" type="button" style="background: #000; color: #fff; border-radius: 12px; height: 52px; font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span> Pay with Passcode / Face ID</span>
+        </button>
+        <p class="hint mt-2 text-xs muted">Click to simulate biometric Face ID confirmation</p>
+      </div>
+    `;
+  } else if (method === 'upi') {
+    bodyHtml = `
+      <div style="text-align: center; padding: 0.5rem 0 1rem 0;">
+        <div style="font-size: 1.8rem; margin-bottom: 0.25rem;">📱</div>
+        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">UPI Instant Payment</h3>
+        <p class="muted text-xs" style="margin-bottom: 1rem;">To: The Olive Table (olivetable@icici)</p>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 1rem;">
+          <button type="button" class="btn btn--secondary btn--sm is-active" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">GPay</button>
+          <button type="button" class="btn btn--secondary btn--sm" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">PhonePe</button>
+          <button type="button" class="btn btn--secondary btn--sm" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">Paytm</button>
+          <button type="button" class="btn btn--secondary btn--sm" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">BHIM</button>
+        </div>
+
+        <div class="field" style="margin-bottom: 1rem; text-align: left;">
+          <label class="label text-xs">UPI ID / VPA</label>
+          <input class="input" id="upi-vpa-input" type="text" value="guest@okhdfcbank" style="font-family: var(--font-mono); font-size: 0.88rem;">
+        </div>
+
+        <button class="btn btn--primary btn--block btn--lg" id="confirm-upi-pay-btn" type="button" style="height: 50px; font-size: 1rem; font-weight: 700; background: #059669; border-color: #059669;">
+          Pay ${money(totals.total)} via UPI
+        </button>
+      </div>
+    `;
+  } else {
+    bodyHtml = `
+      <div style="text-align: center; padding: 0.5rem 0 1rem 0;">
+        <div style="font-size: 1.8rem; margin-bottom: 0.25rem;">💳</div>
+        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">Credit / Debit Card</h3>
+        <p class="muted text-xs" style="margin-bottom: 1rem;">Encrypted & Tokenized 256-bit</p>
+
+        <div style="background: var(--surface-2, #F8F6F1); border-radius: 10px; padding: 12px; margin-bottom: 1rem; text-align: left; font-family: var(--font-mono); font-size: 0.85rem;">
+          <div style="color: var(--text-muted); font-size: 0.72rem; margin-bottom: 2px;">CARD NUMBER</div>
+          <div style="font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">•••• •••• •••• 4242</div>
+          <div style="display: flex; justify-content: space-between;">
+            <div><span class="muted" style="font-size: 0.7rem;">EXP: </span>12/28</div>
+            <div><span class="muted" style="font-size: 0.7rem;">CVV: </span>•••</div>
+          </div>
+        </div>
+
+        <button class="btn btn--primary btn--block btn--lg" id="confirm-card-pay-btn" type="button" style="height: 50px; font-size: 1rem; font-weight: 700;">
+          Pay ${money(totals.total)}
+        </button>
+      </div>
+    `;
+  }
+
+  modal.innerHTML = `
+    <div class="modal__dialog" style="max-width: 380px; position: relative;">
+      <button class="btn btn--icon btn--sm" id="close-pay-sheet-btn" type="button" aria-label="Close" style="position: absolute; top: 12px; right: 12px; border: none; background: transparent; cursor: pointer; font-size: 1.2rem; color: var(--text-muted);">&times;</button>
+      ${bodyHtml}
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector('#close-pay-sheet-btn').addEventListener('click', () => modal.remove());
+
+  const btn = modal.querySelector('#confirm-apple-pay-btn') || modal.querySelector('#confirm-upi-pay-btn') || modal.querySelector('#confirm-card-pay-btn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      btn.disabled = true;
+      btn.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 8px;"><span class="dot" style="background: #fff; width: 8px; height: 8px; border-radius: 50%; animation: pulse 0.6s infinite alternate;"></span> Authorizing ${method === 'apple_pay' ? 'Face ID' : 'Gateway'}…</span>`;
+      
+      setTimeout(() => {
+        btn.innerHTML = `<span style="color: #10B981; font-weight: 700;">✓ Payment Approved!</span>`;
+        setTimeout(() => {
+          modal.remove();
+          onConfirm({
+            method,
+            txnId: (method === 'apple_pay' ? 'APL_' : method === 'upi' ? 'UPI_' : 'CRD_') + Math.random().toString(36).slice(2, 8).toUpperCase(),
+          });
+        }, 500);
+      }, 700);
+    });
+  }
+}
+
 /* ---------------------------------------------------------------- menu ---- */
 function initMenu(ctx) {
   const { client, table } = ctx;
@@ -307,6 +512,7 @@ function initMenu(ctx) {
       : 'Taxes extra';
   }
   if (window.lucide) window.lucide.createIcons();
+  initGeofenceBanner(client, table, 'menu-geofence-banner');
 
   const categories = query('categories', (c) => c.clientId === client.id).sort((a, b) => a.position - b.position);
   let items = query('items', (i) => i.clientId === client.id);
@@ -750,8 +956,46 @@ function initCart(ctx) {
   });
 
   render();
+  initGeofenceBanner(client, table, 'cart-geofence-banner');
 
   const placeButton = document.getElementById('place-order');
+
+  let selectedMethod = 'apple_pay';
+  const payRadios = document.querySelectorAll('input[name="pay-method"]');
+  const methodBtns = document.querySelectorAll('.pay-method-btn');
+  const payDesc = document.getElementById('pay-method-desc');
+
+  function updatePaymentUi(method) {
+    selectedMethod = method;
+    methodBtns.forEach((btn) => {
+      const isSel = btn.getAttribute('data-method') === method;
+      btn.style.borderColor = isSel ? 'var(--primary, #8C3A27)' : 'var(--border, rgba(0,0,0,0.12))';
+      btn.style.borderWidth = isSel ? '2px' : '1px';
+    });
+    if (payDesc) {
+      if (method === 'apple_pay') payDesc.textContent = 'Instant 1-tap checkout via Apple Pay. Order is verified and fired straight to the chef.';
+      else if (method === 'upi') payDesc.textContent = 'Fast UPI payment via Google Pay, PhonePe, or Paytm. Verified before cooking.';
+      else if (method === 'card') payDesc.textContent = 'Secure 256-bit encrypted credit or debit card payment.';
+      else payDesc.textContent = 'Pay in person at the counter or to your waiter when served.';
+    }
+    const totSpan = document.getElementById('place-total');
+    const totVal = totSpan ? totSpan.textContent : '';
+    if (placeButton) {
+      if (method === 'apple_pay') placeButton.innerHTML = `🍏 Pay with Apple Pay · <span id="place-total">${totVal}</span>`;
+      else if (method === 'upi') placeButton.innerHTML = `📱 Pay with UPI · <span id="place-total">${totVal}</span>`;
+      else if (method === 'card') placeButton.innerHTML = `💳 Pay with Card · <span id="place-total">${totVal}</span>`;
+      else placeButton.innerHTML = `Place order (Pay Waiter) · <span id="place-total">${totVal}</span>`;
+    }
+  }
+
+  payRadios.forEach((r) => r.addEventListener('change', (e) => updatePaymentUi(e.target.value)));
+  methodBtns.forEach((btn) => btn.addEventListener('click', () => {
+    const r = btn.querySelector('input[type="radio"]');
+    if (r) { r.checked = true; updatePaymentUi(r.value); }
+  }));
+
+  updatePaymentUi(selectedMethod);
+
   placeButton.addEventListener('click', () => {
     if (placeButton.disabled) return;
 
@@ -783,52 +1027,69 @@ function initCart(ctx) {
       return;
     }
 
-    placeButton.disabled = true;
-    placeButton.textContent = 'Placing order…';
+    function executeOrder(payment) {
+      placeButton.disabled = true;
+      placeButton.textContent = 'Placing order…';
 
-    const approval = !!settings.approval;
-    const session = openSessionForTable(client.id, table);
-    const order = insert('orders', {
-      clientId: client.id,
-      number: nextNumber(client.id),
-      tableId: table.id,
-      tableName: table.name,
-      sessionId: session.id,
-      items: cart.items.map((row) => ({
-        name: row.name,
-        qty: row.qty,
-        price: row.price,
-        size: row.size,
-        addons: row.addons,
-        note: row.note,
-        taxOverride: row.taxOverride || 'default',
-        done: false,
-      })),
-      note: document.getElementById('kitchen-note').value.trim(),
-      guestName: document.getElementById('guest-name').value.trim(),
-      subtotal: totals.subtotal,
-      tax: totals.taxTotal,
-      service: totals.chargeTotal,
-      total: totals.total,
-      breakdown: totals,
-      status: approval ? 'pending_approval' : 'new',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+      const approval = !!settings.approval;
+      const session = openSessionForTable(client.id, table);
+      const isPaid = payment && payment.method !== 'counter';
+      const order = insert('orders', {
+        clientId: client.id,
+        number: nextNumber(client.id),
+        tableId: table.id,
+        tableName: table.name,
+        sessionId: session.id,
+        items: cart.items.map((row) => ({
+          name: row.name,
+          qty: row.qty,
+          price: row.price,
+          size: row.size,
+          addons: row.addons,
+          note: row.note,
+          taxOverride: row.taxOverride || 'default',
+          done: false,
+        })),
+        note: document.getElementById('kitchen-note').value.trim(),
+        guestName: document.getElementById('guest-name').value.trim(),
+        subtotal: totals.subtotal,
+        tax: totals.taxTotal,
+        service: totals.chargeTotal,
+        total: totals.total,
+        breakdown: totals,
+        paid: isPaid,
+        paymentMethod: payment ? payment.method : 'apple_pay',
+        paymentTxnId: payment ? payment.txnId : null,
+        paidAt: isPaid ? new Date().toISOString() : null,
+        tableWasVacant: table.status === 'free',
+        staffConfirmed: table.status !== 'free',
+        status: approval ? 'pending_approval' : 'new',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
 
-    localStorage.setItem('tqr_device_last_order', String(Date.now()));
-    addOrderToSession(session.id, order.id);
-    emit('order:new', { orderId: order.id, clientId: client.id });
-    pushOrderToMongo(order).catch(() => {});
-    logActivity({
-      actor: 'Guest · ' + table.name,
-      clientId: client.id,
-      type: 'Order',
-      details: 'Order #' + order.number + ' placed (' + totals.count + ' items)',
-    });
+      localStorage.setItem('tqr_device_last_order', String(Date.now()));
+      addOrderToSession(session.id, order.id);
+      emit('order:new', { orderId: order.id, clientId: client.id });
+      pushOrderToMongo(order).catch(() => {});
+      logActivity({
+        actor: 'Guest · ' + table.name,
+        clientId: client.id,
+        type: 'Order',
+        details: 'Order #' + order.number + ' placed (' + totals.count + ' items' + (isPaid ? ' · Paid via ' + (payment.method || '').toUpperCase() : '') + ')',
+      });
 
-    sessionStorage.removeItem(CART_KEY);
-    location.href = 'order-status.html?id=' + order.id + '&r=' + encodeURIComponent(client.slug) + '&t=' + encodeURIComponent(table.token) + visitParams;
+      sessionStorage.removeItem(CART_KEY);
+      location.href = 'order-status.html?id=' + order.id + '&r=' + encodeURIComponent(client.slug) + '&t=' + encodeURIComponent(table.token) + visitParams;
+    }
+
+    if (selectedMethod === 'counter') {
+      executeOrder({ method: 'counter', txnId: null });
+    } else {
+      showPaymentModal(selectedMethod, totals, settings, table, (paymentResult) => {
+        executeOrder(paymentResult);
+      });
+    }
   });
 }
 
@@ -859,19 +1120,27 @@ function initStatus(ctx) {
     order = getById('orders', order.id) || order;
     const steps = ['Received', 'Preparing', 'Ready', 'Served'];
     const index = { new: 0, pending_approval: 0, preparing: 1, ready: 2, served: 3 }[order.status] ?? 0;
-    const rejected = order.status === 'rejected';
+    const isRejected = order.status === 'rejected';
+    const isVoided = order.status === 'voided';
+
+    const payStatusBadge = order.paid
+      ? '<div style="display:inline-flex;align-items:center;gap:4px;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;padding:3px 10px;border-radius:6px;font-size:0.75rem;font-weight:700;margin-top:6px;"><i data-lucide="shield-check" style="width:14px;height:14px;"></i> Paid with ' + esc((order.paymentMethod || 'apple_pay').toUpperCase()) + ' · Ref #' + esc(order.paymentTxnId || 'VERIFIED') + '</div>'
+      : '<div style="display:inline-flex;align-items:center;gap:4px;background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;padding:3px 10px;border-radius:6px;font-size:0.75rem;font-weight:600;margin-top:6px;"><i data-lucide="clock" style="width:14px;height:14px;"></i> Pay Waiter at Table</div>';
 
     host.innerHTML =
       '<div class="status-hero">' +
-      (rejected
+      (isRejected || isVoided
         ? '<span class="status-tick" style="background:#FDECEC;color:#B91C1C"><i data-lucide="x"></i></span>' +
-          '<h1 class="status-title">Order not accepted</h1>' +
+          '<h1 class="status-title">' + (isVoided ? 'Ghost Order Rejected' : 'Order not accepted') + '</h1>' +
           '<p class="status-meta">Order #' + order.number + ' · ' + esc(order.tableName) + '</p>'
         : '<span class="status-tick"><i data-lucide="check"></i></span>' +
           '<h1 class="status-title">Order placed</h1>' +
-          '<p class="status-meta">Order #' + order.number + ' · ' + esc(order.tableName) + ' · ' + formatTime(order.createdAt) + '</p>') +
+          '<p class="status-meta">Order #' + order.number + ' · ' + esc(order.tableName) + ' · ' + formatTime(order.createdAt) + '</p>' +
+          payStatusBadge) +
       '</div>' +
-      (rejected
+      (isVoided
+        ? '<div class="status-card" style="border:1px solid #EF4444;background:#FEF2F2;"><p class="text-sm font-semibold" style="color:#B91C1C;">Ghost Order Rejected by Kitchen</p><p class="text-xs" style="color:#7F1D1D;margin-top:4px;">This order was voided by restaurant staff because Table ' + esc(order.tableName) + ' was not seated on the Floor Plan.</p></div>'
+        : isRejected
         ? '<div class="status-card"><p class="text-sm">The kitchen could not take this order — an item sold out. Nothing was charged. Please order again or call a waiter.</p></div>'
         : '<div class="progress"><div class="progress__track"><div class="progress__fill" style="width:' +
             (index === 0 ? 0 : index === 1 ? 37 : index === 2 ? 62 : 100) + '%"></div></div>' +

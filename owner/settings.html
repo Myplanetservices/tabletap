@@ -160,6 +160,53 @@
         <div class="tab-panel" role="tabpanel" id="panel-security" aria-labelledby="tab-security" hidden>
           <div class="card">
             <div class="card__body">
+              <h3 class="card__title mb-4" style="font-size:1.05rem;">Anti-Spam & Payment Security</h3>
+              
+              <div class="list-row">
+                <div class="list-row__main">
+                  <p class="list-row__title">GPS Geofence Protection</p>
+                  <p class="list-row__meta">Restricts table orders to customers physically inside your restaurant radius. Stops remote photo pranksters.</p>
+                </div>
+                <label class="switch"><input type="checkbox" id="set-geofence" checked><span class="switch__track"></span><span class="sr-only">GPS Geofence</span></label>
+              </div>
+
+              <div class="form-grid form-grid--3 mt-3 mb-4" style="background:var(--surface-2, #F8F6F1); padding:1rem; border-radius:10px;">
+                <div class="field">
+                  <label class="label" for="set-geo-lat">Latitude</label>
+                  <input class="input" id="set-geo-lat" type="number" step="0.0001" value="19.0596">
+                </div>
+                <div class="field">
+                  <label class="label" for="set-geo-lng">Longitude</label>
+                  <input class="input" id="set-geo-lng" type="number" step="0.0001" value="72.8295">
+                </div>
+                <div class="field">
+                  <label class="label" for="set-geo-radius">Radius (meters)</label>
+                  <input class="input" id="set-geo-radius" type="number" step="10" value="250">
+                </div>
+              </div>
+
+              <hr class="my-4" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">
+
+              <div class="list-row">
+                <div class="list-row__main">
+                  <p class="list-row__title">Pay-at-Order Enforcement (Apple Pay / UPI / Card)</p>
+                  <p class="list-row__meta">Require customers to pay upfront with Apple Pay, UPI, or Card before the order fires to the kitchen. Zero unpaid food cooked.</p>
+                </div>
+                <label class="switch"><input type="checkbox" id="set-pay-order" checked><span class="switch__track"></span><span class="sr-only">Pay at order</span></label>
+              </div>
+
+              <hr class="my-4" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">
+
+              <div class="list-row">
+                <div class="list-row__main">
+                  <p class="list-row__title">Floor Plan Seated Check</p>
+                  <p class="list-row__meta">Warn kitchen staff if an order arrives for a table marked Vacant on the Floor Plan so ghost orders are caught immediately.</p>
+                </div>
+                <label class="switch"><input type="checkbox" id="set-seated-check" checked><span class="switch__track"></span><span class="sr-only">Seated check</span></label>
+              </div>
+
+              <hr class="my-4" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">
+
               <div class="list-row">
                 <div class="list-row__main">
                   <p class="list-row__title">Print visit QR slip</p>
@@ -167,6 +214,7 @@
                 </div>
                 <label class="switch"><input type="checkbox" id="set-print-slip"><span class="switch__track"></span><span class="sr-only">Print visit QR slip</span></label>
               </div>
+
               <div class="row mt-6" style="justify-content:flex-end">
                 <button class="btn btn--primary" type="button" data-save="security">Save security</button>
               </div>
@@ -277,6 +325,6 @@
 <script>if(window.lucide)lucide.createIcons();</script>
 <script src="../assets/js/ui.js"></script>
 <script src="../assets/js/file-check.js"></script>
-<script type="module" src="../assets/js/owner.js"></script>
+<script type="module" src="../assets/js/owner.js?v=20261112d"></script>
 </body>
 </html>
