@@ -5,9 +5,55 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TableTap — QR table ordering for restaurants, bars and cafés</title>
 <meta name="description" content="TableTap turns the QR code on every table into a live ordering channel. Guests order from their phone, the kitchen sees the ticket instantly. One lifetime price of $49.">
-<link rel="stylesheet" href="assets/css/fonts.css?v=20261111d">
-<link rel="stylesheet" href="assets/css/style.css?v=20261111d">
+<link rel="stylesheet" href="assets/css/fonts.css?v=20261112a">
+<link rel="stylesheet" href="assets/css/style.css?v=20261112a">
 <style id="homepage-custom-styles">
+  /* Language Picker Component */
+  .lang-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--line, #E5E0D8);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .lang-picker__icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--muted, #64748B);
+    pointer-events: none;
+  }
+  .lang-picker__icon [data-lucide] {
+    width: 13px;
+    height: 13px;
+  }
+  .lang-switcher-select {
+    background: transparent;
+    border: none;
+    color: var(--ink, #0F1114);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    padding: 2px 0;
+  }
+  .theme-dark .lang-picker,
+  .hero-redesign .lang-picker {
+    background: #1A1F26;
+    border-color: #2D343F;
+    color: #F1F5F9;
+  }
+  .theme-dark .lang-switcher-select,
+  .hero-redesign .lang-switcher-select {
+    color: #F1F5F9;
+  }
+  .lang-switcher-select option {
+    background: #1A1F26;
+    color: #F1F5F9;
+  }
   /* ==========================================================================
      Redesigned Hero Section (Instant 2-3 Second Comprehension)
      ========================================================================== */
@@ -1288,17 +1334,30 @@
 
     <nav class="site-nav" aria-label="Main">
       <ul class="site-nav__list">
-        <li><a class="site-nav__link" href="#how-it-works">How it works</a></li>
-        <li><a class="site-nav__link" href="#menu-preview">Guest menu</a></li>
-        <li><a class="site-nav__link" href="#features">Features</a></li>
-        <li><a class="site-nav__link" href="#pricing">Pricing</a></li>
-        <li><a class="site-nav__link" href="#faq">FAQ</a></li>
+        <li><a class="site-nav__link" href="#how-it-works" data-i18n="nav.how_it_works">How it works</a></li>
+        <li><a class="site-nav__link" href="#menu-preview" data-i18n="nav.guest_menu">Guest menu</a></li>
+        <li><a class="site-nav__link" href="#features" data-i18n="nav.features">Features</a></li>
+        <li><a class="site-nav__link" href="#pricing" data-i18n="nav.pricing">Pricing</a></li>
+        <li><a class="site-nav__link" href="#faq" data-i18n="nav.faq">FAQ</a></li>
       </ul>
     </nav>
 
     <div class="site-header__actions">
-      <a class="btn btn--ghost btn--sm" href="auth/login.html">Login</a>
-      <a class="btn btn--primary btn--sm" href="menu/index.html?r=olive-table">Open the demo</a>
+      <!-- Language Picker -->
+      <div class="lang-picker" title="Language / Язык">
+        <span class="lang-picker__icon" aria-hidden="true"><i data-lucide="globe"></i></span>
+        <select class="lang-switcher-select" aria-label="Language selection">
+          <option value="en">🇬🇧 EN</option>
+          <option value="ru">🇷🇺 RU</option>
+          <option value="uk">🇺🇦 UK</option>
+          <option value="es">🇪🇸 ES</option>
+          <option value="de">🇩🇪 DE</option>
+          <option value="fr">🇫🇷 FR</option>
+        </select>
+      </div>
+
+      <a class="btn btn--ghost btn--sm" href="auth/login.html" data-i18n="nav.login">Login</a>
+      <a class="btn btn--primary btn--sm" href="menu/index.html?r=olive-table" data-i18n="nav.open_demo">Open the demo</a>
       <button class="btn btn--icon nav-toggle" type="button" data-nav-toggle aria-controls="mobile-nav" aria-expanded="false" aria-label="Open menu">
         <i data-lucide="menu"></i>
       </button>
@@ -1308,14 +1367,27 @@
   <div class="mobile-nav" id="mobile-nav">
     <nav aria-label="Mobile">
       <ul class="mobile-nav__list">
-        <li><a class="mobile-nav__link" href="#how-it-works">How it works</a></li>
-        <li><a class="mobile-nav__link" href="#menu-preview">Guest menu</a></li>
-        <li><a class="mobile-nav__link" href="#features">Features</a></li>
-        <li><a class="mobile-nav__link" href="#pricing">Pricing</a></li>
-        <li><a class="mobile-nav__link" href="#faq">FAQ</a></li>
+        <li><a class="mobile-nav__link" href="#how-it-works" data-i18n="nav.how_it_works">How it works</a></li>
+        <li><a class="mobile-nav__link" href="#menu-preview" data-i18n="nav.guest_menu">Guest menu</a></li>
+        <li><a class="mobile-nav__link" href="#features" data-i18n="nav.features">Features</a></li>
+        <li><a class="mobile-nav__link" href="#pricing" data-i18n="nav.pricing">Pricing</a></li>
+        <li><a class="mobile-nav__link" href="#faq" data-i18n="nav.faq">FAQ</a></li>
       </ul>
     </nav>
-    <a class="btn btn--primary btn--block" href="menu/index.html?r=olive-table">Open the demo</a>
+    <div style="padding: 10px 0;">
+      <div class="lang-picker" style="width:100%;justify-content:center;">
+        <span class="lang-picker__icon" aria-hidden="true"><i data-lucide="globe"></i></span>
+        <select class="lang-switcher-select" aria-label="Mobile Language selection">
+          <option value="en">🇬🇧 English</option>
+          <option value="ru">🇷🇺 Русский</option>
+          <option value="uk">🇺🇦 Українська</option>
+          <option value="es">🇪🇸 Español</option>
+          <option value="de">🇩🇪 Deutsch</option>
+          <option value="fr">🇫🇷 Français</option>
+        </select>
+      </div>
+    </div>
+    <a class="btn btn--primary btn--block" href="menu/index.html?r=olive-table" data-i18n="nav.open_demo">Open the demo</a>
   </div>
 </header>
 
@@ -1331,18 +1403,18 @@
         <div class="hero-badge-wrap">
           <span class="hero-badge">
             <span class="hero-badge__dot"></span>
-            <strong>Contactless QR Table Ordering &amp; Live Kitchen Pass</strong>
+            <strong data-i18n="hero.badge_lead">Contactless QR Table Ordering &amp; Live Kitchen Pass</strong>
             <span class="hero-badge__sep">·</span>
-            <span>$49 Lifetime License</span>
+            <span data-i18n="hero.badge_price">$49 Lifetime License</span>
           </span>
         </div>
 
         <h1 class="hero-redesign__title">
-          Guests scan the table QR.<br>
-          <span class="hero-redesign__title-accent">Your kitchen cooks the ticket.</span>
+          <span data-i18n="hero.title_p1">Guests scan the table QR.</span><br>
+          <span class="hero-redesign__title-accent" data-i18n="hero.title_accent">Your kitchen cooks the ticket.</span>
         </h1>
 
-        <p class="hero-redesign__lead">
+        <p class="hero-redesign__lead" data-i18n="hero.lead">
           TableTap turns any phone camera into an instant ordering channel. Diners scan their table’s QR code, browse your live menu, and tap to order. Tickets chime instantly on your kitchen tablet. No apps, no waiting for waitstaff, zero commissions.
         </p>
 
@@ -1351,22 +1423,22 @@
           <div class="hero-pillar">
             <i data-lucide="smartphone" class="hero-pillar__icon"></i>
             <div class="hero-pillar__text">
-              <strong>Zero App Downloads</strong>
-              <span>Guests scan &amp; order in under 0.8s on Safari or Chrome</span>
+              <strong data-i18n="hero.pillar1_title">Zero App Downloads</strong>
+              <span data-i18n="hero.pillar1_desc">Guests scan &amp; order in under 0.8s on Safari or Chrome</span>
             </div>
           </div>
           <div class="hero-pillar">
             <i data-lucide="bell-ring" class="hero-pillar__icon"></i>
             <div class="hero-pillar__text">
-              <strong>Instant Kitchen Chime</strong>
-              <span>Tickets pop up on any tablet in real time</span>
+              <strong data-i18n="hero.pillar2_title">Instant Kitchen Chime</strong>
+              <span data-i18n="hero.pillar2_desc">Tickets pop up on any tablet in real time</span>
             </div>
           </div>
           <div class="hero-pillar">
             <i data-lucide="coins" class="hero-pillar__icon"></i>
             <div class="hero-pillar__text">
-              <strong>Zero Commissions</strong>
-              <span>One-time $49 price. Keep 100% of your sales</span>
+              <strong data-i18n="hero.pillar3_title">Zero Commissions</strong>
+              <span data-i18n="hero.pillar3_desc">One-time $49 price. Keep 100% of your sales</span>
             </div>
           </div>
         </div>
@@ -1374,13 +1446,13 @@
         <!-- Action CTAs -->
         <div class="hero-redesign__actions">
           <a class="btn btn--primary btn--lg hero-btn-main" href="menu/index.html?r=olive-table&t=oli-7" target="_blank" rel="noopener">
-            <i data-lucide="qr-code"></i> Try Guest Menu (Table 7 Demo)
+            <i data-lucide="qr-code"></i> <span data-i18n="hero.btn_guest_demo">Try Guest Menu (Table 7 Demo)</span>
           </a>
           <a class="btn btn--lg hero-btn-sub" href="kitchen/index.html?r=olive-table" target="_blank" rel="noopener">
-            <i data-lucide="chef-hat"></i> View Live Kitchen Pass
+            <i data-lucide="chef-hat"></i> <span data-i18n="hero.btn_kitchen">View Live Kitchen Pass</span>
           </a>
           <a class="btn btn--ghost btn--lg hero-btn-ghost" href="#how-it-works">
-            See how it works <i data-lucide="arrow-down"></i>
+            <span data-i18n="hero.btn_how">See how it works</span> <i data-lucide="arrow-down"></i>
           </a>
         </div>
 
@@ -1392,12 +1464,12 @@
         <div class="hero-flow__bar">
           <div class="hero-flow__bar-left">
             <span class="hero-flow__status-dot"></span>
-            <strong>Live System Preview</strong>
+            <strong data-i18n="hero.preview_title">Live System Preview</strong>
             <span class="hero-flow__bar-tag">The Olive Table · Bandra West</span>
           </div>
           <div class="hero-flow__bar-right">
-            <span class="hero-flow__bar-badge"><i data-lucide="volume-2"></i> Kitchen Chime Active</span>
-            <span class="hero-flow__bar-badge hero-flow__bar-badge--live"><span class="dot dot--live"></span> Realtime Sync</span>
+            <span class="hero-flow__bar-badge"><i data-lucide="volume-2"></i> <span data-i18n="hero.chime_active">Kitchen Chime Active</span></span>
+            <span class="hero-flow__bar-badge hero-flow__bar-badge--live"><span class="dot dot--live"></span> <span data-i18n="hero.realtime_sync">Realtime Sync</span></span>
           </div>
         </div>
 
@@ -1406,8 +1478,8 @@
           <!-- Column 1: The Table (Guest Phone + Scannable Stand) -->
           <div class="hero-flow__col hero-flow__col--table">
             <div class="flow-card-header">
-              <span class="flow-step-pill">Step 1 · Dining Table</span>
-              <h4>Guest Scans &amp; Orders</h4>
+              <span class="flow-step-pill" data-i18n="hero.step1_pill">Step 1 · Dining Table</span>
+              <h4 data-i18n="hero.step1_title">Guest Scans &amp; Orders</h4>
             </div>
 
             <div class="table-mockup">
@@ -1448,7 +1520,7 @@
                     <rect x="86" y="84" width="6" height="6" fill="#111"/>
                   </svg>
                 </div>
-                <span class="table-stand__hint"><i data-lucide="camera"></i> Point phone camera</span>
+                <span class="table-stand__hint"><i data-lucide="camera"></i> <span data-i18n="hero.table_stand_hint">Point phone camera</span></span>
               </div>
 
               <!-- Guest Phone Screen Snapshot -->
@@ -1473,7 +1545,7 @@
                 </div>
                 <div class="guest-mini-phone__sent">
                   <i data-lucide="check-circle-2"></i>
-                  <span>Order #1047 Sent to Kitchen</span>
+                  <span data-i18n="hero.order_sent">Order #1047 Sent to Kitchen</span>
                 </div>
               </div>
             </div>
@@ -1495,8 +1567,8 @@
           <!-- Column 3: The Kitchen Pass (Live KDS Screen) -->
           <div class="hero-flow__col hero-flow__col--kitchen">
             <div class="flow-card-header">
-              <span class="flow-step-pill flow-step-pill--kitchen">Step 2 · The Pass</span>
-              <h4>Kitchen Tablet Displays Ticket</h4>
+              <span class="flow-step-pill flow-step-pill--kitchen" data-i18n="hero.step2_pill">Step 2 · The Pass</span>
+              <h4 data-i18n="hero.step2_title">Kitchen Tablet Displays Ticket</h4>
             </div>
 
             <div class="kitchen-tablet-mockup">
@@ -1508,7 +1580,7 @@
                     <span class="hero-ticket__time">Just now · 9:42 PM</span>
                   </div>
                   <span class="hero-ticket__badge hero-ticket__badge--new">
-                    <i data-lucide="bell"></i> New Order
+                    <i data-lucide="bell"></i> <span data-i18n="hero.new_order">New Order</span>
                   </span>
                 </div>
 
@@ -1527,11 +1599,11 @@
                 </div>
 
                 <div class="hero-ticket__actions">
-                  <button type="button" class="hero-ticket__btn hero-ticket__btn--cook" onclick="this.textContent='Cooking...'; this.style.background='#D97706';">
-                    <i data-lucide="flame"></i> Mark Preparing
+                  <button type="button" class="hero-ticket__btn hero-ticket__btn--cook" onclick="this.textContent=window.TableTapI18n?TableTapI18n.t('hero.mark_preparing'):'Preparing'; this.style.background='#D97706';">
+                    <i data-lucide="flame"></i> <span data-i18n="hero.mark_preparing">Mark Preparing</span>
                   </button>
-                  <button type="button" class="hero-ticket__btn hero-ticket__btn--ready" onclick="this.textContent='Ready!'; this.style.background='#16A34A';">
-                    <i data-lucide="check"></i> Mark Ready
+                  <button type="button" class="hero-ticket__btn hero-ticket__btn--ready" onclick="this.textContent=window.TableTapI18n?TableTapI18n.t('hero.mark_ready'):'Ready!'; this.style.background='#16A34A';">
+                    <i data-lucide="check"></i> <span data-i18n="hero.mark_ready">Mark Ready</span>
                   </button>
                 </div>
               </div>
@@ -1564,22 +1636,22 @@
         <div class="hero-flow__footer">
           <div class="flow-step-item">
             <span class="step-num">1</span>
-            <span>Guest sits at table</span>
+            <span data-i18n="hero.flow_step1">Guest sits at table</span>
           </div>
           <i data-lucide="chevron-right" class="step-arrow"></i>
           <div class="flow-step-item">
             <span class="step-num">2</span>
-            <span>Scans table QR code</span>
+            <span data-i18n="hero.flow_step2">Scans table QR code</span>
           </div>
           <i data-lucide="chevron-right" class="step-arrow"></i>
           <div class="flow-step-item">
             <span class="step-num">3</span>
-            <span>Orders &amp; pays on phone</span>
+            <span data-i18n="hero.flow_step3">Orders &amp; pays on phone</span>
           </div>
           <i data-lucide="chevron-right" class="step-arrow"></i>
           <div class="flow-step-item">
             <span class="step-num">4</span>
-            <span>Kitchen prepares ticket</span>
+            <span data-i18n="hero.flow_step4">Kitchen prepares ticket</span>
           </div>
         </div>
 
@@ -1593,10 +1665,10 @@
     <div class="container">
       <div class="section-head section-head--center">
         <span class="badge badge--success" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:0.75rem;margin-bottom:0.75rem;">
-          <span class="dot dot--live"></span> Real Guest Experience
+          <span class="dot dot--live"></span> <span data-i18n="preview.badge">Real Guest Experience</span>
         </span>
-        <h2 class="section-title">What your guests see when they scan</h2>
-        <p class="section-sub">
+        <h2 class="section-title" data-i18n="preview.title">What your guests see when they scan</h2>
+        <p class="section-sub" data-i18n="preview.sub">
           No app downloads, no account setup, no phone number verification. In under a second, guests have your full menu on their phone with their table already locked in.
         </p>
       </div>
@@ -1633,17 +1705,17 @@
 
               <!-- Quick Table Actions -->
               <div class="menu-phone__actions">
-                <span class="menu-phone__pill"><i data-lucide="bell"></i> Call waiter</span>
-                <span class="menu-phone__pill"><i data-lucide="receipt"></i> Request bill</span>
+                <span class="menu-phone__pill"><i data-lucide="bell"></i> <span data-i18n="preview.call_waiter">Call waiter</span></span>
+                <span class="menu-phone__pill"><i data-lucide="receipt"></i> <span data-i18n="preview.request_bill">Request bill</span></span>
               </div>
 
               <!-- Category Chips -->
               <div class="menu-phone__chips">
-                <span class="menu-phone__chip menu-phone__chip--active">All</span>
-                <span class="menu-phone__chip">Mains</span>
-                <span class="menu-phone__chip">Pizza</span>
-                <span class="menu-phone__chip">Desserts</span>
-                <span class="menu-phone__chip">Drinks</span>
+                <span class="menu-phone__chip menu-phone__chip--active" data-i18n="preview.all">All</span>
+                <span class="menu-phone__chip" data-i18n="preview.mains">Mains</span>
+                <span class="menu-phone__chip" data-i18n="preview.pizza">Pizza</span>
+                <span class="menu-phone__chip" data-i18n="preview.desserts">Desserts</span>
+                <span class="menu-phone__chip" data-i18n="preview.drinks">Drinks</span>
               </div>
 
               <!-- Live Dishes -->
@@ -1653,13 +1725,13 @@
                   <img class="menu-phone__item-img" width="52" height="52" style="width:52px;height:52px;min-width:52px;min-height:52px;max-width:52px;max-height:52px;object-fit:cover;border-radius:6px;flex-shrink:0;display:block;" src="https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=150&q=70" alt="Margherita Pizza">
                   <div class="menu-phone__item-body" style="flex:1;min-width:0;">
                     <div class="menu-phone__item-header">
-                      <span class="menu-phone__item-name">Margherita Pizza</span>
+                      <span class="menu-phone__item-name" data-i18n="dish.margherita.name">Margherita Pizza</span>
                       <span class="tag tag--veg" style="font-size:0.625rem;padding:1px 5px;">Veg</span>
                     </div>
-                    <p class="menu-phone__item-desc">San Marzano tomato, fior di latte and fresh basil on 48h dough.</p>
+                    <p class="menu-phone__item-desc" data-i18n="dish.margherita.desc">San Marzano tomato, fior di latte and fresh basil on 48h dough.</p>
                     <div class="menu-phone__item-footer">
                       <span class="menu-phone__item-price">$13.00</span>
-                      <span class="menu-phone__add-btn"><i data-lucide="plus"></i> Add</span>
+                      <span class="menu-phone__add-btn"><i data-lucide="plus"></i> <span data-i18n="preview.add">Add</span></span>
                     </div>
                   </div>
                 </div>
@@ -1669,12 +1741,12 @@
                   <img class="menu-phone__item-img" width="52" height="52" style="width:52px;height:52px;min-width:52px;min-height:52px;max-width:52px;max-height:52px;object-fit:cover;border-radius:6px;flex-shrink:0;display:block;" src="https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=150&q=70" alt="Slow-braised lamb shoulder">
                   <div class="menu-phone__item-body" style="flex:1;min-width:0;">
                     <div class="menu-phone__item-header">
-                      <span class="menu-phone__item-name">Slow-braised Lamb Shoulder</span>
+                      <span class="menu-phone__item-name" data-i18n="dish.lamb.name">Slow-braised Lamb Shoulder</span>
                     </div>
-                    <p class="menu-phone__item-desc">Six hours in the oven, served on orzo with gremolata and pan juices.</p>
+                    <p class="menu-phone__item-desc" data-i18n="dish.lamb.desc">Six hours in the oven, served on orzo with gremolata and pan juices.</p>
                     <div class="menu-phone__item-footer">
                       <span class="menu-phone__item-price">$24.00</span>
-                      <span class="menu-phone__add-btn"><i data-lucide="plus"></i> Add</span>
+                      <span class="menu-phone__add-btn"><i data-lucide="plus"></i> <span data-i18n="preview.add">Add</span></span>
                     </div>
                   </div>
                 </div>
@@ -1684,13 +1756,13 @@
                   <img class="menu-phone__item-img" width="52" height="52" style="width:52px;height:52px;min-width:52px;min-height:52px;max-width:52px;max-height:52px;object-fit:cover;border-radius:6px;flex-shrink:0;display:block;" src="https://images.unsplash.com/photo-1519676867240-f03562e64548?auto=format&fit=crop&w=150&q=70" alt="Baklava Cheesecake">
                   <div class="menu-phone__item-body" style="flex:1;min-width:0;">
                     <div class="menu-phone__item-header">
-                      <span class="menu-phone__item-name" style="text-decoration:line-through;color:var(--muted);">Baklava Cheesecake</span>
-                      <span class="sold-out-flag">Sold out</span>
+                      <span class="menu-phone__item-name" style="text-decoration:line-through;color:var(--muted);" data-i18n="dish.baklava.name">Baklava Cheesecake</span>
+                      <span class="sold-out-flag" data-i18n="preview.sold_out">Sold out</span>
                     </div>
-                    <p class="menu-phone__item-desc">Pistachio, filo pastry, honey syrup. Marked 86'd on pass.</p>
+                    <p class="menu-phone__item-desc" data-i18n="dish.baklava.desc">Pistachio, filo pastry, honey syrup. Marked 86'd on pass.</p>
                     <div class="menu-phone__item-footer">
                       <span class="menu-phone__item-price" style="color:var(--muted);">$9.50</span>
-                      <span class="menu-phone__add-btn" style="opacity:0.4;cursor:not-allowed;"><i data-lucide="ban"></i> 86'd</span>
+                      <span class="menu-phone__add-btn" style="opacity:0.4;cursor:not-allowed;"><i data-lucide="ban"></i> <span data-i18n="preview.sold_out">86'd</span></span>
                     </div>
                   </div>
                 </div>
@@ -1700,13 +1772,13 @@
                   <img class="menu-phone__item-img" width="52" height="52" style="width:52px;height:52px;min-width:52px;min-height:52px;max-width:52px;max-height:52px;object-fit:cover;border-radius:6px;flex-shrink:0;display:block;" src="https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=150&q=70" alt="House Lemonade">
                   <div class="menu-phone__item-body" style="flex:1;min-width:0;">
                     <div class="menu-phone__item-header">
-                      <span class="menu-phone__item-name">House Lemonade</span>
+                      <span class="menu-phone__item-name" data-i18n="dish.lemonade.name">House Lemonade</span>
                       <span class="tag tag--vegan" style="font-size:0.625rem;padding:1px 5px;">Vegan</span>
                     </div>
-                    <p class="menu-phone__item-desc">Pressed lemon, fresh rosemary syrup, pink peppercorn.</p>
+                    <p class="menu-phone__item-desc" data-i18n="dish.lemonade.desc">Pressed lemon, fresh rosemary syrup, pink peppercorn.</p>
                     <div class="menu-phone__item-footer">
                       <span class="menu-phone__item-price">$4.50</span>
-                      <span class="menu-phone__add-btn"><i data-lucide="plus"></i> Add</span>
+                      <span class="menu-phone__add-btn"><i data-lucide="plus"></i> <span data-i18n="preview.add">Add</span></span>
                     </div>
                   </div>
                 </div>
@@ -1719,7 +1791,7 @@
                   <span class="menu-phone__cart-total">$17.50</span>
                 </div>
                 <span class="menu-phone__cart-action">
-                  View order <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+                  <span data-i18n="preview.view_order">View order</span> <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
                 </span>
               </div>
             </div>
@@ -1736,12 +1808,12 @@
             <div class="menu-qr-card__body">
               <div class="menu-qr-code" id="homepage-qr-code" style="width:140px;height:140px;min-width:140px;min-height:140px;max-width:140px;max-height:140px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:8px;padding:8px;margin:0 auto;flex-shrink:0;box-sizing:border-box;box-shadow:0 4px 12px rgba(0,0,0,0.08);" title="Scan to open live Table 7 menu"></div>
               <div class="menu-qr-card__info">
-                <h4 style="font-size:1.125rem;font-weight:600;margin-bottom:6px;">Scan with your phone</h4>
-                <p class="text-sm muted" style="margin-bottom:14px;line-height:1.45;">
+                <h4 style="font-size:1.125rem;font-weight:600;margin-bottom:6px;" data-i18n="preview.scan_phone">Scan with your phone</h4>
+                <p class="text-sm muted" style="margin-bottom:14px;line-height:1.45;" data-i18n="preview.scan_desc">
                   Point your phone camera at this QR code to test the live guest ordering experience right now on Table 7.
                 </p>
                 <a class="btn btn--primary btn--sm" href="menu/index.html?r=olive-table&t=oli-7" target="_blank" rel="noopener">
-                  <i data-lucide="external-link"></i> Open Table 7 Menu in Browser
+                  <i data-lucide="external-link"></i> <span data-i18n="preview.open_btn">Open Table 7 Menu in Browser</span>
                 </a>
               </div>
             </div>
@@ -1751,32 +1823,32 @@
             <div class="benefit-row">
               <div class="benefit-icon"><i data-lucide="zap"></i></div>
               <div>
-                <h4 class="benefit-title">Sub-Second Load Time (0.8s)</h4>
-                <p class="benefit-text">Zero framework bloat. Opens in milliseconds even in basement dining rooms with spotty 3G coverage.</p>
+                <h4 class="benefit-title" data-i18n="preview.load_title">Sub-Second Load Time (0.8s)</h4>
+                <p class="benefit-text" data-i18n="preview.load_desc">Zero framework bloat. Opens in milliseconds even in basement dining rooms with spotty 3G coverage.</p>
               </div>
             </div>
 
             <div class="benefit-row">
               <div class="benefit-icon"><i data-lucide="shield-check"></i></div>
               <div>
-                <h4 class="benefit-title">Tamper-Proof Table ID</h4>
-                <p class="benefit-text">Table 7 is pre-locked into the link with session-join secrets. Guests cannot accidentally or maliciously order to other tables.</p>
+                <h4 class="benefit-title" data-i18n="preview.tamper_title">Tamper-Proof Table ID</h4>
+                <p class="benefit-text" data-i18n="preview.tamper_desc">Table 7 is pre-locked into the link with session-join secrets. Guests cannot accidentally or maliciously order to other tables.</p>
               </div>
             </div>
 
             <div class="benefit-row">
               <div class="benefit-icon"><i data-lucide="sliders-horizontal"></i></div>
               <div>
-                <h4 class="benefit-title">Dietary Filters & Custom Notes</h4>
-                <p class="benefit-text">One-tap filters for Veg, Vegan, Gluten-Free, and Spicy. Diners customize sizes, add toppings, and leave kitchen notes.</p>
+                <h4 class="benefit-title" data-i18n="preview.dietary_title">Dietary Filters &amp; Custom Notes</h4>
+                <p class="benefit-text" data-i18n="preview.dietary_desc">One-tap filters for Veg, Vegan, Gluten-Free, and Spicy. Diners customize sizes, add toppings, and leave kitchen notes.</p>
               </div>
             </div>
 
             <div class="benefit-row">
               <div class="benefit-icon"><i data-lucide="users"></i></div>
               <div>
-                <h4 class="benefit-title">Shared Table Bills (One-Tap Join)</h4>
-                <p class="benefit-text">Dining companions scan the primary diner's phone to join the open session and order together onto one combined ticket.</p>
+                <h4 class="benefit-title" data-i18n="preview.shared_title">Shared Table Bills (One-Tap Join)</h4>
+                <p class="benefit-text" data-i18n="preview.shared_desc">Dining companions scan the primary diner's phone to join the open session and order together onto one combined ticket.</p>
               </div>
             </div>
           </div>
@@ -1826,9 +1898,9 @@
   <section class="section" id="features">
     <div class="container">
       <div class="section-head section-head--center">
-        <span class="badge badge--neutral" style="margin-bottom:0.75rem;">Complete Hospitality Suite</span>
-        <h2 class="section-title">Built for the floor, the pass & the back office</h2>
-        <p class="section-sub">
+        <span class="badge badge--neutral" style="margin-bottom:0.75rem;" data-i18n="features.badge">Complete Hospitality Suite</span>
+        <h2 class="section-title" data-i18n="features.title">Built for the floor, the pass & the back office</h2>
+        <p class="section-sub" data-i18n="features.sub">
           Every tool your venue needs to take orders faster, accelerate table turnover, and eliminate communication friction between staff and guests.
         </p>
       </div>
@@ -1837,8 +1909,8 @@
         <!-- Feature 1: Guest Self-Ordering -->
         <article class="f-card">
           <div class="f-card__icon"><i data-lucide="smartphone"></i></div>
-          <h3 class="f-card__title">Guest Self-Ordering</h3>
-          <p class="f-card__desc">Browser-native digital menu with sub-second loading speed, zero apps required, and high-resolution dish photography.</p>
+          <h3 class="f-card__title" data-i18n="f1.title">Guest Self-Ordering</h3>
+          <p class="f-card__desc" data-i18n="f1.desc">Browser-native digital menu with sub-second loading speed, zero apps required, and high-resolution dish photography.</p>
           <ul class="f-card__list">
             <li><i data-lucide="check"></i> 0.8s load time on any mobile browser</li>
             <li><i data-lucide="check"></i> Veg, Vegan, GF, and Spicy dietary tags</li>
@@ -1850,8 +1922,8 @@
         <!-- Feature 2: Live Kitchen KDS -->
         <article class="f-card">
           <div class="f-card__icon"><i data-lucide="chef-hat"></i></div>
-          <h3 class="f-card__title">Live Kitchen Pass (KDS)</h3>
-          <p class="f-card__desc">High-contrast dark-mode ticket board designed to be read across the line, with audio chimes and progress tracking.</p>
+          <h3 class="f-card__title" data-i18n="f2.title">Live Kitchen Pass (KDS)</h3>
+          <p class="f-card__desc" data-i18n="f2.desc">High-contrast dark-mode ticket board designed to be read across the line, with audio chimes and progress tracking.</p>
           <ul class="f-card__list">
             <li><i data-lucide="check"></i> New &rarr; Preparing &rarr; Ready &rarr; Served pipeline</li>
             <li><i data-lucide="check"></i> Web Audio chimes on new ticket arrival</li>
@@ -1863,8 +1935,8 @@
         <!-- Feature 3: Visit QR Security -->
         <article class="f-card">
           <div class="f-card__icon"><i data-lucide="shield-alert"></i></div>
-          <h3 class="f-card__title">Fraud-Proof Visit QR</h3>
-          <p class="f-card__desc">Cryptographically secured session secrets prevent stale QR links, remote spamming, and prank ordering.</p>
+          <h3 class="f-card__title" data-i18n="f3.title">Fraud-Proof Visit QR</h3>
+          <p class="f-card__desc" data-i18n="f3.desc">Cryptographically secured session secrets prevent stale QR links, remote spamming, and prank ordering.</p>
           <ul class="f-card__list">
             <li><i data-lucide="check"></i> Dynamic join secrets generated on seating</li>
             <li><i data-lucide="check"></i> Old visit QR links auto-expire on bill close</li>
@@ -1876,8 +1948,8 @@
         <!-- Feature 4: Table & Floor Management -->
         <article class="f-card">
           <div class="f-card__icon"><i data-lucide="layout-grid"></i></div>
-          <h3 class="f-card__title">Floor & Table Control</h3>
-          <p class="f-card__desc">Live visual floor plan showing open tables, occupied sessions, waiter calls, and counter checkout status.</p>
+          <h3 class="f-card__title" data-i18n="f4.title">Floor & Table Control</h3>
+          <p class="f-card__desc" data-i18n="f4.desc">Live visual floor plan showing open tables, occupied sessions, waiter calls, and counter checkout status.</p>
           <ul class="f-card__list">
             <li><i data-lucide="check"></i> Interactive floor map with live occupancy</li>
             <li><i data-lucide="check"></i> 4-digit backup Table Key entry</li>
@@ -1889,8 +1961,8 @@
         <!-- Feature 5: Flexible Billing & Taxes -->
         <article class="f-card">
           <div class="f-card__icon"><i data-lucide="receipt"></i></div>
-          <h3 class="f-card__title">Billing, Taxes & Tips</h3>
-          <p class="f-card__desc">Full compliance with regional taxes, optional service charges, tip presets, and print-ready digital receipts.</p>
+          <h3 class="f-card__title" data-i18n="f5.title">Billing, Taxes & Tips</h3>
+          <p class="f-card__desc" data-i18n="f5.desc">Full compliance with regional taxes, optional service charges, tip presets, and print-ready digital receipts.</p>
           <ul class="f-card__list">
             <li><i data-lucide="check"></i> Inclusive or exclusive tax handling (GST/VAT)</li>
             <li><i data-lucide="check"></i> Configurable tip presets (10%, 15%, 20%)</li>
@@ -1902,8 +1974,8 @@
         <!-- Feature 6: Realtime Cloud & Analytics -->
         <article class="f-card">
           <div class="f-card__icon"><i data-lucide="database"></i></div>
-          <h3 class="f-card__title">Cloud Database & Analytics</h3>
-          <p class="f-card__desc">Powered by live MongoDB Atlas with 2-way Google Sheets export and comprehensive shift analytics.</p>
+          <h3 class="f-card__title" data-i18n="f6.title">Cloud Database & Analytics</h3>
+          <p class="f-card__desc" data-i18n="f6.desc">Powered by live MongoDB Atlas with 2-way Google Sheets export and comprehensive shift analytics.</p>
           <ul class="f-card__list">
             <li><i data-lucide="check"></i> Live MongoDB Atlas cloud cluster backend</li>
             <li><i data-lucide="check"></i> 1-click Google Sheets 2-way synchronization</li>
@@ -2075,6 +2147,7 @@
 </footer>
 
 <script src="assets/js/file-check.js"></script>
+<script src="assets/js/i18n.js?v=20261112a"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script>

@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kitchen — TableTap</title>
 <meta name="description" content="TableTap kitchen screen for The Olive Table.">
-<link rel="stylesheet" href="../assets/css/fonts.css">
-<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/fonts.css?v=20261112a">
+<link rel="stylesheet" href="../assets/css/style.css?v=20261112a">
 </head>
 <body class="theme-dark" data-page="kitchen">
 <div class="kitchen-app">
@@ -22,10 +22,21 @@
     <span class="k-topbar__spacer"></span>
 
     <div class="k-topbar__actions">
+      <div class="lang-picker" title="Language">
+        <span class="lang-picker__icon" aria-hidden="true"><i data-lucide="globe"></i></span>
+        <select class="lang-switcher-select" aria-label="Language">
+          <option value="en">🇬🇧 English</option>
+          <option value="ru">🇷🇺 Русский</option>
+          <option value="uk">🇺🇦 Українська</option>
+          <option value="es">🇪🇸 Español</option>
+          <option value="de">🇩🇪 Deutsch</option>
+          <option value="fr">🇫🇷 Français</option>
+        </select>
+      </div>
       <button class="btn btn--icon" type="button" id="k-sound" aria-pressed="true" aria-label="Sound on"><i data-lucide="volume-2"></i></button>
       <button class="btn btn--icon" type="button" id="k-fullscreen" aria-label="Full screen"><i data-lucide="maximize"></i></button>
-      <button class="btn btn--secondary" type="button" id="k-86-btn" title="86 Items / Mark dishes sold out"><i data-lucide="ban"></i> 86 Items</button>
-      <a class="btn btn--secondary" href="completed.html">Completed</a>
+      <button class="btn btn--secondary" type="button" id="k-86-btn" title="86 Items / Mark dishes sold out"><i data-lucide="ban"></i> <span data-i18n="kitchen.stoplist">86 Items</span></button>
+      <a class="btn btn--secondary" href="completed.html" data-i18n="kitchen.completed_btn">Completed</a>
       <button class="btn btn--icon" type="button" id="k-logout" aria-label="Log out"><i data-lucide="log-out"></i></button>
     </div>
   </header>
@@ -34,9 +45,9 @@
 
   <div data-tabs>
     <div class="k-tabs" role="tablist" aria-label="Kitchen columns">
-      <button class="tab" role="tab" type="button" data-k-tab="new" aria-selected="true" aria-controls="k-new" id="k-tab-new" tabindex="0">New</button>
-      <button class="tab" role="tab" type="button" data-k-tab="preparing" aria-selected="false" aria-controls="k-prep" id="k-tab-prep" tabindex="-1">Preparing</button>
-      <button class="tab" role="tab" type="button" data-k-tab="ready" aria-selected="false" aria-controls="k-ready" id="k-tab-ready" tabindex="-1">Ready</button>
+      <button class="tab" role="tab" type="button" data-k-tab="new" aria-selected="true" aria-controls="k-new" id="k-tab-new" tabindex="0" data-i18n="kitchen.tab_new">New</button>
+      <button class="tab" role="tab" type="button" data-k-tab="preparing" aria-selected="false" aria-controls="k-prep" id="k-tab-prep" tabindex="-1" data-i18n="kitchen.tab_prep">Preparing</button>
+      <button class="tab" role="tab" type="button" data-k-tab="ready" aria-selected="false" aria-controls="k-ready" id="k-tab-ready" tabindex="-1" data-i18n="kitchen.tab_ready">Ready</button>
     </div>
 
     <div class="k-columns" id="k-columns"></div>
@@ -49,6 +60,7 @@
 <script src="../assets/js/file-check.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/i18n.js?v=20261112a"></script>
 <script src="../assets/js/ui.js"></script>
 <script type="module" src="../assets/js/kitchen.js"></script>
 </body>

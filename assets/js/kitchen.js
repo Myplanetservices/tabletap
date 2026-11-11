@@ -288,19 +288,26 @@ function timerClass(minutes) {
 }
 
 function itemsHtml(order) {
-  return order.items.map((item, index) =>
-    '<div class="k-item' + (item.done ? ' k-item--done' : '') + '" data-item="' + order.id + ':' + index + '">' +
-    '<span class="k-item__qty">' + item.qty + '×</span>' +
-    '<div class="k-item__body"><p class="k-item__name">' + esc(item.name) + '</p>' +
-    (item.size || (item.addons && item.addons.length)
-      ? '<p class="k-item__opts">' + esc([item.size, (item.addons || []).join(', ')].filter(Boolean).join(' · ')) + '</p>' : '') +
-    (item.note ? '<p class="k-item__note">' + esc(item.note) + '</p>' : '') +
-    '</div></div>').join('');
+  return order.items.map((item, index) => {
+    const displayName = window.TableTapI18n ? window.TableTapI18n.translateDish(item.name) : item.name;
+    return '<div class="k-item' + (item.done ? ' k-item--done' : '') + '" data-item="' + order.id + ':' + index + '">' +
+      '<span class="k-item__qty">' + item.qty + '×</span>' +
+      '<div class="k-item__body"><p class="k-item__name">' + esc(displayName) + '</p>' +
+      (item.size || (item.addons && item.addons.length)
+        ? '<p class="k-item__opts">' + esc([item.size, (item.addons || []).join(', ')].filter(Boolean).join(' · ')) + '</p>' : '') +
+      (item.note ? '<p class="k-item__note">' + esc(item.note) + '</p>' : '') +
+      '</div></div>';
+  }).join('');
 }
 
 function ticketHtml(order, column) {
   const minutes = elapsedMinutes(order);
-  const action = column === 'new' ? 'Start' : column === 'preparing' ? 'Mark ready' : 'Served';
+  let action = column === 'new' ? 'Start' : column === 'preparing' ? 'Mark ready' : 'Served';
+  if (window.TableTapI18n) {
+    if (column === 'new') action = window.TableTapI18n.t('kitchen.action_start', 'Start');
+    else if (column === 'preparing') action = window.TableTapI18n.t('kitchen.action_ready', 'Mark ready');
+    else action = window.TableTapI18n.t('kitchen.action_served', 'Served');
+  }
   return '<article class="k-ticket' + (order.__flash ? ' k-ticket--flash' : '') + '" data-order="' + order.id + '">' +
     '<div class="k-ticket__head"><div><p class="k-ticket__table">' + esc(order.tableName) + '</p>' +
     '<p class="k-ticket__meta">Order #' + order.number + '</p></div>' +
@@ -334,18 +341,23 @@ function draw() {
   const counts = { new: ordersFor('new').length, preparing: ordersFor('preparing').length, ready: ordersFor('ready').length };
   const pending = ordersFor('pending_approval').length;
 
+  const labelNew = window.TableTapI18n ? window.TableTapI18n.t('kitchen.tab_new', 'New') : 'New';
+  const labelPrep = window.TableTapI18n ? window.TableTapI18n.t('kitchen.tab_prep', 'Preparing') : 'Preparing';
+  const labelReady = window.TableTapI18n ? window.TableTapI18n.t('kitchen.tab_ready', 'Ready') : 'Ready';
+
   if (countersHost) {
     countersHost.innerHTML =
-      '<span class="k-counter k-counter--new"><strong>' + counts.new + '</strong> New</span>' +
-      '<span class="k-counter"><strong>' + counts.preparing + '</strong> Preparing</span>' +
-      '<span class="k-counter k-counter--ready"><strong>' + counts.ready + '</strong> Ready</span>' +
+      '<span class="k-counter k-counter--new"><strong>' + counts.new + '</strong> ' + labelNew + '</span>' +
+      '<span class="k-counter"><strong>' + counts.preparing + '</strong> ' + labelPrep + '</span>' +
+      '<span class="k-counter k-counter--ready"><strong>' + counts.ready + '</strong> ' + labelReady + '</span>' +
       (pending ? '<span class="k-counter"><strong>' + pending + '</strong> Waiting approval</span>' : '');
   }
 
   if (!columnsHost) return;
 
-  columnsHost.innerHTML = COLUMNS.map(([status, label, colClass, id, tabId]) => {
+  columnsHost.innerHTML = COLUMNS.map(([status, defaultLabel, colClass, id, tabId]) => {
     const rows = ordersFor(status);
+    const colTitle = status === 'new' ? labelNew : status === 'preparing' ? labelPrep : labelReady;
     const pendingHtml = status === 'new' && pending
       ? '<div class="k-pending"><div class="k-pending__head"><span class="k-pending__table">Table 2</span>' +
         '<span class="badge badge--neutral">Pending</span></div>' +
@@ -353,7 +365,7 @@ function draw() {
       : '';
     return '<section class="k-col ' + colClass + '" id="' + id + '" role="tabpanel" aria-labelledby="' + tabId + '"' +
       (status !== activeTab ? ' hidden' : '') + '>' +
-      '<div class="k-col__head"><span class="k-col__title"><span class="dot" aria-hidden="true"></span> ' + label + '</span>' +
+      '<div class="k-col__head"><span class="k-col__title"><span class="dot" aria-hidden="true"></span> ' + colTitle + '</span>' +
       '<span class="k-col__count">' + rows.length + (rows.length === 1 ? ' ticket' : ' tickets') + '</span></div>' +
       '<div class="k-col__body">' +
       (rows.length ? rows.map((order) => ticketHtml(order, status)).join('') : '<p class="muted text-sm">Nothing here right now.</p>') +
@@ -524,3 +536,13 @@ if (page === 'kitchen-completed') {
 } else {
   draw();
 }
+
+window.addEventListener('tabletap:langchange', () => {
+  if (page === 'kitchen-completed') {
+    // completed list
+  } else {
+    draw();
+    update86ButtonBadge();
+  }
+  if (window.TableTapI18n) window.TableTapI18n.applyTranslations();
+});

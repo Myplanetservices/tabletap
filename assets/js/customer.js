@@ -324,41 +324,61 @@ function initMenu(ctx) {
     sectionsHost.innerHTML = categories.map((cat) => {
       const rows = visible.filter((item) => item.categoryId === cat.id);
       if (!rows.length) return '';
+      const catTitle = window.TableTapI18n ? window.TableTapI18n.translateDish(cat.name) : cat.name;
+      const countLabel = window.TableTapI18n ? window.TableTapI18n.t('menu.items_count', 'items') : 'items';
       return '<section class="menu-section" id="cat-' + cat.id + '">' +
-        '<div class="menu-section__head"><h2 class="menu-section__title">' + esc(cat.name) + '</h2>' +
-        '<span class="menu-section__count">' + rows.length + (rows.length === 1 ? ' item' : ' items') + '</span></div>' +
+        '<div class="menu-section__head"><h2 class="menu-section__title">' + esc(catTitle) + '</h2>' +
+        '<span class="menu-section__count">' + rows.length + ' ' + countLabel + '</span></div>' +
         '<div class="item-list">' + rows.map(itemCard).join('') + '</div></section>';
     }).join('');
 
     if (window.lucide) window.lucide.createIcons();
   }
 
-  const TAG_LABEL = { veg: 'Veg', vegan: 'Vegan', gf: 'Gluten-free', spicy: 'Spicy' };
+  function getTagLabel(tag) {
+    if (window.TableTapI18n) {
+      if (tag === 'veg') return window.TableTapI18n.t('dish.tag_veg', 'Veg');
+      if (tag === 'vegan') return window.TableTapI18n.t('dish.tag_vegan', 'Vegan');
+      if (tag === 'gf') return window.TableTapI18n.t('dish.tag_gf', 'Gluten-free');
+      if (tag === 'spicy') return window.TableTapI18n.t('dish.tag_spicy', 'Spicy');
+    }
+    const fallback = { veg: 'Veg', vegan: 'Vegan', gf: 'Gluten-free', spicy: 'Spicy' };
+    return fallback[tag] || tag;
+  }
 
   function itemCard(item) {
+    const displayName = window.TableTapI18n ? window.TableTapI18n.translateDish(item.name) : item.name;
+    const soldOutText = window.TableTapI18n ? window.TableTapI18n.t('preview.sold_out', 'Sold out') : 'Sold out';
     const tags = (item.tags || []).map((tag) =>
-      '<span class="tag tag--' + tag + '">' + TAG_LABEL[tag] + '</span>').join('');
+      '<span class="tag tag--' + tag + '">' + getTagLabel(tag) + '</span>').join('');
     const soldOut = !item.available;
     return '<button class="item-card' + (soldOut ? ' item-card--sold-out' : '') + '" type="button" ' +
       (soldOut ? 'disabled' : 'data-item="' + item.id + '"') + '>' +
-      '<img class="item-card__img" src="' + esc(item.image) + '" alt="' + esc(item.name) + '">' +
+      '<img class="item-card__img" src="' + esc(item.image) + '" alt="' + esc(displayName) + '">' +
       '<span class="item-card__body">' +
-      '<span class="item-card__name">' + esc(item.name) + '</span>' +
+      '<span class="item-card__name">' + esc(displayName) + '</span>' +
       '<span class="item-card__desc">' + esc(item.description) + '</span>' +
       '<span class="item-card__meta"><span class="item-card__price">' + money(item.price) + '</span>' +
-      (soldOut ? '<span class="sold-out-flag">Sold out</span>' : tags) +
+      (soldOut ? '<span class="sold-out-flag">' + soldOutText + '</span>' : tags) +
       '</span></span>' +
       '<span class="item-card__add" aria-hidden="true"><i data-lucide="plus"></i></span></button>';
   }
 
-  chipsHost.innerHTML = categories.map((cat, index) =>
-    '<a class="chip' + (index === 0 ? ' chip--active' : '') + '" href="#cat-' + cat.id + '">' + esc(cat.name) + '</a>'
-  ).join('');
+  function renderChips() {
+    chipsHost.innerHTML = categories.map((cat, index) => {
+      const catTitle = window.TableTapI18n ? window.TableTapI18n.translateDish(cat.name) : cat.name;
+      return '<a class="chip' + (index === 0 ? ' chip--active' : '') + '" href="#cat-' + cat.id + '">' + esc(catTitle) + '</a>';
+    }).join('');
+  }
+  renderChips();
 
   const dietOptions = [['veg', 'Veg'], ['vegan', 'Vegan'], ['gf', 'Gluten-free'], ['spicy', 'Spicy']];
-  filterHost.innerHTML = dietOptions.map(([key, label]) =>
-    '<button class="chip chip--filter" type="button" data-filter="' + key + '" aria-pressed="false">' + label + '</button>'
-  ).join('');
+  function renderDietFilters() {
+    filterHost.innerHTML = dietOptions.map(([key, label]) =>
+      '<button class="chip chip--filter" type="button" data-filter="' + key + '" aria-pressed="' + (activeFilters.has(key) ? 'true' : 'false') + '">' + getTagLabel(key) + '</button>'
+    ).join('');
+  }
+  renderDietFilters();
 
   filterHost.addEventListener('click', (event) => {
     const button = event.target.closest('[data-filter]');
@@ -402,9 +422,10 @@ function initMenu(ctx) {
   });
 
   function openItemSheet(item) {
+    const displayName = window.TableTapI18n ? window.TableTapI18n.translateDish(item.name) : item.name;
     document.getElementById('sheet-img').src = item.image;
-    document.getElementById('sheet-img').alt = item.name;
-    document.getElementById('sheet-title').textContent = item.name;
+    document.getElementById('sheet-img').alt = displayName;
+    document.getElementById('sheet-title').textContent = displayName;
     document.getElementById('sheet-desc').textContent = item.description;
     document.getElementById('sheet-note').value = '';
 
@@ -512,11 +533,21 @@ function initMenu(ctx) {
     }
     cartBar.hidden = false;
     cartBar.setAttribute('href', 'cart.html?r=' + encodeURIComponent(client.slug) + '&t=' + encodeURIComponent(table.token) + visitParams);
-    document.getElementById('cart-count').textContent = totals.count + (totals.count === 1 ? ' item' : ' items');
+    const itemLabel = window.TableTapI18n ? window.TableTapI18n.t('menu.items_count', 'items') : 'items';
+    document.getElementById('cart-count').textContent = totals.count + ' ' + itemLabel;
     document.getElementById('cart-total').textContent = money(totals.total);
   }
 
   renderCartBar();
+
+  // Listen to global i18n language changes
+  window.addEventListener('tabletap:langchange', () => {
+    render();
+    renderChips();
+    renderDietFilters();
+    renderCartBar();
+    if (window.TableTapI18n) window.TableTapI18n.applyTranslations();
+  });
 
   const billLink = document.getElementById('ask-bill-link');
   if (billLink) {

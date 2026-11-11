@@ -5469,3 +5469,75 @@ img.avatar { font-size:0; object-fit:cover; }
   color: #475569;
   flex-shrink: 0;
 }
+
+/* ==========================================================================
+   Global Language Switcher Component
+   ========================================================================== */
+.lang-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface, #FFFFFF);
+  border: 1px solid var(--line, #E5E0D8);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ink, #0F1114);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  vertical-align: middle;
+}
+
+.lang-picker:hover {
+  border-color: var(--line-strong, #CBD5E1);
+}
+
+.lang-picker__icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted, #64748B);
+  pointer-events: none;
+}
+
+.lang-picker__icon [data-lucide] {
+  width: 14px;
+  height: 14px;
+}
+
+.lang-switcher-select {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  padding: 2px 0;
+  font-family: inherit;
+}
+
+.lang-switcher-select option {
+  background: #1A1F26;
+  color: #F1F5F9;
+}
+
+/* Dark theme & kitchen/hero contexts */
+.theme-dark .lang-picker,
+.hero-redesign .lang-picker,
+.kitchen-app .lang-picker {
+  background: #1A1F26;
+  border-color: #2D343F;
+  color: #F1F5F9;
+}
+
+.theme-dark .lang-picker:hover,
+.kitchen-app .lang-picker:hover {
+  border-color: #3B82F6;
+}
+
+.theme-dark .lang-switcher-select,
+.hero-redesign .lang-switcher-select,
+.kitchen-app .lang-switcher-select {
+  color: #F1F5F9;
+}
+

@@ -24,20 +24,20 @@
     <nav class="app-shell__nav" aria-label="Owner">
       <div class="app-shell__nav-group">
         <p class="app-shell__nav-label">Service</p>
-        <a class="nav-link" href="dashboard.html" aria-current="page"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
-        <a class="nav-link" href="orders.html"><i data-lucide="receipt"></i><span class="nav-link__text">Live Orders</span></a>
-        <a class="nav-link" href="order-history.html"><i data-lucide="history"></i><span class="nav-link__text">Order History</span></a>
+        <a class="nav-link" href="dashboard.html" aria-current="page"><i data-lucide="layout-dashboard"></i><span class="nav-link__text" data-i18n="owner.dashboard">Dashboard</span></a>
+        <a class="nav-link" href="orders.html"><i data-lucide="receipt"></i><span class="nav-link__text" data-i18n="owner.live_orders">Live Orders</span></a>
+        <a class="nav-link" href="order-history.html"><i data-lucide="history"></i><span class="nav-link__text" data-i18n="owner.order_history">Order History</span></a>
       </div>
       <div class="app-shell__nav-group">
         <p class="app-shell__nav-label">Manage</p>
-        <a class="nav-link" href="menu.html"><i data-lucide="book-open"></i><span class="nav-link__text">Menu</span></a>
-        <a class="nav-link" href="tables.html"><i data-lucide="qr-code"></i><span class="nav-link__text">Tables & QR</span></a>
-        <a class="nav-link" href="staff.html"><i data-lucide="users"></i><span class="nav-link__text">Staff</span></a>
+        <a class="nav-link" href="menu.html"><i data-lucide="book-open"></i><span class="nav-link__text" data-i18n="owner.menu">Menu</span></a>
+        <a class="nav-link" href="tables.html"><i data-lucide="qr-code"></i><span class="nav-link__text" data-i18n="owner.tables">Tables & QR</span></a>
+        <a class="nav-link" href="staff.html"><i data-lucide="users"></i><span class="nav-link__text" data-i18n="owner.staff">Staff</span></a>
       </div>
       <div class="app-shell__nav-group">
         <p class="app-shell__nav-label">Business</p>
-        <a class="nav-link" href="reports.html"><i data-lucide="trending-up"></i><span class="nav-link__text">Reports</span></a>
-        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+        <a class="nav-link" href="reports.html"><i data-lucide="trending-up"></i><span class="nav-link__text" data-i18n="owner.reports">Reports</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text" data-i18n="owner.settings">Settings</span></a>
         <a class="nav-link" href="account.html"><i data-lucide="user"></i><span class="nav-link__text">Account</span></a>
       </div>    </nav>
 
@@ -69,6 +69,17 @@
           <label class="sr-only" for="global-search">Search</label>
           <input class="input" id="global-search" type="search" placeholder="Search orders, tables">
         </div>
+        <div class="lang-picker" title="Language">
+          <span class="lang-picker__icon" aria-hidden="true"><i data-lucide="globe"></i></span>
+          <select class="lang-switcher-select" aria-label="Language">
+            <option value="en">🇬🇧 English</option>
+            <option value="ru">🇷🇺 Русский</option>
+            <option value="uk">🇺🇦 Українська</option>
+            <option value="es">🇪🇸 Español</option>
+            <option value="de">🇩🇪 Deutsch</option>
+            <option value="fr">🇫🇷 Français</option>
+          </select>
+        </div>
         <button class="btn btn--icon" type="button" aria-label="Notifications, 3 unread">
           <i data-lucide="bell"></i><span class="count-dot">3</span>
         </button>
@@ -97,6 +108,7 @@
 
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/i18n.js?v=20261112a"></script>
 <script src="../assets/js/ui.js"></script>
 <script src="../assets/js/file-check.js"></script>
 <script type="module" src="../assets/js/owner.js"></script>
