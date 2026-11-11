@@ -5,9 +5,754 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TableTap — QR table ordering for restaurants, bars and cafés</title>
 <meta name="description" content="TableTap turns the QR code on every table into a live ordering channel. Guests order from their phone, the kitchen sees the ticket instantly. One lifetime price of $49.">
-<link rel="stylesheet" href="assets/css/fonts.css?v=20261111c">
-<link rel="stylesheet" href="assets/css/style.css?v=20261111c">
+<link rel="stylesheet" href="assets/css/fonts.css?v=20261111d">
+<link rel="stylesheet" href="assets/css/style.css?v=20261111d">
 <style id="homepage-custom-styles">
+  /* ==========================================================================
+     Redesigned Hero Section (Instant 2-3 Second Comprehension)
+     ========================================================================== */
+  .hero-redesign {
+    background: #0D0F12;
+    color: #F3F1EC;
+    padding: 3.5rem 0 3rem;
+    border-bottom: 1px solid #23272F;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-redesign::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 1200px;
+    height: 400px;
+    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(37, 99, 235, 0.15), transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-redesign__header {
+    text-align: center;
+    max-width: 860px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Category Eyebrow Pill */
+  .hero-badge-wrap {
+    margin-bottom: 1.25rem;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    color: #E2E8F0;
+    backdrop-filter: blur(8px);
+  }
+
+  .hero-badge__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10B981;
+    box-shadow: 0 0 8px #10B981;
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  .hero-badge__sep {
+    color: #64748B;
+  }
+
+  /* Punchy Clear Headline */
+  .hero-redesign__title {
+    font-family: var(--font-display, inherit);
+    font-size: clamp(2.4rem, 5.5vw, 4.25rem);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    color: #FFFFFF;
+    margin: 0 0 1.25rem;
+    font-weight: 800;
+  }
+
+  .hero-redesign__title-accent {
+    background: linear-gradient(135deg, #60A5FA 0%, #93C5FD 50%, #38BDF8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+  }
+
+  .hero-redesign__lead {
+    font-size: clamp(1rem, 1.8vw, 1.1875rem);
+    line-height: 1.6;
+    color: #94A3B8;
+    max-width: 720px;
+    margin: 0 auto 2rem;
+  }
+
+  /* 3 Quick Value Pillars */
+  .hero-pillars {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    width: 100%;
+    max-width: 820px;
+    margin: 0 auto 2.25rem;
+    text-align: left;
+  }
+
+  @media (min-width: 680px) {
+    .hero-pillars {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .hero-pillar {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+
+  .hero-pillar__icon {
+    width: 20px;
+    height: 20px;
+    color: #38BDF8;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .hero-pillar__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .hero-pillar__text strong {
+    font-size: 0.8125rem;
+    color: #F1F5F9;
+    font-weight: 600;
+  }
+
+  .hero-pillar__text span {
+    font-size: 0.72rem;
+    color: #94A3B8;
+    line-height: 1.35;
+  }
+
+  /* Hero Action CTAs */
+  .hero-redesign__actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 3.5rem;
+  }
+
+  .hero-btn-main {
+    background: #2563EB;
+    color: #FFFFFF;
+    border: 1px solid #3B82F6;
+    padding: 12px 24px;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hero-btn-main:hover {
+    background: #1D4ED8;
+    transform: translateY(-1px);
+  }
+
+  .hero-btn-sub {
+    background: rgba(255, 255, 255, 0.08);
+    color: #F1F5F9;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 12px 20px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hero-btn-sub:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .hero-btn-ghost {
+    color: #94A3B8;
+    font-size: 0.9375rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .hero-btn-ghost:hover {
+    color: #FFFFFF;
+  }
+
+  /* The Live Flow Showcase Container */
+  .hero-flow-showcase {
+    background: #14171D;
+    border: 1px solid #282E38;
+    border-radius: 16px;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+  }
+
+  .hero-flow__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: #1A1F26;
+    border-bottom: 1px solid #282E38;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .hero-flow__bar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8125rem;
+    color: #F1F5F9;
+  }
+
+  .hero-flow__status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10B981;
+    box-shadow: 0 0 8px #10B981;
+  }
+
+  .hero-flow__bar-tag {
+    font-size: 0.75rem;
+    color: #64748B;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .hero-flow__bar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .hero-flow__bar-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    color: #94A3B8;
+  }
+
+  .hero-flow__bar-badge [data-lucide] {
+    width: 13px;
+    height: 13px;
+  }
+
+  .hero-flow__bar-badge--live {
+    color: #34D399;
+    font-weight: 600;
+  }
+
+  /* Grid Layout for The 2-Way Flow */
+  .hero-flow__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 24px 20px;
+    gap: 20px;
+    align-items: center;
+  }
+
+  @media (min-width: 992px) {
+    .hero-flow__grid {
+      grid-template-columns: 1fr 100px 1.25fr;
+      gap: 16px;
+      padding: 32px 28px;
+    }
+  }
+
+  .flow-card-header {
+    margin-bottom: 14px;
+  }
+
+  .flow-step-pill {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60A5FA;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    margin-bottom: 6px;
+  }
+
+  .flow-step-pill--kitchen {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+
+  .flow-card-header h4 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #FFFFFF;
+    margin: 0;
+  }
+
+  /* Step 1: Table Mockup */
+  .table-mockup {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 12px;
+    background: #171A21;
+    border: 1px solid #2B313D;
+    border-radius: 12px;
+    padding: 12px;
+    align-items: stretch;
+  }
+
+  @media (max-width: 480px) {
+    .table-mockup {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .table-stand {
+    background: #20252E;
+    border: 1px solid #363D4B;
+    border-radius: 8px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .table-stand__top {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 6px;
+  }
+
+  .table-stand__brand {
+    font-size: 0.55rem;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .table-stand__num {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: 0.02em;
+  }
+
+  .table-stand__qr {
+    background: #FFFFFF;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .table-stand__hint {
+    font-size: 0.55rem;
+    color: #38BDF8;
+    margin-top: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .table-stand__hint [data-lucide] {
+    width: 9px;
+    height: 9px;
+  }
+
+  /* Guest Mini Phone */
+  .guest-mini-phone {
+    background: #111317;
+    border: 1px solid #2B313D;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .guest-mini-phone__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: #64748B;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #222730;
+    margin-bottom: 8px;
+  }
+
+  .guest-mini-phone__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 0.75rem;
+  }
+
+  .guest-mini-phone__item-title {
+    display: block;
+    font-weight: 600;
+    color: #E2E8F0;
+    font-size: 0.72rem;
+  }
+
+  .guest-mini-phone__item-sub {
+    display: block;
+    font-size: 0.62rem;
+    color: #64748B;
+  }
+
+  .guest-mini-phone__item-price {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #38BDF8;
+  }
+
+  .guest-mini-phone__sent {
+    margin-top: 8px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 6px;
+    padding: 5px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #34D399;
+  }
+
+  .guest-mini-phone__sent [data-lucide] {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+  }
+
+  /* Sync Pulse Middle Column */
+  .hero-flow__sync {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 6px;
+  }
+
+  .sync-pulse {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .sync-pulse__line {
+    flex: 1;
+    height: 2px;
+    background: linear-gradient(90deg, #2563EB, #10B981);
+    opacity: 0.5;
+  }
+
+  .sync-pulse__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 20px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #38BDF8;
+    white-space: nowrap;
+  }
+
+  .sync-pulse__badge [data-lucide] {
+    width: 11px;
+    height: 11px;
+    color: #F59E0B;
+  }
+
+  .sync-pulse__desc {
+    font-size: 0.65rem;
+    color: #64748B;
+    max-width: 160px;
+    line-height: 1.3;
+  }
+
+  /* Step 2: Kitchen Tablet Display */
+  .kitchen-tablet-mockup {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  @media (min-width: 600px) {
+    .kitchen-tablet-mockup {
+      grid-template-columns: 1.35fr 1fr;
+    }
+  }
+
+  .hero-ticket {
+    background: #171A21;
+    border: 1px solid #2B313D;
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .hero-ticket--active {
+    border-color: #3B82F6;
+    background: #161D2A;
+    box-shadow: 0 0 20px -5px rgba(37, 99, 235, 0.25);
+  }
+
+  .hero-ticket__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .hero-ticket__table {
+    display: block;
+    font-family: var(--font-display, inherit);
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #FFFFFF;
+  }
+
+  .hero-ticket__time {
+    font-size: 0.65rem;
+    color: #94A3B8;
+  }
+
+  .hero-ticket__badge {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 3px 6px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .hero-ticket__badge--new {
+    background: rgba(37, 99, 235, 0.2);
+    color: #93C5FD;
+    border: 1px solid #3B82F6;
+  }
+
+  .hero-ticket__badge--cook {
+    background: rgba(217, 119, 6, 0.2);
+    color: #FCD34D;
+    border: 1px solid #D97706;
+  }
+
+  .hero-ticket__badge--ready {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6EE7B7;
+    border: 1px solid #10B981;
+  }
+
+  .hero-ticket__items {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+
+  .hero-ticket__item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: #F1F5F9;
+  }
+
+  .hero-ticket__qty {
+    font-family: var(--font-mono, monospace);
+    font-weight: 700;
+    color: #38BDF8;
+  }
+
+  .hero-ticket__note {
+    font-size: 0.6875rem;
+    color: #FBBF24;
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 2px solid #F59E0B;
+    padding: 4px 6px;
+    margin-top: 4px;
+    border-radius: 0 4px 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .hero-ticket__note [data-lucide] {
+    width: 11px;
+    height: 11px;
+    flex-shrink: 0;
+  }
+
+  .hero-ticket__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .hero-ticket__btn {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all 140ms ease;
+  }
+
+  .hero-ticket__btn--cook {
+    background: #334155;
+    color: #F1F5F9;
+  }
+
+  .hero-ticket__btn--cook:hover {
+    background: #475569;
+  }
+
+  .hero-ticket__btn--ready {
+    background: #1E3A8A;
+    color: #FFFFFF;
+  }
+
+  .hero-ticket__btn--ready:hover {
+    background: #2563EB;
+  }
+
+  .hero-ticket-queue {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .hero-ticket--compact {
+    padding: 8px 10px;
+    opacity: 0.85;
+  }
+
+  .hero-ticket__compact-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 3px;
+    font-size: 0.8125rem;
+    color: #FFFFFF;
+  }
+
+  .hero-ticket__compact-body {
+    font-size: 0.6875rem;
+    color: #94A3B8;
+    margin: 0;
+  }
+
+  /* 4-Step Bottom Progress Bar */
+  .hero-flow__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: #11141A;
+    border-top: 1px solid #232832;
+    overflow-x: auto;
+    gap: 12px;
+  }
+
+  .flow-step-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #94A3B8;
+    white-space: nowrap;
+  }
+
+  .step-num {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #60A5FA;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+  }
+
+  .step-arrow {
+    width: 14px;
+    height: 14px;
+    color: #475569;
+    flex-shrink: 0;
+  }
+
   /* Showcase Section Styling */
   .section--alt {
     background: var(--surface, #FFFFFF);
@@ -576,96 +1321,268 @@
 
 <main id="main">
 
-  <!-- The pass: the product's own board is the hero -->
-  <section class="hero-pass">
+  <!-- Hero Section: Instantly clear QR ordering + Kitchen workflow in under 2-3 seconds -->
+  <section class="hero-redesign">
     <div class="container">
 
-      <div class="hero-pass__head">
-        <h1 class="display hero-pass__title">Your tables<br>order for themselves.</h1>
+      <!-- Eyebrow + Headline + Value proposition -->
+      <div class="hero-redesign__header">
+        
+        <div class="hero-badge-wrap">
+          <span class="hero-badge">
+            <span class="hero-badge__dot"></span>
+            <strong>Contactless QR Table Ordering &amp; Live Kitchen Pass</strong>
+            <span class="hero-badge__sep">·</span>
+            <span>$49 Lifetime License</span>
+          </span>
+        </div>
 
-        <div class="hero-pass__lead">
-          <div class="hero-pass__pitch">
-            <p class="hero-pass__sub">A QR code on each table opens your menu in the guest's browser. They order, the ticket lands on the pass with a chime, your team marks it ready. No app, no waving for a server, no paper lost between the floor and the kitchen.</p>
-            <div class="hero-pass__actions">
-              <a class="btn btn--primary btn--lg" href="menu/index.html?r=olive-table">
-                Order from Table 7 <i data-lucide="arrow-right"></i>
-              </a>
-              <a class="btn btn--lg hero-pass__ghost" href="mailto:hello@tabletap.app?subject=Book%20a%20TableTap%20demo">
-                Book a demo
-              </a>
+        <h1 class="hero-redesign__title">
+          Guests scan the table QR.<br>
+          <span class="hero-redesign__title-accent">Your kitchen cooks the ticket.</span>
+        </h1>
+
+        <p class="hero-redesign__lead">
+          TableTap turns any phone camera into an instant ordering channel. Diners scan their table’s QR code, browse your live menu, and tap to order. Tickets chime instantly on your kitchen tablet. No apps, no waiting for waitstaff, zero commissions.
+        </p>
+
+        <!-- 3-Second Quick Skim Pillars -->
+        <div class="hero-pillars">
+          <div class="hero-pillar">
+            <i data-lucide="smartphone" class="hero-pillar__icon"></i>
+            <div class="hero-pillar__text">
+              <strong>Zero App Downloads</strong>
+              <span>Guests scan &amp; order in under 0.8s on Safari or Chrome</span>
             </div>
           </div>
-          <p class="hero-pass__facts"><span>No app for guests</span><span>$49 once, never monthly</span><span>Runs on the tablet at your pass</span></p>
+          <div class="hero-pillar">
+            <i data-lucide="bell-ring" class="hero-pillar__icon"></i>
+            <div class="hero-pillar__text">
+              <strong>Instant Kitchen Chime</strong>
+              <span>Tickets pop up on any tablet in real time</span>
+            </div>
+          </div>
+          <div class="hero-pillar">
+            <i data-lucide="coins" class="hero-pillar__icon"></i>
+            <div class="hero-pillar__text">
+              <strong>Zero Commissions</strong>
+              <span>One-time $49 price. Keep 100% of your sales</span>
+            </div>
+          </div>
         </div>
+
+        <!-- Action CTAs -->
+        <div class="hero-redesign__actions">
+          <a class="btn btn--primary btn--lg hero-btn-main" href="menu/index.html?r=olive-table&t=oli-7" target="_blank" rel="noopener">
+            <i data-lucide="qr-code"></i> Try Guest Menu (Table 7 Demo)
+          </a>
+          <a class="btn btn--lg hero-btn-sub" href="kitchen/index.html?r=olive-table" target="_blank" rel="noopener">
+            <i data-lucide="chef-hat"></i> View Live Kitchen Pass
+          </a>
+          <a class="btn btn--ghost btn--lg hero-btn-ghost" href="#how-it-works">
+            See how it works <i data-lucide="arrow-down"></i>
+          </a>
+        </div>
+
       </div>
 
-      <!-- live pass board -->
-      <div class="pass" role="img" aria-label="The kitchen pass at The Olive Table, showing three live tickets: Table 12 new, Table 7 preparing, Table 3 ready">
-        <div class="pass__bar">
-          <span class="pass__label"><i data-lucide="chef-hat"></i> The pass · The Olive Table</span>
-          <span class="pass__meta">8:42 PM <span class="pass__live"><span class="dot"></span> live</span></span>
+      <!-- The Live Product Interaction Visual (Explains the loop in 1 second) -->
+      <div class="hero-flow-showcase">
+        
+        <div class="hero-flow__bar">
+          <div class="hero-flow__bar-left">
+            <span class="hero-flow__status-dot"></span>
+            <strong>Live System Preview</strong>
+            <span class="hero-flow__bar-tag">The Olive Table · Bandra West</span>
+          </div>
+          <div class="hero-flow__bar-right">
+            <span class="hero-flow__bar-badge"><i data-lucide="volume-2"></i> Kitchen Chime Active</span>
+            <span class="hero-flow__bar-badge hero-flow__bar-badge--live"><span class="dot dot--live"></span> Realtime Sync</span>
+          </div>
         </div>
 
-        <div class="pass__rail">
+        <div class="hero-flow__grid">
+          
+          <!-- Column 1: The Table (Guest Phone + Scannable Stand) -->
+          <div class="hero-flow__col hero-flow__col--table">
+            <div class="flow-card-header">
+              <span class="flow-step-pill">Step 1 · Dining Table</span>
+              <h4>Guest Scans &amp; Orders</h4>
+            </div>
 
-          <article class="docket docket--new">
-            <header class="docket__head">
-              <span class="docket__table">Table 12</span>
-              <span class="docket__stamp docket__stamp--new">New</span>
-            </header>
-            <p class="docket__meta">#1046 · 2 min</p>
-            <ul class="docket__items">
-              <li><span class="docket__qty">2×</span> Margherita <em>no basil on one</em></li>
-              <li><span class="docket__qty">1×</span> House lemonade</li>
-            </ul>
-            <p class="docket__note">One guest is vegan — no cheese on one pizza.</p>
-          </article>
-
-          <article class="docket">
-            <header class="docket__head">
-              <span class="docket__table">Table 7</span>
-              <span class="docket__stamp docket__stamp--cooking">Preparing</span>
-            </header>
-            <p class="docket__meta">#1042 · 12 min</p>
-            <ul class="docket__items">
-              <li class="is-done"><span class="docket__qty">2×</span> Margherita</li>
-              <li><span class="docket__qty">1×</span> Charred octopus <em>sauce on the side</em></li>
-              <li><span class="docket__qty">1×</span> House lemonade</li>
-            </ul>
-          </article>
-
-          <article class="docket">
-            <header class="docket__head">
-              <span class="docket__table">Table 3</span>
-              <span class="docket__stamp">Ready</span>
-            </header>
-            <p class="docket__meta">#1041 · 9 min</p>
-            <ul class="docket__items">
-              <li><span class="docket__qty">1×</span> Slow-braised lamb shoulder <em>no gremolata</em></li>
-              <li><span class="docket__qty">2×</span> House lemonade</li>
-            </ul>
-            <p class="docket__guest">Rahul S.</p>
-          </article>
-
-          <!-- the guest's phone, on the same rail -->
-          <div class="guest-phone" aria-label="Guest menu on a phone">
-            <div class="guest-phone__screen">
-              <div class="guest-phone__status"><span>9:41</span><span>Table 7</span></div>
-              <div class="guest-phone__head">
-                <p class="guest-phone__name">The Olive Table</p>
-                <p class="guest-phone__sub">Mediterranean · Bandra West</p>
+            <div class="table-mockup">
+              <!-- Acrylic Table Stand with Scannable QR -->
+              <div class="table-stand">
+                <div class="table-stand__top">
+                  <span class="table-stand__brand">The Olive Table</span>
+                  <span class="table-stand__num">Table 07</span>
+                </div>
+                <div class="table-stand__qr">
+                  <!-- Scaled inline SVG QR for instant crisp render -->
+                  <svg viewBox="0 0 100 100" width="80" height="80" class="table-stand__svg">
+                    <rect width="100" height="100" fill="#ffffff" rx="4"/>
+                    <!-- QR Corners -->
+                    <rect x="8" y="8" width="28" height="28" fill="#111" rx="3"/>
+                    <rect x="13" y="13" width="18" height="18" fill="#fff"/>
+                    <rect x="17" y="17" width="10" height="10" fill="#111" rx="1"/>
+                    <rect x="64" y="8" width="28" height="28" fill="#111" rx="3"/>
+                    <rect x="69" y="13" width="18" height="18" fill="#fff"/>
+                    <rect x="73" y="17" width="10" height="10" fill="#111" rx="1"/>
+                    <rect x="8" y="64" width="28" height="28" fill="#111" rx="3"/>
+                    <rect x="13" y="69" width="18" height="18" fill="#fff"/>
+                    <rect x="17" y="73" width="10" height="10" fill="#111" rx="1"/>
+                    <!-- Data dots -->
+                    <rect x="42" y="10" width="6" height="6" fill="#111"/>
+                    <rect x="52" y="16" width="6" height="6" fill="#111"/>
+                    <rect x="42" y="24" width="6" height="6" fill="#111"/>
+                    <rect x="10" y="42" width="6" height="6" fill="#111"/>
+                    <rect x="20" y="48" width="6" height="6" fill="#111"/>
+                    <rect x="44" y="44" width="12" height="12" fill="#1E3A8A" rx="2"/>
+                    <rect x="64" y="44" width="6" height="6" fill="#111"/>
+                    <rect x="74" y="48" width="6" height="6" fill="#111"/>
+                    <rect x="84" y="42" width="6" height="6" fill="#111"/>
+                    <rect x="42" y="64" width="6" height="6" fill="#111"/>
+                    <rect x="52" y="72" width="6" height="6" fill="#111"/>
+                    <rect x="64" y="68" width="6" height="6" fill="#111"/>
+                    <rect x="78" y="76" width="6" height="6" fill="#111"/>
+                    <rect x="86" y="84" width="6" height="6" fill="#111"/>
+                  </svg>
+                </div>
+                <span class="table-stand__hint"><i data-lucide="camera"></i> Point phone camera</span>
               </div>
-              <ul class="guest-phone__list">
-                <li><span>Crispy halloumi</span><span class="guest-phone__price">$9.50</span></li>
-                <li><span>Charred octopus</span><span class="guest-phone__price">$14.00</span></li>
-                <li><span>Margherita</span><span class="guest-phone__price">$13.00</span></li>
-                <li><span>House lemonade</span><span class="guest-phone__price">$4.50</span></li>
-              </ul>
-              <div class="guest-phone__cart"><span>3 items · $24.50</span><span>View order</span></div>
+
+              <!-- Guest Phone Screen Snapshot -->
+              <div class="guest-mini-phone">
+                <div class="guest-mini-phone__top">
+                  <span>9:42 PM</span>
+                  <span class="badge badge--success" style="font-size:0.6rem;padding:2px 6px;">Table 7</span>
+                </div>
+                <div class="guest-mini-phone__item">
+                  <div class="guest-mini-phone__item-info">
+                    <span class="guest-mini-phone__item-title">2× Margherita Pizza</span>
+                    <span class="guest-mini-phone__item-sub">San Marzano · Fior di latte</span>
+                  </div>
+                  <span class="guest-mini-phone__item-price">$26.00</span>
+                </div>
+                <div class="guest-mini-phone__item">
+                  <div class="guest-mini-phone__item-info">
+                    <span class="guest-mini-phone__item-title">1× House Lemonade</span>
+                    <span class="guest-mini-phone__item-sub">Pink peppercorn · Rosemary</span>
+                  </div>
+                  <span class="guest-mini-phone__item-price">$4.50</span>
+                </div>
+                <div class="guest-mini-phone__sent">
+                  <i data-lucide="check-circle-2"></i>
+                  <span>Order #1047 Sent to Kitchen</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 2: The Real-time Sync Link (Connecting Bridge) -->
+          <div class="hero-flow__sync">
+            <div class="sync-pulse">
+              <span class="sync-pulse__line"></span>
+              <div class="sync-pulse__badge">
+                <i data-lucide="zap"></i>
+                <span>0.3s Live Push</span>
+              </div>
+              <span class="sync-pulse__line"></span>
+            </div>
+            <span class="sync-pulse__desc">Instant WebSocket chime directly to kitchen tablet</span>
+          </div>
+
+          <!-- Column 3: The Kitchen Pass (Live KDS Screen) -->
+          <div class="hero-flow__col hero-flow__col--kitchen">
+            <div class="flow-card-header">
+              <span class="flow-step-pill flow-step-pill--kitchen">Step 2 · The Pass</span>
+              <h4>Kitchen Tablet Displays Ticket</h4>
+            </div>
+
+            <div class="kitchen-tablet-mockup">
+              <!-- Active Highlighted Ticket from Table 7 -->
+              <div class="hero-ticket hero-ticket--active">
+                <div class="hero-ticket__header">
+                  <div>
+                    <span class="hero-ticket__table">Table 7</span>
+                    <span class="hero-ticket__time">Just now · 9:42 PM</span>
+                  </div>
+                  <span class="hero-ticket__badge hero-ticket__badge--new">
+                    <i data-lucide="bell"></i> New Order
+                  </span>
+                </div>
+
+                <div class="hero-ticket__items">
+                  <div class="hero-ticket__item">
+                    <span class="hero-ticket__qty">2×</span>
+                    <span class="hero-ticket__name">Margherita Pizza</span>
+                  </div>
+                  <div class="hero-ticket__item">
+                    <span class="hero-ticket__qty">1×</span>
+                    <span class="hero-ticket__name">House Lemonade</span>
+                  </div>
+                  <div class="hero-ticket__note">
+                    <i data-lucide="message-square"></i> Note: One vegan — no cheese on one Margherita
+                  </div>
+                </div>
+
+                <div class="hero-ticket__actions">
+                  <button type="button" class="hero-ticket__btn hero-ticket__btn--cook" onclick="this.textContent='Cooking...'; this.style.background='#D97706';">
+                    <i data-lucide="flame"></i> Mark Preparing
+                  </button>
+                  <button type="button" class="hero-ticket__btn hero-ticket__btn--ready" onclick="this.textContent='Ready!'; this.style.background='#16A34A';">
+                    <i data-lucide="check"></i> Mark Ready
+                  </button>
+                </div>
+              </div>
+
+              <!-- Other Queued Tickets at the Pass -->
+              <div class="hero-ticket-queue">
+                <div class="hero-ticket hero-ticket--compact">
+                  <div class="hero-ticket__compact-head">
+                    <strong>Table 12</strong>
+                    <span class="hero-ticket__badge hero-ticket__badge--cook">Cooking (4m)</span>
+                  </div>
+                  <p class="hero-ticket__compact-body">Slow-braised lamb, 2× Lemonade</p>
+                </div>
+
+                <div class="hero-ticket hero-ticket--compact">
+                  <div class="hero-ticket__compact-head">
+                    <strong>Table 3</strong>
+                    <span class="hero-ticket__badge hero-ticket__badge--ready">Ready (8m)</span>
+                  </div>
+                  <p class="hero-ticket__compact-body">Charred octopus, Halloumi</p>
+                </div>
+              </div>
+
             </div>
           </div>
 
         </div>
+
+        <!-- Bottom bar of the showcase: 4 Simple steps -->
+        <div class="hero-flow__footer">
+          <div class="flow-step-item">
+            <span class="step-num">1</span>
+            <span>Guest sits at table</span>
+          </div>
+          <i data-lucide="chevron-right" class="step-arrow"></i>
+          <div class="flow-step-item">
+            <span class="step-num">2</span>
+            <span>Scans table QR code</span>
+          </div>
+          <i data-lucide="chevron-right" class="step-arrow"></i>
+          <div class="flow-step-item">
+            <span class="step-num">3</span>
+            <span>Orders &amp; pays on phone</span>
+          </div>
+          <i data-lucide="chevron-right" class="step-arrow"></i>
+          <div class="flow-step-item">
+            <span class="step-num">4</span>
+            <span>Kitchen prepares ticket</span>
+          </div>
+        </div>
+
       </div>
 
     </div>
