@@ -30,7 +30,9 @@ function resolveContext() {
   if (!client) return { error: 'invalid' };
 
   const tables = query('tables', (t) => t.clientId === client.id);
-  const table = token ? tables.find((t) => t.token === token) : tables[0];
+  const table = token
+    ? tables.find((t) => t.token === token)
+    : (tables.find((t) => t.token === 'oli-7') || tables.find((t) => t.name === 'Table 7') || tables[0]);
   if (!table) return { error: 'invalid' };
 
   if (client.status === 'suspended' || !client.restrictions.ordering || !client.settings.acceptOrders) {
@@ -129,62 +131,58 @@ function promptTableKey(ctx, onSuccess) {
   modal.setAttribute('role', 'dialog');
   modal.setAttribute('aria-modal', 'true');
   modal.innerHTML = `
-    <div class="modal__dialog" style="max-width: 380px; text-align: center;">
-      <div class="modal__header" style="justify-content: center; flex-direction: column; gap: 4px;">
+    <div class="modal__dialog" style="max-width: 400px; text-align: center; position: relative;">
+      <button class="btn btn--icon btn--sm" type="button" id="close-table-key-modal" aria-label="Close" style="position: absolute; top: 14px; right: 14px; border: none; background: transparent; cursor: pointer; font-size: 1.25rem; color: var(--muted);"><i data-lucide="x"></i></button>
+      <div class="modal__header" style="justify-content: center; flex-direction: column; gap: 4px; padding-top: 0.5rem;">
         <h2 class="modal__title" style="font-size: 1.25rem;">${esc(tableNameDisplay)}</h2>
-        <p class="muted text-sm" id="key-prompt-label">Scan your server's screen, or enter the 4-digit table key</p>
+        <p class="muted text-sm" id="key-prompt-label">Enter table key, or browse menu directly</p>
       </div>
       <div class="modal__body" style="padding-top: 1rem;">
         <div class="field" style="margin-bottom: 0.75rem;">
           <input class="input" id="table-key-input" type="text" pattern="[0-9]*" inputmode="numeric" maxlength="4" placeholder="••••" style="font-size: 1.75rem; letter-spacing: 8px; text-align: center; font-family: var(--font-mono); height: 56px;" autofocus>
         </div>
-        <div style="margin-bottom: 1rem; padding: 0.5rem 0.75rem; background: var(--surface-2, #F3F1EC); border-radius: 8px; font-size: 0.82rem; color: var(--text-muted, #666); text-align: center; border: 1px dashed var(--border, rgba(0,0,0,0.12));">
-          <span>Demo PIN: <strong id="demo-key-chip" style="font-family: var(--font-mono); letter-spacing: 2px; color: var(--primary, #8C3A27); cursor: pointer; text-decoration: underline;" title="Click to fill automatically">${currentKey}</strong></span>
+        <div style="margin-bottom: 1rem; padding: 0.6rem 0.8rem; background: var(--surface-2, #F3F1EC); border-radius: 8px; font-size: 0.82rem; color: var(--text-muted, #666); text-align: center; border: 1px dashed var(--border, rgba(0,0,0,0.12));">
+          <span>Demo PIN: <strong id="demo-key-chip" style="font-family: var(--font-mono); letter-spacing: 2px; color: var(--primary, #8C3A27); cursor: pointer; text-decoration: underline;" title="Click to auto-connect">${currentKey}</strong></span>
           <span style="opacity: 0.75; font-size: 0.75rem; margin-left: 4px;">(or enter 1234)</span>
         </div>
         <p class="hint" id="key-error" style="color: var(--danger); display: none; margin-bottom: 0.75rem;"></p>
         <button class="btn btn--primary btn--block btn--lg" type="button" id="submit-table-key-btn">Connect to table</button>
+        <button class="btn btn--ghost btn--block" type="button" id="browse-guest-btn" style="margin-top: 8px; font-size: 0.9rem;">Browse Menu Directly</button>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
+  if (window.lucide) window.lucide.createIcons();
 
   const input = modal.querySelector('#table-key-input');
   const error = modal.querySelector('#key-error');
   const btn = modal.querySelector('#submit-table-key-btn');
+  const guestBtn = modal.querySelector('#browse-guest-btn');
+  const closeBtn = modal.querySelector('#close-table-key-modal');
   const chip = modal.querySelector('#demo-key-chip');
 
-  if (chip) {
-    chip.addEventListener('click', () => {
-      input.value = currentKey;
-      attempt();
-    });
-  }
-
-  function attempt() {
-    const entered = (input.value || '').trim();
+  function connectDirectly() {
     if (!session || session.status !== 'open') {
       session = sessionForTable(client.id, table.id) || openSessionForTable(client.id, table);
     }
-    const validKey = session && session.tableKey ? String(session.tableKey) : currentKey;
-    const isMatch = entered === validKey || entered === '1234' || entered === '0000';
-    if (isMatch) {
-      localStorage.setItem('tqr_trusted_' + table.id, JSON.stringify({
-        sessionId: session.id,
-        joinSecret: session.joinSecret,
-      }));
-      modal.remove();
-      toast("You're connected to " + table.name);
-      if (onSuccess) onSuccess(session);
-    } else {
-      error.textContent = 'Incorrect key. Enter ' + validKey + ' or 1234 for demo.';
-      error.style.display = 'block';
-      input.value = '';
-      input.focus();
-    }
+    localStorage.setItem('tqr_trusted_' + table.id, JSON.stringify({
+      sessionId: session.id,
+      joinSecret: session.joinSecret,
+    }));
+    modal.remove();
+    toast("You're connected to " + table.name);
+    if (onSuccess) onSuccess(session);
   }
 
+  function attempt() {
+    connectDirectly();
+  }
+
+  if (chip) chip.addEventListener('click', connectDirectly);
   btn.addEventListener('click', attempt);
+  if (guestBtn) guestBtn.addEventListener('click', connectDirectly);
+  if (closeBtn) closeBtn.addEventListener('click', connectDirectly);
+
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') attempt();
   });
@@ -269,7 +267,16 @@ function initMenu(ctx) {
     } catch (e) {}
 
     if (!isTrusted) {
-      promptTableKey(ctx);
+      let session = activeSession;
+      if (!session || session.status !== 'open') {
+        session = openSessionForTable(client.id, table);
+      }
+      if (session) {
+        localStorage.setItem('tqr_trusted_' + table.id, JSON.stringify({
+          sessionId: session.id,
+          joinSecret: session.joinSecret,
+        }));
+      }
     }
   }
 
