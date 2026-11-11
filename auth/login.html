@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log in — TableTap</title>
+<meta name="description" content="Log in to your TableTap restaurant dashboard.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+<div class="auth-page">
+  <header class="auth-page__header">
+    <div class="auth-page__header-inner">
+      <a class="brand" href="../index.html" aria-label="TableTap home">
+        <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+        <span class="brand__name">TableTap</span>
+      </a>
+      <a class="auth-back" href="../index.html"><i data-lucide="arrow-left"></i> Back to site</a>
+    </div>
+  </header>
+
+  <main class="auth-page__main">
+    <div class="auth-card">
+      <h1 class="auth-card__title">Log in to TableTap</h1>
+      <p class="auth-card__sub">Owner and admin accounts. Enter the email you signed up with.</p>
+
+      <form class="auth-card__form" action="#" method="post">
+        <div class="field">
+          <label class="label" for="email">Email address</label>
+          <input class="input" type="email" id="email" name="email" autocomplete="email" placeholder="you@restaurant.com" required>
+        </div>
+
+        <div class="field">
+          <label class="label" for="password">Password</label>
+          <div class="input-group">
+            <input class="input" type="password" id="password" name="password" autocomplete="current-password" placeholder="Enter your password" required>
+            <button class="input-group__action" type="button" data-password-toggle aria-controls="password" aria-pressed="false" aria-label="Show password">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="auth-card__row">
+            <label class="check">
+              <input type="checkbox" name="remember" checked>
+              <span class="check__text">Keep me signed in</span>
+            </label>
+            <a class="auth-link" href="forgot-password.html">Forgot password?</a>
+          </div>
+        </div>
+
+        <p class="hint hint--error" id="login-error" role="alert" hidden></p>
+
+        <div class="field">
+          <button class="btn btn--primary btn--lg btn--block" type="submit">Log in</button>
+        </div>
+      </form>
+
+      <div class="demo-box">
+        <p class="demo-box__title">Demo logins</p>
+        <p>Owner · <strong>owner@olivetable.demo</strong> / <strong>owner123</strong></p>
+        <p>Admin · <strong>admin@tabletap.demo</strong> / <strong>admin123</strong></p>
+        <p>Kitchen · code <strong>OLIVE7</strong> · PIN <strong>1234</strong></p>
+      </div>
+
+      <div class="auth-divider">or</div>
+
+      <a class="btn btn--secondary btn--block" href="kitchen-login.html">
+        <i data-lucide="chef-hat"></i> Kitchen staff? Login with PIN
+      </a>
+
+      <p class="auth-footnote">No account yet? Your restaurant admin sends an invite by email.</p>
+    </div>
+  </main>
+
+  <footer class="auth-page__footer">
+    © 2026 TableTap · <a class="auth-link" href="../index.html#faq">Need help?</a>
+  </footer>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script type="module" src="../assets/js/auth-pages.js"></script>
+</body>
+</html>

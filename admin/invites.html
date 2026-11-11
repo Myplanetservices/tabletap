@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invites — TableTap Admin</title>
+<meta name="description" content="TableTap Super Admin panel for MyPlanetServices.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="invites">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="admin-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="shield"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap Admin</span>
+        <span class="app-shell__brand-sub">MyPlanetServices</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Admin">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="clients.html"><i data-lucide="users"></i><span class="nav-link__text">Clients</span></a>
+        <a class="nav-link" href="invites.html" aria-current="page"><i data-lucide="mail"></i><span class="nav-link__text">Invites</span></a>
+        <a class="nav-link" href="activity.html"><i data-lucide="history"></i><span class="nav-link__text">Activity Log</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Platform</p>
+        <a class="nav-link" href="plans.html"><i data-lucide="credit-card"></i><span class="nav-link__text">Plans</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">VK</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Vivek Kumar</span>
+          <span class="app-shell__brand-sub">Super admin</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Invites</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search clients</label>
+          <input class="input" id="global-search" type="search" placeholder="Search clients">
+        </div>
+        <a class="btn btn--primary btn--sm" href="invites.html"><i data-lucide="user-plus"></i> Invite client</a>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Invites</h1>
+          <p class="page-head__sub">Send an invite, copy the link, or revoke one before it is used.</p>
+        </div>
+      </div>
+      <div class="split split--even">
+        <div class="card">
+          <div class="card__header"><span class="card__title">Invite a restaurant</span></div>
+          <div class="card__body">
+            <div class="form-grid form-grid--2">
+              <div class="field"><label class="label" for="inv-rest">Restaurant name</label><input class="input" id="inv-rest" type="text" placeholder="e.g. Tiffin &amp; Chai"></div>
+              <div class="field"><label class="label" for="inv-owner">Owner name</label><input class="input" id="inv-owner" type="text" placeholder="e.g. Rohan Mehta"></div>
+              <div class="field field--full"><label class="label" for="inv-email">Owner email</label><input class="input" id="inv-email" type="email" placeholder="owner@restaurant.com"></div>
+              <div class="field">
+                <label class="label" for="inv-country">Country</label>
+                <select class="select" id="inv-country"><option>India</option><option>United Kingdom</option><option>United States</option><option>South Africa</option></select>
+              </div>
+              <div class="field">
+                <label class="label" for="inv-plan">Plan</label>
+                <select class="select" id="inv-plan"><option selected>Lifetime Pro · $49</option><option>Lifetime Starter · $29</option></select>
+              </div>
+              <div class="field field--full">
+                <span class="label">Custom limits <span class="label__optional">(optional)</span></span>
+                <div class="form-grid form-grid--2">
+                  <div class="field"><label class="label" for="inv-tables">Max tables</label><input class="input" id="inv-tables" type="number" placeholder="30"></div>
+                  <div class="field"><label class="label" for="inv-items">Max menu items</label><input class="input" id="inv-items" type="number" placeholder="200"></div>
+                </div>
+                <p class="hint">Leave blank to use the plan defaults.</p>
+              </div>
+            </div>
+            <div class="row mt-6" style="justify-content:flex-end">
+              <button class="btn btn--secondary" type="button">Clear</button>
+              <button class="btn btn--primary" type="button"><i data-lucide="send"></i> Send invite</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__title">Invite email preview</span>
+            <span class="badge badge--neutral">expires in 7 days</span>
+          </div>
+          <div class="card__body">
+            <div class="email-preview">
+              <div class="email-preview__head">To: rohan@tiffinchai.in · Subject: You’re invited to TableTap</div>
+              <div class="email-preview__body">
+                <p><strong>Hi Rohan,</strong></p>
+                <p>Vivek from TableTap here. Your restaurant <strong>Tiffin &amp; Chai</strong> is ready to set up — QR menus, live kitchen tickets and daily reports, all on the Lifetime Pro plan.</p>
+                <p>Click below to set your password and open your dashboard. The link is yours alone and expires in 7 days.</p>
+                <p><strong>Accept invite →</strong></p>
+                <p class="muted">If you were not expecting this, ignore the email and nothing will be created.</p>
+              </div>
+            </div>
+            <div class="row mt-4">
+              <button class="btn btn--secondary btn--block" type="button"><i data-lucide="copy"></i> Copy invite link</button>
+              <button class="btn btn--secondary btn--block" type="button"><i data-lucide="mail"></i> Open in email</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-6">
+        <div class="card__header">
+          <span class="card__title">Invites</span>
+          <span class="muted text-xs">5 invites · 1 pending</span>
+        </div>
+        <div class="card__body">
+          <div class="table-wrap">
+            <table class="table table-stack">
+              <thead>
+                <tr>
+                  <th scope="col">Email</th>
+                  <th scope="col">Restaurant</th>
+                  <th scope="col">Sent</th>
+                  <th scope="col">Expires</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-label="Email" class="table__strong">rohan@tiffinchai.in</td>
+                  <td data-label="Restaurant">Tiffin &amp; Chai</td>
+                  <td data-label="Sent">11 Nov 2026</td>
+                  <td data-label="Expires">18 Nov 2026</td>
+                  <td data-label="Status"><span class="badge badge--warning">Pending</span></td>
+                  <td data-label="Actions">
+                    <div class="row">
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Copy invite link"><i data-lucide="copy"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Resend invite"><i data-lucide="refresh-cw"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Revoke invite"><i data-lucide="ban"></i></button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label="Email" class="table__strong">aditi@curryleaf.in</td>
+                  <td data-label="Restaurant">Curry Leaf Cafe</td>
+                  <td data-label="Sent">9 Nov 2026</td>
+                  <td data-label="Expires">16 Nov 2026</td>
+                  <td data-label="Status"><span class="badge badge--success">Accepted</span></td>
+                  <td data-label="Actions">
+                    <div class="row">
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Copy invite link"><i data-lucide="copy"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Resend invite"><i data-lucide="refresh-cw"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Revoke invite"><i data-lucide="ban"></i></button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label="Email" class="table__strong">marco@casaverde.co.uk</td>
+                  <td data-label="Restaurant">Casa Verde</td>
+                  <td data-label="Sent">28 Oct 2026</td>
+                  <td data-label="Expires">4 Nov 2026</td>
+                  <td data-label="Status"><span class="badge badge--neutral">Expired</span></td>
+                  <td data-label="Actions">
+                    <div class="row">
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Copy invite link"><i data-lucide="copy"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Resend invite"><i data-lucide="refresh-cw"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Revoke invite"><i data-lucide="ban"></i></button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label="Email" class="table__strong">emily@dailygrind.us</td>
+                  <td data-label="Restaurant">The Daily Grind</td>
+                  <td data-label="Sent">2 Oct 2026</td>
+                  <td data-label="Expires">9 Oct 2026</td>
+                  <td data-label="Status"><span class="badge badge--success">Accepted</span></td>
+                  <td data-label="Actions">
+                    <div class="row">
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Copy invite link"><i data-lucide="copy"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Resend invite"><i data-lucide="refresh-cw"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Revoke invite"><i data-lucide="ban"></i></button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label="Email" class="table__strong">olivia@saltroom.co.uk</td>
+                  <td data-label="Restaurant">The Salt Room</td>
+                  <td data-label="Sent">20 Sep 2026</td>
+                  <td data-label="Expires">27 Sep 2026</td>
+                  <td data-label="Status"><span class="badge badge--danger">Revoked</span></td>
+                  <td data-label="Actions">
+                    <div class="row">
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Copy invite link"><i data-lucide="copy"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Resend invite"><i data-lucide="refresh-cw"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Revoke invite"><i data-lucide="ban"></i></button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff — TableTap</title>
+<meta name="description" content="TableTap owner panel for The Olive Table.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="staff">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="owner-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap</span>
+        <span class="app-shell__brand-sub">The Olive Table</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Owner">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Service</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="orders.html"><i data-lucide="receipt"></i><span class="nav-link__text">Live Orders</span></a>
+        <a class="nav-link" href="order-history.html"><i data-lucide="history"></i><span class="nav-link__text">Order History</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="menu.html"><i data-lucide="book-open"></i><span class="nav-link__text">Menu</span></a>
+        <a class="nav-link" href="tables.html"><i data-lucide="qr-code"></i><span class="nav-link__text">Tables & QR</span></a>
+        <a class="nav-link" href="staff.html" aria-current="page"><i data-lucide="users"></i><span class="nav-link__text">Staff</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Business</p>
+        <a class="nav-link" href="reports.html"><i data-lucide="trending-up"></i><span class="nav-link__text">Reports</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+        <a class="nav-link" href="account.html"><i data-lucide="user"></i><span class="nav-link__text">Account</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">AR</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Ananya Rao</span>
+          <span class="app-shell__brand-sub">Owner</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="owner-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Staff</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search</label>
+          <input class="input" id="global-search" type="search" placeholder="Search orders, tables">
+        </div>
+        <button class="btn btn--icon" type="button" aria-label="Notifications, 3 unread">
+          <i data-lucide="bell"></i><span class="count-dot">3</span>
+        </button>
+        <span class="status-pill"><span class="dot" aria-hidden="true"></span> Ordering ON</span>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Staff</h1>
+          <p class="page-head__sub">Kitchen logins for The Olive Table. Cooks use a code and a 4-digit PIN, not email.</p>
+        </div>
+      <div class="page-head__actions"><button class="btn btn--primary btn--sm" type="button" data-modal-open="staff-modal"><i data-lucide="user-plus"></i> Add staff</button></div>
+      </div>
+      <div class="card">
+        <div class="card__body">
+          <div class="row row--between row--wrap">
+            <div>
+              <p class="muted text-xs">Kitchen login code</p>
+              <p class="mono strong" style="font-size:1.5rem;letter-spacing:0.12em">OLIVE7</p>
+            </div>
+            <div class="row">
+              <span class="badge badge--success">Active</span>
+              <button class="btn btn--secondary btn--sm" type="button"><i data-lucide="copy"></i> Copy code</button>
+            </div>
+          </div>
+          <p class="hint">Staff enter this code plus their PIN on kitchen-login.html. Change the code only if it has been shared outside the kitchen.</p>
+        </div>
+      </div>
+
+      <div class="card mt-6">
+        <div class="card__header">
+          <span class="card__title">Kitchen staff</span>
+          <span class="muted text-xs">3 of 5 seats used</span>
+        </div>
+        <div class="card__body">
+          <div class="table-wrap">
+            <table class="table table-stack">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Role</th>
+                  <th scope="col">PIN</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Last active</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-label="Name" class="table__strong">Ravi Kumar</td>
+                  <td data-label="Role">Kitchen</td>
+                  <td data-label="PIN">••••</td>
+                  <td data-label="Status"><span class="badge badge--success">Active</span></td>
+                  <td data-label="Last active">2 min ago</td>
+                  <td data-label="Actions">
+                    <div class="row">
+                      <button class="btn btn--secondary btn--sm" type="button">Reset PIN</button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Deactivate Ravi Kumar"><i data-lucide="ban"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Ravi Kumar"><i data-lucide="trash-2"></i></button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label="Name" class="table__strong">Meera Joshi</td>
+                  <td data-label="Role">Kitchen</td>
+                  <td data-label="PIN">••••</td>
+                  <td data-label="Status"><span class="badge badge--success">Active</span></td>
+                  <td data-label="Last active">18 min ago</td>
+                  <td data-label="Actions">
+                    <div class="row">
+                      <button class="btn btn--secondary btn--sm" type="button">Reset PIN</button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Deactivate Meera Joshi"><i data-lucide="ban"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Meera Joshi"><i data-lucide="trash-2"></i></button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label="Name" class="table__strong">Sanjay Patil</td>
+                  <td data-label="Role">Kitchen</td>
+                  <td data-label="PIN">••••</td>
+                  <td data-label="Status"><span class="badge badge--neutral">Deactivated</span></td>
+                  <td data-label="Last active">3 days ago</td>
+                  <td data-label="Actions">
+                    <div class="row">
+                      <button class="btn btn--secondary btn--sm" type="button">Reset PIN</button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Deactivate Sanjay Patil"><i data-lucide="ban"></i></button>
+                      <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Sanjay Patil"><i data-lucide="trash-2"></i></button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal" id="staff-modal" role="dialog" aria-modal="true" aria-labelledby="staff-modal-title" hidden>
+        <div class="modal__dialog">
+          <div class="modal__header">
+            <div>
+              <p class="modal__title" id="staff-modal-title">Add kitchen staff</p>
+              <p class="muted text-xs">They log in with the restaurant code and this PIN.</p>
+            </div>
+            <button class="btn btn--icon" type="button" data-modal-close aria-label="Close">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="modal__body">
+            <div class="field">
+              <label class="label" for="staff-name">Full name</label>
+              <input class="input" id="staff-name" type="text" placeholder="e.g. Ravi Kumar">
+            </div>
+            <div class="field">
+              <label class="label" for="staff-role">Role</label>
+              <select class="select" id="staff-role"><option>Kitchen</option></select>
+            </div>
+            <div class="field">
+              <span class="label">PIN</span>
+              <div class="card card--flat">
+                <div class="card__body row row--between">
+                  <span class="mono strong" style="font-size:1.25rem;letter-spacing:0.2em">4821</span>
+                  <button class="btn btn--secondary btn--sm" type="button"><i data-lucide="copy"></i> Copy</button>
+                </div>
+              </div>
+              <p class="hint">Generated automatically. Shown once — reset it any time from this page.</p>
+            </div>
+          </div>
+          <div class="modal__footer">
+            <button class="btn btn--secondary" type="button" data-modal-close>Cancel</button>
+            <button class="btn btn--primary" type="button">Add staff</button>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/owner.js"></script>
+</body>
+</html>

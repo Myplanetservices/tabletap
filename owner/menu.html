@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu — TableTap</title>
+<meta name="description" content="TableTap owner panel for The Olive Table.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="menu">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="owner-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap</span>
+        <span class="app-shell__brand-sub">The Olive Table</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Owner">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Service</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="orders.html"><i data-lucide="receipt"></i><span class="nav-link__text">Live Orders</span></a>
+        <a class="nav-link" href="order-history.html"><i data-lucide="history"></i><span class="nav-link__text">Order History</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="menu.html" aria-current="page"><i data-lucide="book-open"></i><span class="nav-link__text">Menu</span></a>
+        <a class="nav-link" href="tables.html"><i data-lucide="qr-code"></i><span class="nav-link__text">Tables & QR</span></a>
+        <a class="nav-link" href="staff.html"><i data-lucide="users"></i><span class="nav-link__text">Staff</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Business</p>
+        <a class="nav-link" href="reports.html"><i data-lucide="trending-up"></i><span class="nav-link__text">Reports</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+        <a class="nav-link" href="account.html"><i data-lucide="user"></i><span class="nav-link__text">Account</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">AR</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Ananya Rao</span>
+          <span class="app-shell__brand-sub">Owner</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="owner-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Menu</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search</label>
+          <input class="input" id="global-search" type="search" placeholder="Search orders, tables">
+        </div>
+        <button class="btn btn--icon" type="button" aria-label="Notifications, 3 unread">
+          <i data-lucide="bell"></i><span class="count-dot">3</span>
+        </button>
+        <span class="status-pill"><span class="dot" aria-hidden="true"></span> Ordering ON</span>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Menu</h1>
+          <p class="page-head__sub">Categories, items, prices and availability for The Olive Table.</p>
+        </div>
+      <div class="page-head__actions"><button class="btn btn--secondary btn--sm" type="button"><i data-lucide="plus"></i> Add category</button>
+        <a class="btn btn--primary btn--sm" href="menu-item.html"><i data-lucide="plus"></i> Add item</a></div>
+      </div>
+      <div class="menu-editor">
+        <div class="card">
+          <div class="card__header">
+            <span class="card__title">Categories</span>
+            <span class="muted text-xs">5 total</span>
+          </div>
+          <div class="card__body">
+              <div class="cat-item cat-item--active">
+                <div>
+                  <p class="cat-item__name">Starters</p>
+                  <p class="cat-item__count">5 items</p>
+                </div>
+                <div class="cat-item__actions">
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Move Starters up"><i data-lucide="arrow-up"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Move Starters down"><i data-lucide="arrow-down"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Rename Starters"><i data-lucide="pencil"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Starters"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="cat-item">
+                <div>
+                  <p class="cat-item__name">Mains</p>
+                  <p class="cat-item__count">5 items</p>
+                </div>
+                <div class="cat-item__actions">
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Move Mains up"><i data-lucide="arrow-up"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Move Mains down"><i data-lucide="arrow-down"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Rename Mains"><i data-lucide="pencil"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Mains"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="cat-item">
+                <div>
+                  <p class="cat-item__name">Pizza</p>
+                  <p class="cat-item__count">4 items</p>
+                </div>
+                <div class="cat-item__actions">
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Move Pizza up"><i data-lucide="arrow-up"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Move Pizza down"><i data-lucide="arrow-down"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Rename Pizza"><i data-lucide="pencil"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Pizza"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="cat-item">
+                <div>
+                  <p class="cat-item__name">Desserts</p>
+                  <p class="cat-item__count">4 items</p>
+                </div>
+                <div class="cat-item__actions">
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Move Desserts up"><i data-lucide="arrow-up"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Move Desserts down"><i data-lucide="arrow-down"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Rename Desserts"><i data-lucide="pencil"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Desserts"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+              <div class="cat-item">
+                <div>
+                  <p class="cat-item__name">Drinks</p>
+                  <p class="cat-item__count">5 items</p>
+                </div>
+                <div class="cat-item__actions">
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Move Drinks up"><i data-lucide="arrow-up"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Move Drinks down"><i data-lucide="arrow-down"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Rename Drinks"><i data-lucide="pencil"></i></button>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Drinks"><i data-lucide="trash-2"></i></button>
+                </div>
+              </div>
+            <button class="btn btn--secondary btn--block mt-4" type="button"><i data-lucide="plus"></i> Add category</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <div class="card__title-row">
+              <span class="card__title">Starters</span>
+              <span class="badge badge--neutral">5 items</span>
+            </div>
+            <div class="row">
+              <input class="input" type="search" placeholder="Search items" aria-label="Search items" style="height:32px;min-height:32px;width:180px;font-size:0.8125rem">
+            </div>
+          </div>
+          <div class="card__body">
+            <div class="item-row">
+              <img class="item-row__img" src="https://images.unsplash.com/photo-1541529086526-db283c563270?auto=format&fit=crop&w=120&q=60" alt="Crispy halloumi">
+              <div class="item-row__body">
+                <p class="item-row__name">Crispy halloumi</p>
+                <p class="list-row__meta">Golden-fried halloumi, thyme honey, chilli flakes.</p>
+                <div class="item-row__meta"><span class="tag tag--veg">Veg</span><span class="tag tag--gf">Gluten-free</span> <span class="muted text-xs">· 12 min prep</span></div>
+              </div>
+              <div class="item-row__side">
+                <span class="item-row__price">$9.50</span>
+                <label class="switch" title="Available">
+                  <input type="checkbox" checked aria-label="Crispy halloumi available">
+                  <span class="switch__track"></span>
+                  <span class="sr-only">Available</span>
+                </label>
+                <a class="btn btn--icon btn--sm" href="menu-item.html" aria-label="Edit Crispy halloumi"><i data-lucide="pencil"></i></a>
+                <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Crispy halloumi"><i data-lucide="trash-2"></i></button>
+              </div>
+            </div>
+            <div class="item-row">
+              <img class="item-row__img" src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=120&q=60" alt="Charred octopus">
+              <div class="item-row__body">
+                <p class="item-row__name">Charred octopus</p>
+                <p class="list-row__meta">Charcoal grilled, salsa verde, confit potato.</p>
+                <div class="item-row__meta"><span class="tag tag--gf">Gluten-free</span><span class="tag tag--spicy">Spicy</span> <span class="muted text-xs">· 12 min prep</span></div>
+              </div>
+              <div class="item-row__side">
+                <span class="item-row__price">$14.00</span>
+                <label class="switch" title="Available">
+                  <input type="checkbox" checked aria-label="Charred octopus available">
+                  <span class="switch__track"></span>
+                  <span class="sr-only">Available</span>
+                </label>
+                <a class="btn btn--icon btn--sm" href="menu-item.html" aria-label="Edit Charred octopus"><i data-lucide="pencil"></i></a>
+                <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Charred octopus"><i data-lucide="trash-2"></i></button>
+              </div>
+            </div>
+            <div class="item-row">
+              <img class="item-row__img" src="https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=120&q=60" alt="Warm olive &amp; rosemary bread">
+              <div class="item-row__body">
+                <p class="item-row__name">Warm olive &amp; rosemary bread</p>
+                <p class="list-row__meta">Baked in-house every service.</p>
+                <div class="item-row__meta"><span class="tag tag--vegan">Vegan</span> <span class="muted text-xs">· 12 min prep</span></div>
+              </div>
+              <div class="item-row__side">
+                <span class="item-row__price">$6.00</span>
+                <label class="switch" title="Available">
+                  <input type="checkbox" checked aria-label="Warm olive &amp; rosemary bread available">
+                  <span class="switch__track"></span>
+                  <span class="sr-only">Available</span>
+                </label>
+                <a class="btn btn--icon btn--sm" href="menu-item.html" aria-label="Edit Warm olive &amp; rosemary bread"><i data-lucide="pencil"></i></a>
+                <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Warm olive &amp; rosemary bread"><i data-lucide="trash-2"></i></button>
+              </div>
+            </div>
+            <div class="item-row">
+              <img class="item-row__img" src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=120&q=60" alt="Whipped feta &amp; honey">
+              <div class="item-row__body">
+                <p class="item-row__name">Whipped feta &amp; honey</p>
+                <p class="list-row__meta">Pistachio dukkah, mint, warm pita.</p>
+                <div class="item-row__meta"><span class="tag tag--veg">Veg</span> <span class="muted text-xs">· 12 min prep</span></div>
+              </div>
+              <div class="item-row__side">
+                <span class="item-row__price">$8.50</span>
+                <label class="switch" title="Available">
+                  <input type="checkbox" checked aria-label="Whipped feta &amp; honey available">
+                  <span class="switch__track"></span>
+                  <span class="sr-only">Available</span>
+                </label>
+                <a class="btn btn--icon btn--sm" href="menu-item.html" aria-label="Edit Whipped feta &amp; honey"><i data-lucide="pencil"></i></a>
+                <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Whipped feta &amp; honey"><i data-lucide="trash-2"></i></button>
+              </div>
+            </div>
+            <div class="item-row">
+              <img class="item-row__img" src="https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?auto=format&fit=crop&w=120&q=60" alt="Crispy calamari">
+              <div class="item-row__body">
+                <p class="item-row__name">Crispy calamari</p>
+                <p class="list-row__meta">Semolina crust, lemon aioli, pickled chilli.</p>
+                <div class="item-row__meta"><span class="tag tag--spicy">Spicy</span> <span class="muted text-xs">· 12 min prep</span></div>
+              </div>
+              <div class="item-row__side">
+                <span class="item-row__price">$11.00</span>
+                <label class="switch" title="Available">
+                  <input type="checkbox"  aria-label="Crispy calamari available">
+                  <span class="switch__track"></span>
+                  <span class="sr-only">Available</span>
+                </label>
+                <a class="btn btn--icon btn--sm" href="menu-item.html" aria-label="Edit Crispy calamari"><i data-lucide="pencil"></i></a>
+                <button class="btn btn--icon btn--sm" type="button" aria-label="Delete Crispy calamari"><i data-lucide="trash-2"></i></button>
+              </div>
+            </div>
+            <a class="btn btn--secondary btn--block mt-4" href="menu-item.html"><i data-lucide="plus"></i> Add item to Starters</a>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/owner.js"></script>
+</body>
+</html>

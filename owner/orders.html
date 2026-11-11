@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Orders — TableTap</title>
+<meta name="description" content="TableTap owner panel for The Olive Table.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="orders">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="owner-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap</span>
+        <span class="app-shell__brand-sub">The Olive Table</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Owner">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Service</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="orders.html" aria-current="page"><i data-lucide="receipt"></i><span class="nav-link__text">Live Orders</span></a>
+        <a class="nav-link" href="order-history.html"><i data-lucide="history"></i><span class="nav-link__text">Order History</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="menu.html"><i data-lucide="book-open"></i><span class="nav-link__text">Menu</span></a>
+        <a class="nav-link" href="tables.html"><i data-lucide="qr-code"></i><span class="nav-link__text">Tables & QR</span></a>
+        <a class="nav-link" href="staff.html"><i data-lucide="users"></i><span class="nav-link__text">Staff</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Business</p>
+        <a class="nav-link" href="reports.html"><i data-lucide="trending-up"></i><span class="nav-link__text">Reports</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+        <a class="nav-link" href="account.html"><i data-lucide="user"></i><span class="nav-link__text">Account</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">AR</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Ananya Rao</span>
+          <span class="app-shell__brand-sub">Owner</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="owner-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Live Orders</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search</label>
+          <input class="input" id="global-search" type="search" placeholder="Search orders, tables">
+        </div>
+        <button class="btn btn--icon" type="button" aria-label="Notifications, 3 unread">
+          <i data-lucide="bell"></i><span class="count-dot">3</span>
+        </button>
+        <span class="status-pill"><span class="dot" aria-hidden="true"></span> Ordering ON</span>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Live orders</h1>
+          <p class="page-head__sub">Every open ticket for The Olive Table, updated as the kitchen works.</p>
+        </div>
+      <div class="page-head__actions"><button class="btn btn--secondary btn--sm" type="button"><i data-lucide="printer"></i> Print all</button></div>
+      </div>
+      <div class="tabs" data-tabs>
+        <div class="tabs__list" role="tablist" aria-label="Order status">
+          <button class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel-orders" id="tab-0" tabindex="0">All <span class="muted">(12)</span></button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-orders" id="tab-1" tabindex="-1">Pending approval <span class="muted">(1)</span></button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-orders" id="tab-2" tabindex="-1">New <span class="muted">(3)</span></button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-orders" id="tab-3" tabindex="-1">Preparing <span class="muted">(4)</span></button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-orders" id="tab-4" tabindex="-1">Ready <span class="muted">(2)</span></button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-orders" id="tab-5" tabindex="-1">Served <span class="muted">(2)</span></button>
+        </div>
+        <div class="tab-panel" role="tabpanel" id="panel-orders" aria-labelledby="tab-0">
+          <div class="card">
+            <div class="card__body">
+            <div class="order-card">
+              <div>
+                <p class="order-card__id">#1043 <span class="badge badge--warning">Pending approval</span></p>
+                <p class="order-card__meta">Table 2 · 1 item · just now</p>
+              </div>
+              <div class="order-card__side">
+                <span class="order-card__total">$13.00</span>
+                <button class="btn btn--secondary btn--sm" type="button" data-drawer-open="order-drawer">Details</button>
+                <button class="btn btn--primary btn--sm" type="button">Approve</button>
+              </div>
+            </div>
+            <div class="order-card">
+              <div>
+                <p class="order-card__id">#1042 <span class="badge badge--warning">Preparing</span></p>
+                <p class="order-card__meta">Table 7 · 3 items · 6 min ago</p>
+              </div>
+              <div class="order-card__side">
+                <span class="order-card__total">$46.00</span>
+                <button class="btn btn--secondary btn--sm" type="button" data-drawer-open="order-drawer">Details</button>
+                <button class="btn btn--primary btn--sm" type="button">Mark ready</button>
+              </div>
+            </div>
+            <div class="order-card">
+              <div>
+                <p class="order-card__id">#1041 <span class="badge badge--success">New</span></p>
+                <p class="order-card__meta">Table 3 · 2 items · 2 min ago</p>
+              </div>
+              <div class="order-card__side">
+                <span class="order-card__total">$28.50</span>
+                <button class="btn btn--secondary btn--sm" type="button" data-drawer-open="order-drawer">Details</button>
+                <button class="btn btn--primary btn--sm" type="button">Start</button>
+              </div>
+            </div>
+            <div class="order-card">
+              <div>
+                <p class="order-card__id">#1040 <span class="badge badge--neutral">Ready</span></p>
+                <p class="order-card__meta">Table 12 · 5 items · 11 min ago</p>
+              </div>
+              <div class="order-card__side">
+                <span class="order-card__total">$74.00</span>
+                <button class="btn btn--secondary btn--sm" type="button" data-drawer-open="order-drawer">Details</button>
+                <button class="btn btn--primary btn--sm" type="button">Served</button>
+              </div>
+            </div>
+            <div class="order-card">
+              <div>
+                <p class="order-card__id">#1038 <span class="badge badge--success">New</span></p>
+                <p class="order-card__meta">Table 5 · 4 items · 1 min ago</p>
+              </div>
+              <div class="order-card__side">
+                <span class="order-card__total">$52.00</span>
+                <button class="btn btn--secondary btn--sm" type="button" data-drawer-open="order-drawer">Details</button>
+                <button class="btn btn--primary btn--sm" type="button">Start</button>
+              </div>
+            </div>
+            </div>
+          </div>
+
+          <div class="card mt-6">
+            <div class="card__header">
+              <span class="card__title">Waiter calls &amp; bill requests</span>
+              <span class="badge badge--warning">4 open</span>
+            </div>
+            <div class="card__body">
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">Table 4</p>
+                <p class="list-row__meta">Call waiter · 1 min ago</p>
+              </div>
+              <div class="list-row__side">
+                <button class="btn btn--secondary btn--sm" type="button">Done</button>
+              </div>
+            </div>
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">Table 9</p>
+                <p class="list-row__meta">Bill requested · 3 min ago</p>
+              </div>
+              <div class="list-row__side">
+                <button class="btn btn--secondary btn--sm" type="button">Done</button>
+              </div>
+            </div>
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">Bar 1</p>
+                <p class="list-row__meta">Call waiter · 5 min ago</p>
+              </div>
+              <div class="list-row__side">
+                <button class="btn btn--secondary btn--sm" type="button">Done</button>
+              </div>
+            </div>
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">Table 12</p>
+                <p class="list-row__meta">Bill requested · 8 min ago</p>
+              </div>
+              <div class="list-row__side">
+                <button class="btn btn--secondary btn--sm" type="button">Done</button>
+              </div>
+            </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="drawer" id="order-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+        <div class="drawer__header">
+          <div>
+            <p class="card__title" id="drawer-title">Order #1042</p>
+            <p class="muted text-xs">Table 7 · 8:42 PM · 6 minutes ago</p>
+          </div>
+          <button class="btn btn--icon" type="button" data-panel-close aria-label="Close order">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="drawer__body">
+          <div class="status-items">
+            <div class="status-item"><span><span class="status-item__qty">2×</span> Margherita <span class="muted">(no basil)</span></span><span class="status-item__price">$26.00</span></div>
+            <div class="status-item"><span><span class="status-item__qty">1×</span> Charred octopus <span class="muted">(Large, extra salsa verde)</span></span><span class="status-item__price">$15.50</span></div>
+            <div class="status-item"><span><span class="status-item__qty">1×</span> House lemonade</span><span class="status-item__price">$4.50</span></div>
+          </div>
+          <div class="cart-info mt-4">
+            <i data-lucide="message-square"></i>
+            <span>Guest note: “One guest is allergic to shellfish, please keep the octopus separate.”</span>
+          </div>
+          <div class="summary">
+            <div class="summary__row"><span>Subtotal</span><span>$46.00</span></div>
+            <div class="summary__row"><span>Tax (8%)</span><span>$3.68</span></div>
+            <div class="summary__row"><span>Service charge (5%)</span><span>$2.30</span></div>
+            <div class="summary__row summary__row--total"><span>Total</span><span>$51.98</span></div>
+          </div>
+          <p class="hint">Placed by Priya M. · Ordering from Table 7 · Paid at counter</p>
+        </div>
+        <div class="drawer__footer">
+          <div class="row">
+            <button class="btn btn--secondary btn--block" type="button">Print ticket</button>
+            <button class="btn btn--primary btn--block" type="button">Mark ready</button>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/owner.js"></script>
+</body>
+</html>

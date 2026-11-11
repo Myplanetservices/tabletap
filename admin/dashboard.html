@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — TableTap Admin</title>
+<meta name="description" content="TableTap Super Admin panel for MyPlanetServices.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="dashboard">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="admin-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="shield"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap Admin</span>
+        <span class="app-shell__brand-sub">MyPlanetServices</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Admin">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="dashboard.html" aria-current="page"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="clients.html"><i data-lucide="users"></i><span class="nav-link__text">Clients</span></a>
+        <a class="nav-link" href="invites.html"><i data-lucide="mail"></i><span class="nav-link__text">Invites</span></a>
+        <a class="nav-link" href="activity.html"><i data-lucide="history"></i><span class="nav-link__text">Activity Log</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Platform</p>
+        <a class="nav-link" href="plans.html"><i data-lucide="credit-card"></i><span class="nav-link__text">Plans</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">VK</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Vivek Kumar</span>
+          <span class="app-shell__brand-sub">Super admin</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Dashboard</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search clients</label>
+          <input class="input" id="global-search" type="search" placeholder="Search clients">
+        </div>
+        <a class="btn btn--primary btn--sm" href="invites.html"><i data-lucide="user-plus"></i> Invite client</a>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Dashboard</h1>
+          <p class="page-head__sub">Every restaurant on TableTap, at a glance.</p>
+        </div>
+      <div class="page-head__actions"><a class="btn btn--secondary btn--sm" href="activity.html"><i data-lucide="history"></i> Activity log</a></div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat">
+          <p class="stat__label">Total clients</p>
+          <p class="stat__value">12</p>
+          <div class="stat__meta"><span class="stat__delta stat__delta--up"><i data-lucide="arrow-up"></i> +2</span><span class="muted">this month</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">Active</p>
+          <p class="stat__value">9</p>
+          <div class="stat__meta"><span class="muted">75% of all clients</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">Suspended</p>
+          <p class="stat__value">1</p>
+          <div class="stat__meta"><span class="muted">Harbor & Rye</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">Pending invites</p>
+          <p class="stat__value">1</p>
+          <div class="stat__meta"><span class="muted">expires in 6 days</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">Orders today</p>
+          <p class="stat__value">1,284</p>
+          <div class="stat__meta"><span class="stat__delta stat__delta--up"><i data-lucide="arrow-up"></i> +9.1%</span><span class="muted">across all clients</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">License revenue</p>
+          <p class="stat__value">$588</p>
+          <div class="stat__meta"><span class="stat__delta stat__delta--up"><i data-lucide="arrow-up"></i> +$98</span><span class="muted">12 licences sold</span></div>
+        </div>
+      </div>
+
+      <div class="split mt-6">
+        <div class="card">
+          <div class="card__header">
+            <span class="card__title">New clients per month</span>
+            <span class="muted text-xs">Last 10 months</span>
+          </div>
+          <div class="card__body">
+        <div class="chart">
+          <div class="chart__col">
+            <span class="chart__value">3</span>
+            <span class="chart__bar" style="height:17%"></span>
+            <span class="chart__label">Feb</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">6</span>
+            <span class="chart__bar" style="height:33%"></span>
+            <span class="chart__label">Mar</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">4</span>
+            <span class="chart__bar" style="height:22%"></span>
+            <span class="chart__label">Apr</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">8</span>
+            <span class="chart__bar" style="height:44%"></span>
+            <span class="chart__label">May</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">11</span>
+            <span class="chart__bar" style="height:61%"></span>
+            <span class="chart__label">Jun</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">9</span>
+            <span class="chart__bar" style="height:50%"></span>
+            <span class="chart__label">Jul</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">14</span>
+            <span class="chart__bar" style="height:78%"></span>
+            <span class="chart__label">Aug</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">12</span>
+            <span class="chart__bar" style="height:67%"></span>
+            <span class="chart__label">Sep</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">16</span>
+            <span class="chart__bar" style="height:89%"></span>
+            <span class="chart__label">Oct</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">18</span>
+            <span class="chart__bar chart__bar--hi" style="height:100%"></span>
+            <span class="chart__label">Nov</span>
+          </div>
+        </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__title">Needs attention</span>
+            <span class="badge badge--warning">4 items</span>
+          </div>
+          <div class="card__body">
+            <div class="needs-list">
+            <div class="needs-item">
+              <i data-lucide="alert-triangle"></i>
+              <div>
+                <p class="needs-item__title">The Daily Grind</p>
+                <p class="needs-item__text">No owner login in 12 days. Menu items at 10 / 10 limit.</p>
+              </div>
+            </div>
+            <div class="needs-item">
+              <i data-lucide="alert-triangle"></i>
+              <div>
+                <p class="needs-item__title">Harbor &amp; Rye</p>
+                <p class="needs-item__text">Suspended 6 days ago. Owner emailed twice, no reply.</p>
+              </div>
+            </div>
+            <div class="needs-item">
+              <i data-lucide="alert-triangle"></i>
+              <div>
+                <p class="needs-item__title">Spice Route Kitchen</p>
+                <p class="needs-item__text">Tables at 30 / 30. Owner asked about a higher limit.</p>
+              </div>
+            </div>
+            <div class="needs-item">
+              <i data-lucide="alert-triangle"></i>
+              <div>
+                <p class="needs-item__title">Tiffin &amp; Chai</p>
+                <p class="needs-item__text">Invite sent 14 minutes ago, not accepted yet.</p>
+              </div>
+            </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <div class="card__header">
+          <span class="card__title">Recent activity</span>
+          <a class="card__link" href="activity.html">View all</a>
+        </div>
+        <div class="card__body">
+          <div class="activity-feed">
+            <div class="activity-feed__item">
+              <span class="activity-feed__icon"><i data-lucide="user-plus"></i></span>
+              <div class="activity-feed__body">
+                <p>Invite sent to <strong>Tiffin &amp; Chai</strong> (rohan@tiffinchai.in)</p>
+                <p class="activity-feed__meta">Vivek Kumar · 14 min ago</p>
+              </div>
+            </div>
+            <div class="activity-feed__item">
+              <span class="activity-feed__icon"><i data-lucide="log-in"></i></span>
+              <div class="activity-feed__body">
+                <p><strong>Ananya Rao</strong> logged in to The Olive Table</p>
+                <p class="activity-feed__meta">owner@olivetable.demo · 22 min ago</p>
+              </div>
+            </div>
+            <div class="activity-feed__item">
+              <span class="activity-feed__icon"><i data-lucide="ban"></i></span>
+              <div class="activity-feed__body">
+                <p><strong>Harbor &amp; Rye</strong> suspended for unpaid invoice</p>
+                <p class="activity-feed__meta">Vivek Kumar · 6 days ago</p>
+              </div>
+            </div>
+            <div class="activity-feed__item">
+              <span class="activity-feed__icon"><i data-lucide="sliders-horizontal"></i></span>
+              <div class="activity-feed__body">
+                <p>Table limit raised to 30 for <strong>Casa Verde</strong></p>
+                <p class="activity-feed__meta">Vivek Kumar · 2 days ago</p>
+              </div>
+            </div>
+            <div class="activity-feed__item">
+              <span class="activity-feed__icon"><i data-lucide="book-open"></i></span>
+              <div class="activity-feed__body">
+                <p><strong>Spice Route Kitchen</strong> added 6 menu items</p>
+                <p class="activity-feed__meta">priya@spiceroute.in · 1 hour ago</p>
+              </div>
+            </div>
+            <div class="activity-feed__item">
+              <span class="activity-feed__icon"><i data-lucide="mail"></i></span>
+              <div class="activity-feed__body">
+                <p>Invite for <strong>Curry Leaf Cafe</strong> accepted</p>
+                <p class="activity-feed__meta">aditi@curryleaf.in · 18 hours ago</p>
+              </div>
+            </div>
+            <div class="activity-feed__item">
+              <span class="activity-feed__icon"><i data-lucide="shield"></i></span>
+              <div class="activity-feed__body">
+                <p>Support role given to <strong>Neha Iyer</strong></p>
+                <p class="activity-feed__meta">Vivek Kumar · 3 days ago</p>
+              </div>
+            </div>
+            <div class="activity-feed__item">
+              <span class="activity-feed__icon"><i data-lucide="refresh-cw"></i></span>
+              <div class="activity-feed__body">
+                <p><strong>The Daily Grind</strong> switched to read-only mode</p>
+                <p class="activity-feed__meta">Vivek Kumar · 12 days ago</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/admin.js"></script>
+</body>
+</html>

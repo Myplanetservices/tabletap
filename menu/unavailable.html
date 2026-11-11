@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Table unavailable — The Olive Table</title>
+<meta name="description" content="The menu is not available right now.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="menu-page" data-page="unavailable">
+<div class="menu-app">
+
+  <div class="menu-topbar">
+    <div>
+      <p class="menu-topbar__title">The Olive Table</p>
+      <p class="menu-topbar__meta">Table unavailable</p>
+    </div>
+  </div>
+
+  <div class="state-stack">
+
+    <div data-state="closed">
+      <div class="state-card">
+        <span class="state-icon"><i data-lucide="clock"></i></span>
+        <h1 class="state-title">The restaurant is closed now</h1>
+        <p class="state-text">You are welcome to look at the menu. Ordering switches back on when the kitchen opens.</p>
+        <div class="hours" id="state-hours">
+          <div class="hours__row"><span>Monday – Thursday</span><span>08:00 – 02:00</span></div>
+          <div class="hours__row"><span>Friday – Saturday</span><span>08:00 – 02:00</span></div>
+          <div class="hours__row"><span>Sunday</span><span>08:00 – 02:00</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div data-state="invalid">
+      <div class="state-card">
+        <span class="state-icon"><i data-lucide="qr-code"></i></span>
+        <h1 class="state-title">This QR code is not valid</h1>
+        <p class="state-text">The link may have expired, or this table has been re-numbered. Please ask a member of staff for the current QR code on your table.</p>
+      </div>
+    </div>
+
+    <div data-state="paused">
+      <div class="state-card">
+        <span class="state-icon"><i data-lucide="pause"></i></span>
+        <h1 class="state-title">Ordering is paused</h1>
+        <p class="state-text">The kitchen has paused new orders for a few minutes while it catches up. Please ask staff to take your order — we will be back shortly.</p>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="../assets/js/file-check.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script type="module" src="../assets/js/customer.js"></script>
+</body>
+</html>

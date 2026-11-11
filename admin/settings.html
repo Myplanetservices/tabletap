@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings — TableTap Admin</title>
+<meta name="description" content="TableTap Super Admin panel for MyPlanetServices.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="settings">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="admin-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="shield"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap Admin</span>
+        <span class="app-shell__brand-sub">MyPlanetServices</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Admin">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="clients.html"><i data-lucide="users"></i><span class="nav-link__text">Clients</span></a>
+        <a class="nav-link" href="invites.html"><i data-lucide="mail"></i><span class="nav-link__text">Invites</span></a>
+        <a class="nav-link" href="activity.html"><i data-lucide="history"></i><span class="nav-link__text">Activity Log</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Platform</p>
+        <a class="nav-link" href="plans.html"><i data-lucide="credit-card"></i><span class="nav-link__text">Plans</span></a>
+        <a class="nav-link" href="settings.html" aria-current="page"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">VK</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Vivek Kumar</span>
+          <span class="app-shell__brand-sub">Super admin</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Settings</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search clients</label>
+          <input class="input" id="global-search" type="search" placeholder="Search clients">
+        </div>
+        <a class="btn btn--primary btn--sm" href="invites.html"><i data-lucide="user-plus"></i> Invite client</a>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Settings</h1>
+          <p class="page-head__sub">Your profile, the admin team, the invite email and platform switches.</p>
+        </div>
+      </div>
+      <div class="tabs" data-tabs>
+        <div class="tabs__list" role="tablist" aria-label="Admin settings">
+          <button class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel-profile" id="tab-profile" tabindex="0">Profile</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-team" id="tab-team" tabindex="-1">Admin team</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-template" id="tab-template" tabindex="-1">Invite email template</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-platform" id="tab-platform" tabindex="-1">Platform</button>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-profile" aria-labelledby="tab-profile">
+          <div class="card">
+            <div class="card__body">
+              <div class="form-grid form-grid--2">
+                <div class="field"><label class="label" for="admin-name">Full name</label><input class="input" id="admin-name" type="text" value="Vivek Kumar"></div>
+                <div class="field"><label class="label" for="admin-email">Email</label><input class="input" id="admin-email" type="email" value="vivek@myplanetservices.com"></div>
+                <div class="field"><label class="label" for="admin-role">Role</label><select class="select" id="admin-role"><option selected>Super admin</option><option>Support</option></select></div>
+                <div class="field"><label class="label" for="admin-phone">Phone</label><input class="input" id="admin-phone" type="tel" value="+91 80 4718 2200"></div>
+              </div>
+              <div class="row mt-6" style="justify-content:flex-end">
+                <button class="btn btn--primary" type="button">Save profile</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-team" aria-labelledby="tab-team" hidden>
+          <div class="card">
+            <div class="card__header">
+              <span class="card__title">Admin team</span>
+              <button class="btn btn--primary btn--sm" type="button" data-modal-open="admin-modal"><i data-lucide="user-plus"></i> Add admin</button>
+            </div>
+            <div class="card__body">
+              <div class="table-wrap">
+                <table class="table table-stack">
+                  <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Last active</th><th scope="col">Actions</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td data-label="Name" class="table__strong">Vivek Kumar</td>
+                      <td data-label="Email">vivek@myplanetservices.com</td>
+                      <td data-label="Role"><span class="badge badge--success">Super admin</span></td>
+                      <td data-label="Last active">Just now</td>
+                      <td data-label="Actions"><span class="muted text-xs">—</span></td>
+                    </tr>
+                    <tr>
+                      <td data-label="Name" class="table__strong">Neha Iyer</td>
+                      <td data-label="Email">neha@myplanetservices.com</td>
+                      <td data-label="Role"><span class="badge badge--neutral">Support</span></td>
+                      <td data-label="Last active">2 hours ago</td>
+                      <td data-label="Actions">
+                        <button class="btn btn--icon btn--sm" type="button" aria-label="Remove Neha Iyer"><i data-lucide="trash-2"></i></button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="hint mt-4">Support admins cannot delete clients or edit plans.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-template" aria-labelledby="tab-template" hidden>
+          <div class="card">
+            <div class="card__body">
+              <div class="field">
+                <label class="label" for="tpl-subject">Subject</label>
+                <input class="input" id="tpl-subject" type="text" value="You’re invited to TableTap, {{owner_name}}">
+              </div>
+              <div class="field">
+                <label class="label" for="tpl-body">Body</label>
+                <textarea class="textarea" id="tpl-body" style="min-height:180px">Hi {{owner_name}},
+
+{{restaurant_name}} is ready to set up on TableTap — QR menus, live kitchen tickets and daily reports on the {{plan_name}} plan.
+
+Set your password and open your dashboard: {{invite_link}}
+
+This link expires in {{expiry_days}} days.
+
+— {{sender_name}}, TableTap</textarea>
+                <p class="hint">Variables: {{owner_name}}, {{restaurant_name}}, {{plan_name}}, {{invite_link}}, {{expiry_days}}, {{sender_name}}</p>
+              </div>
+
+              <span class="label mt-6">Live preview</span>
+              <div class="email-preview">
+                <div class="email-preview__head">To: rohan@tiffinchai.in · Subject: You’re invited to TableTap, Rohan</div>
+                <div class="email-preview__body">
+                  <p>Hi Rohan,</p>
+                  <p>Tiffin &amp; Chai is ready to set up on TableTap — QR menus, live kitchen tickets and daily reports on the Lifetime Pro plan.</p>
+                  <p>Set your password and open your dashboard: tabletap.demo/accept?token=k4x9…</p>
+                  <p>This link expires in 7 days.</p>
+                  <p>— Vivek, TableTap</p>
+                </div>
+              </div>
+
+              <div class="row mt-6" style="justify-content:flex-end">
+                <button class="btn btn--primary" type="button">Save template</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-platform" aria-labelledby="tab-platform" hidden>
+          <div class="card">
+            <div class="card__body">
+              <div class="restriction-row">
+                <div>
+                  <p class="restriction-row__title">Maintenance mode</p>
+                  <p class="restriction-row__text">Blocks owner logins and shows a banner on every owner page.</p>
+                </div>
+                <label class="switch"><input type="checkbox"><span class="switch__track"></span><span class="sr-only">Maintenance mode</span></label>
+              </div>
+              <div class="field mt-4">
+                <label class="label" for="maintenance-msg">Maintenance message</label>
+                <textarea class="textarea" id="maintenance-msg">TableTap is being updated. We will be back by 6:00 PM IST — orders already placed are safe.</textarea>
+              </div>
+              <div class="form-grid form-grid--2 mt-4">
+                <div class="field">
+                  <label class="label" for="default-plan">Default plan for new clients</label>
+                  <select class="select" id="default-plan"><option selected>Lifetime Pro</option><option>Lifetime Starter</option></select>
+                </div>
+                <div class="field">
+                  <label class="label" for="expiry-days">Invite expiry (days)</label>
+                  <input class="input" id="expiry-days" type="number" value="7">
+                </div>
+              </div>
+              <div class="row mt-6" style="justify-content:flex-end">
+                <button class="btn btn--primary" type="button">Save platform settings</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal" id="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title" hidden>
+        <div class="modal__dialog">
+          <div class="modal__header">
+            <div><p class="modal__title" id="admin-modal-title">Add admin</p><p class="muted text-xs">They will get an email with a temporary password.</p></div>
+            <button class="btn btn--icon" type="button" data-modal-close aria-label="Close"><i data-lucide="x"></i></button>
+          </div>
+          <div class="modal__body">
+            <div class="field"><label class="label" for="new-admin-name">Full name</label><input class="input" id="new-admin-name" type="text" placeholder="e.g. Neha Iyer"></div>
+            <div class="field"><label class="label" for="new-admin-email">Email</label><input class="input" id="new-admin-email" type="email" placeholder="name@myplanetservices.com"></div>
+            <div class="field">
+              <label class="label" for="new-admin-role">Role</label>
+              <select class="select" id="new-admin-role"><option>Super admin</option><option>Support</option></select>
+              <p class="hint">Support can view and edit clients but cannot delete them or change plans.</p>
+            </div>
+          </div>
+          <div class="modal__footer">
+            <button class="btn btn--secondary" type="button" data-modal-close>Cancel</button>
+            <button class="btn btn--primary" type="button">Add admin</button>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/admin.js"></script>
+</body>
+</html>

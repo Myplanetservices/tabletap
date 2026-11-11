@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clients — TableTap Admin</title>
+<meta name="description" content="TableTap Super Admin panel for MyPlanetServices.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="clients">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="admin-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="shield"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap Admin</span>
+        <span class="app-shell__brand-sub">MyPlanetServices</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Admin">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="clients.html" aria-current="page"><i data-lucide="users"></i><span class="nav-link__text">Clients</span></a>
+        <a class="nav-link" href="invites.html"><i data-lucide="mail"></i><span class="nav-link__text">Invites</span></a>
+        <a class="nav-link" href="activity.html"><i data-lucide="history"></i><span class="nav-link__text">Activity Log</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Platform</p>
+        <a class="nav-link" href="plans.html"><i data-lucide="credit-card"></i><span class="nav-link__text">Plans</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">VK</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Vivek Kumar</span>
+          <span class="app-shell__brand-sub">Super admin</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Clients</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search clients</label>
+          <input class="input" id="global-search" type="search" placeholder="Search clients">
+        </div>
+        <a class="btn btn--primary btn--sm" href="invites.html"><i data-lucide="user-plus"></i> Invite client</a>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Clients</h1>
+          <p class="page-head__sub">12 restaurants, 9 active. Search, filter or open a client to manage it.</p>
+        </div>
+      <div class="page-head__actions"><button class="btn btn--secondary btn--sm" type="button"><i data-lucide="download"></i> Export CSV</button>
+        <a class="btn btn--primary btn--sm" href="invites.html"><i data-lucide="user-plus"></i> Invite client</a></div>
+      </div>
+      <div class="card">
+        <div class="card__body">
+          <div class="toolbar">
+            <input class="input" type="search" placeholder="Search restaurant, owner or email" aria-label="Search clients">
+            <select class="select" aria-label="Status"><option>All statuses</option><option>Active</option><option>Suspended</option><option>Restricted</option><option>Invited</option></select>
+            <select class="select" aria-label="Plan"><option>All plans</option><option>Lifetime Starter</option><option>Lifetime Pro</option></select>
+            <select class="select" aria-label="Country"><option>All countries</option><option>India</option><option>United Kingdom</option><option>United States</option><option>South Africa</option></select>
+            <select class="select" aria-label="Sort"><option>Newest first</option><option>Oldest first</option><option>Name A–Z</option><option>Last active</option></select>
+          </div>
+
+          <div class="row row--between row--wrap mb-4">
+            <span class="muted text-xs">12 clients · 9 active · 1 suspended</span>
+            <button class="btn btn--secondary btn--sm" type="button"><i data-lucide="ban"></i> Suspend selected</button>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table table-stack">
+              <thead>
+                <tr>
+                  <th scope="col"><input type="checkbox" aria-label="Select all clients"></th>
+                  <th scope="col">Restaurant</th>
+                  <th scope="col">Owner</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Country</th>
+                  <th scope="col">Plan</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" class="table__num">Tables</th>
+                  <th scope="col">Last active</th>
+                  <th scope="col"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select The Olive Table"></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">OT</span>
+                      <div>
+                        <p class="client-cell__name">The Olive Table</p>
+                        <p class="client-cell__sub">India</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">Ananya Rao</td>
+                  <td data-label="Email">owner@olivetable.demo</td>
+                  <td data-label="Country">India</td>
+                  <td data-label="Plan">Pro</td>
+                  <td data-label="Status"><span class="badge badge--success">Active</span></td>
+                  <td data-label="Tables used" class="table__num">12 / 30</td>
+                  <td data-label="Last active">2 min ago</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c0" aria-expanded="false" aria-label="Actions for The Olive Table">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c0">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select The Copper Kettle"></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">CK</span>
+                      <div>
+                        <p class="client-cell__name">The Copper Kettle</p>
+                        <p class="client-cell__sub">United Kingdom</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">James Whitfield</td>
+                  <td data-label="Email">james@copperkettle.co.uk</td>
+                  <td data-label="Country">United Kingdom</td>
+                  <td data-label="Plan">Pro</td>
+                  <td data-label="Status"><span class="badge badge--success">Active</span></td>
+                  <td data-label="Tables used" class="table__num">24 / 30</td>
+                  <td data-label="Last active">1 hour ago</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c1" aria-expanded="false" aria-label="Actions for The Copper Kettle">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c1">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select Blue Fig Bistro"></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">BF</span>
+                      <div>
+                        <p class="client-cell__name">Blue Fig Bistro</p>
+                        <p class="client-cell__sub">South Africa</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">Sarah Mokoena</td>
+                  <td data-label="Email">sarah@bluefig.co.za</td>
+                  <td data-label="Country">South Africa</td>
+                  <td data-label="Plan">Starter</td>
+                  <td data-label="Status"><span class="badge badge--success">Active</span></td>
+                  <td data-label="Tables used" class="table__num">8 / 10</td>
+                  <td data-label="Last active">3 hours ago</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c2" aria-expanded="false" aria-label="Actions for Blue Fig Bistro">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c2">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select Harbor & Rye"></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">HR</span>
+                      <div>
+                        <p class="client-cell__name">Harbor & Rye</p>
+                        <p class="client-cell__sub">United States</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">Daniel Brooks</td>
+                  <td data-label="Email">dan@harborrye.com</td>
+                  <td data-label="Country">United States</td>
+                  <td data-label="Plan">Pro</td>
+                  <td data-label="Status"><span class="badge badge--danger">Suspended</span></td>
+                  <td data-label="Tables used" class="table__num">18 / 30</td>
+                  <td data-label="Last active">6 days ago</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c3" aria-expanded="false" aria-label="Actions for Harbor & Rye">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c3">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select Spice Route Kitchen"></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">SR</span>
+                      <div>
+                        <p class="client-cell__name">Spice Route Kitchen</p>
+                        <p class="client-cell__sub">India</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">Priya Nair</td>
+                  <td data-label="Email">priya@spiceroute.in</td>
+                  <td data-label="Country">India</td>
+                  <td data-label="Plan">Pro</td>
+                  <td data-label="Status"><span class="badge badge--success">Active</span></td>
+                  <td data-label="Tables used" class="table__num">30 / 30</td>
+                  <td data-label="Last active">25 min ago</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c4" aria-expanded="false" aria-label="Actions for Spice Route Kitchen">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c4">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select The Daily Grind"></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">DG</span>
+                      <div>
+                        <p class="client-cell__name">The Daily Grind</p>
+                        <p class="client-cell__sub">United States</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">Emily Carter</td>
+                  <td data-label="Email">emily@dailygrind.us</td>
+                  <td data-label="Country">United States</td>
+                  <td data-label="Plan">Starter</td>
+                  <td data-label="Status"><span class="badge badge--warning">Restricted</span></td>
+                  <td data-label="Tables used" class="table__num">10 / 10</td>
+                  <td data-label="Last active">12 days ago</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c5" aria-expanded="false" aria-label="Actions for The Daily Grind">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c5">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select Casa Verde"></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">CV</span>
+                      <div>
+                        <p class="client-cell__name">Casa Verde</p>
+                        <p class="client-cell__sub">United Kingdom</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">Marco Rossi</td>
+                  <td data-label="Email">marco@casaverde.co.uk</td>
+                  <td data-label="Country">United Kingdom</td>
+                  <td data-label="Plan">Pro</td>
+                  <td data-label="Status"><span class="badge badge--success">Active</span></td>
+                  <td data-label="Tables used" class="table__num">15 / 30</td>
+                  <td data-label="Last active">40 min ago</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c6" aria-expanded="false" aria-label="Actions for Casa Verde">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c6">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select Ndlovu Grill"></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">NG</span>
+                      <div>
+                        <p class="client-cell__name">Ndlovu Grill</p>
+                        <p class="client-cell__sub">South Africa</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">Thabo Ndlovu</td>
+                  <td data-label="Email">thabo@ndlovugrill.co.za</td>
+                  <td data-label="Country">South Africa</td>
+                  <td data-label="Plan">Pro</td>
+                  <td data-label="Status"><span class="badge badge--success">Active</span></td>
+                  <td data-label="Tables used" class="table__num">21 / 30</td>
+                  <td data-label="Last active">2 days ago</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c7" aria-expanded="false" aria-label="Actions for Ndlovu Grill">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c7">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select Tiffin & Chai"></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">TC</span>
+                      <div>
+                        <p class="client-cell__name">Tiffin & Chai</p>
+                        <p class="client-cell__sub">India</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">Rohan Mehta</td>
+                  <td data-label="Email">rohan@tiffinchai.in</td>
+                  <td data-label="Country">India</td>
+                  <td data-label="Plan">Starter</td>
+                  <td data-label="Status"><span class="badge badge--neutral">Invited</span></td>
+                  <td data-label="Tables used" class="table__num">0 / 10</td>
+                  <td data-label="Last active">never</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c8" aria-expanded="false" aria-label="Actions for Tiffin & Chai">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c8">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select The Salt Room"></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">SR</span>
+                      <div>
+                        <p class="client-cell__name">The Salt Room</p>
+                        <p class="client-cell__sub">United Kingdom</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">Olivia Bennett</td>
+                  <td data-label="Email">olivia@saltroom.co.uk</td>
+                  <td data-label="Country">United Kingdom</td>
+                  <td data-label="Plan">Pro</td>
+                  <td data-label="Status"><span class="badge badge--success">Active</span></td>
+                  <td data-label="Tables used" class="table__num">9 / 30</td>
+                  <td data-label="Last active">5 hours ago</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c9" aria-expanded="false" aria-label="Actions for The Salt Room">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c9">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select Ember Pizza Co."></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">EP</span>
+                      <div>
+                        <p class="client-cell__name">Ember Pizza Co.</p>
+                        <p class="client-cell__sub">United States</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">Marcus Lee</td>
+                  <td data-label="Email">marcus@emberpizza.com</td>
+                  <td data-label="Country">United States</td>
+                  <td data-label="Plan">Pro</td>
+                  <td data-label="Status"><span class="badge badge--success">Active</span></td>
+                  <td data-label="Tables used" class="table__num">27 / 30</td>
+                  <td data-label="Last active">4 days ago</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c10" aria-expanded="false" aria-label="Actions for Ember Pizza Co.">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c10">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" aria-label="Select Curry Leaf Cafe"></td>
+                  <td data-label="Restaurant">
+                    <div class="client-cell">
+                      <span class="client-cell__logo">CL</span>
+                      <div>
+                        <p class="client-cell__name">Curry Leaf Cafe</p>
+                        <p class="client-cell__sub">India</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Owner">Aditi Sharma</td>
+                  <td data-label="Email">aditi@curryleaf.in</td>
+                  <td data-label="Country">India</td>
+                  <td data-label="Plan">Starter</td>
+                  <td data-label="Status"><span class="badge badge--success">Active</span></td>
+                  <td data-label="Tables used" class="table__num">6 / 10</td>
+                  <td data-label="Last active">18 hours ago</td>
+                  <td data-label="Actions">
+                    <div class="dropdown row-actions">
+                      <button class="btn btn--icon btn--sm" type="button" data-dropdown-trigger aria-controls="menu-c11" aria-expanded="false" aria-label="Actions for Curry Leaf Cafe">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <div class="dropdown__menu" id="menu-c11">
+                        <a class="dropdown__item" href="client-detail.html"><i data-lucide="eye"></i> View client</a>
+                        <button class="dropdown__item" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+                        <button class="dropdown__item" type="button"><i data-lucide="ban"></i> Suspend</button>
+                        <div class="dropdown__separator"></div>
+                        <button class="dropdown__item dropdown__item--danger" type="button"><i data-lucide="trash-2"></i> Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="row row--between mt-6">
+            <span class="muted text-xs">Showing 1–12 of 12</span>
+            <nav class="pagination" aria-label="Client pages">
+              <a class="page page--disabled" href="#"><i data-lucide="chevron-left"></i></a>
+              <a class="page" href="#" aria-current="page">1</a>
+              <a class="page page--disabled" href="#"><i data-lucide="chevron-right"></i></a>
+            </nav>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/admin.js"></script>
+</body>
+</html>

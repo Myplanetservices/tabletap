@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — TableTap</title>
+<meta name="description" content="TableTap owner panel for The Olive Table.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="dashboard">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="owner-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap</span>
+        <span class="app-shell__brand-sub">The Olive Table</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Owner">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Service</p>
+        <a class="nav-link" href="dashboard.html" aria-current="page"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="orders.html"><i data-lucide="receipt"></i><span class="nav-link__text">Live Orders</span></a>
+        <a class="nav-link" href="order-history.html"><i data-lucide="history"></i><span class="nav-link__text">Order History</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="menu.html"><i data-lucide="book-open"></i><span class="nav-link__text">Menu</span></a>
+        <a class="nav-link" href="tables.html"><i data-lucide="qr-code"></i><span class="nav-link__text">Tables & QR</span></a>
+        <a class="nav-link" href="staff.html"><i data-lucide="users"></i><span class="nav-link__text">Staff</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Business</p>
+        <a class="nav-link" href="reports.html"><i data-lucide="trending-up"></i><span class="nav-link__text">Reports</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+        <a class="nav-link" href="account.html"><i data-lucide="user"></i><span class="nav-link__text">Account</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">AR</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Ananya Rao</span>
+          <span class="app-shell__brand-sub">Owner</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="owner-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Dashboard</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search</label>
+          <input class="input" id="global-search" type="search" placeholder="Search orders, tables">
+        </div>
+        <button class="btn btn--icon" type="button" aria-label="Notifications, 3 unread">
+          <i data-lucide="bell"></i><span class="count-dot">3</span>
+        </button>
+        <span class="status-pill"><span class="dot" aria-hidden="true"></span> Ordering ON</span>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Good evening, Ananya</h1>
+          <p class="page-head__sub">Here is how The Olive Table is doing today, Wednesday 11 November.</p>
+        </div>
+      <div class="page-head__actions"><a class="btn btn--secondary btn--sm" href="reports.html"><i data-lucide="trending-up"></i> Reports</a>
+        <a class="btn btn--primary btn--sm" href="orders.html"><i data-lucide="receipt"></i> View live orders</a></div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat">
+          <p class="stat__label">Today's orders</p>
+          <p class="stat__value">42</p>
+          <div class="stat__meta"><span class="stat__delta stat__delta--up"><i data-lucide="arrow-up"></i> +12%</span><span class="muted">vs yesterday</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">Today's revenue</p>
+          <p class="stat__value">$1,284.50</p>
+          <div class="stat__meta"><span class="stat__delta stat__delta--up"><i data-lucide="arrow-up"></i> +8.4%</span><span class="muted">vs yesterday</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">Avg order value</p>
+          <p class="stat__value">$30.58</p>
+          <div class="stat__meta"><span class="stat__delta stat__delta--down"><i data-lucide="arrow-down"></i> −2.1%</span><span class="muted">vs yesterday</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">Active tables</p>
+          <p class="stat__value">9 / 14</p>
+          <div class="stat__meta"><span class="muted">5 free right now</span></div>
+        </div>
+      </div>
+
+      <div class="split mt-6">
+        <div class="card">
+          <div class="card__header">
+            <span class="card__title">Live orders</span>
+            <a class="card__link" href="orders.html">View all</a>
+          </div>
+          <div class="card__body">
+            <div class="order-card">
+              <div>
+                <p class="order-card__id">#1042 <span class="badge badge--warning">Preparing</span></p>
+                <p class="order-card__meta">Table 7 · 3 items · 6 min ago</p>
+              </div>
+              <div class="order-card__side">
+                <span class="order-card__total">$46.00</span>
+                <a class="btn btn--secondary btn--sm" href="orders.html">Open</a>
+              </div>
+            </div>
+            <div class="order-card">
+              <div>
+                <p class="order-card__id">#1041 <span class="badge badge--success">New</span></p>
+                <p class="order-card__meta">Table 3 · 2 items · 2 min ago</p>
+              </div>
+              <div class="order-card__side">
+                <span class="order-card__total">$28.50</span>
+                <a class="btn btn--secondary btn--sm" href="orders.html">Open</a>
+              </div>
+            </div>
+            <div class="order-card">
+              <div>
+                <p class="order-card__id">#1040 <span class="badge badge--neutral">Ready</span></p>
+                <p class="order-card__meta">Table 12 · 5 items · 11 min ago</p>
+              </div>
+              <div class="order-card__side">
+                <span class="order-card__total">$74.00</span>
+                <a class="btn btn--secondary btn--sm" href="orders.html">Open</a>
+              </div>
+            </div>
+            <div class="order-card">
+              <div>
+                <p class="order-card__id">#1039 <span class="badge badge--neutral">Served</span></p>
+                <p class="order-card__meta">Bar 2 · 2 items · 18 min ago</p>
+              </div>
+              <div class="order-card__side">
+                <span class="order-card__total">$19.00</span>
+                <a class="btn btn--secondary btn--sm" href="orders.html">Open</a>
+              </div>
+            </div>
+            <div class="order-card">
+              <div>
+                <p class="order-card__id">#1038 <span class="badge badge--success">New</span></p>
+                <p class="order-card__meta">Table 5 · 4 items · 1 min ago</p>
+              </div>
+              <div class="order-card__side">
+                <span class="order-card__total">$52.00</span>
+                <a class="btn btn--secondary btn--sm" href="orders.html">Open</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__title">Waiter calls &amp; bill requests</span>
+            <span class="badge badge--warning">3 open</span>
+          </div>
+          <div class="card__body">
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">Table 4</p>
+                <p class="list-row__meta">Call waiter · 1 min ago</p>
+              </div>
+              <div class="list-row__side">
+                <button class="btn btn--secondary btn--sm" type="button">Done</button>
+              </div>
+            </div>
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">Table 9</p>
+                <p class="list-row__meta">Bill requested · 3 min ago</p>
+              </div>
+              <div class="list-row__side">
+                <button class="btn btn--secondary btn--sm" type="button">Done</button>
+              </div>
+            </div>
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">Bar 1</p>
+                <p class="list-row__meta">Call waiter · 5 min ago</p>
+              </div>
+              <div class="list-row__side">
+                <button class="btn btn--secondary btn--sm" type="button">Done</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="split split--even mt-4">
+        <div class="card">
+          <div class="card__header">
+            <span class="card__title">Top items today</span>
+            <span class="muted text-xs">By revenue</span>
+          </div>
+          <div class="card__body">
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">Margherita</p>
+                <p class="list-row__meta">14 sold</p>
+              </div>
+              <div class="list-row__side"><span class="list-row__amount">$182.00</span></div>
+            </div>
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">House lemonade</p>
+                <p class="list-row__meta">18 sold</p>
+              </div>
+              <div class="list-row__side"><span class="list-row__amount">$81.00</span></div>
+            </div>
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">Charred octopus</p>
+                <p class="list-row__meta">9 sold</p>
+              </div>
+              <div class="list-row__side"><span class="list-row__amount">$126.00</span></div>
+            </div>
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">Truffle mushroom pizza</p>
+                <p class="list-row__meta">6 sold</p>
+              </div>
+              <div class="list-row__side"><span class="list-row__amount">$102.00</span></div>
+            </div>
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title">Olive oil cake</p>
+                <p class="list-row__meta">7 sold</p>
+              </div>
+              <div class="list-row__side"><span class="list-row__amount">$56.00</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <span class="card__title">Orders by hour</span>
+            <span class="muted text-xs">42 orders today</span>
+          </div>
+          <div class="card__body">
+        <div class="chart">
+          <div class="chart__col">
+            <span class="chart__value">2</span>
+            <span class="chart__bar" style="height:14%"></span>
+            <span class="chart__label">12p</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">5</span>
+            <span class="chart__bar" style="height:36%"></span>
+            <span class="chart__label">1p</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">8</span>
+            <span class="chart__bar" style="height:57%"></span>
+            <span class="chart__label">2p</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">6</span>
+            <span class="chart__bar" style="height:43%"></span>
+            <span class="chart__label">3p</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">4</span>
+            <span class="chart__bar" style="height:29%"></span>
+            <span class="chart__label">4p</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">9</span>
+            <span class="chart__bar" style="height:64%"></span>
+            <span class="chart__label">6p</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">12</span>
+            <span class="chart__bar" style="height:86%"></span>
+            <span class="chart__label">7p</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">14</span>
+            <span class="chart__bar chart__bar--hi" style="height:100%"></span>
+            <span class="chart__label">8p</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">10</span>
+            <span class="chart__bar" style="height:71%"></span>
+            <span class="chart__label">9p</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">6</span>
+            <span class="chart__bar" style="height:43%"></span>
+            <span class="chart__label">10p</span>
+          </div>
+        </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/owner.js"></script>
+</body>
+</html>

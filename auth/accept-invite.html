@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accept your invite — TableTap</title>
+<meta name="description" content="Accept your TableTap invite and set a password.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+<div class="auth-page">
+  <header class="auth-page__header">
+    <div class="auth-page__header-inner">
+      <a class="brand" href="../index.html" aria-label="TableTap home">
+        <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+        <span class="brand__name">TableTap</span>
+      </a>
+      <a class="auth-back" href="login.html"><i data-lucide="arrow-left"></i> Back to login</a>
+    </div>
+  </header>
+
+  <main class="auth-page__main">
+    <div class="auth-card auth-card--wide">
+      <h1 class="auth-card__title">You’re invited to TableTap</h1>
+      <p class="auth-card__sub">Set a password to accept the invite and open the owner dashboard.</p>
+
+      <div class="invite-meta">
+        <div class="invite-meta__row">
+          <span class="invite-meta__key">Restaurant</span>
+          <span class="invite-meta__val" id="invite-restaurant">The Olive Table</span>
+        </div>
+        <div class="invite-meta__row">
+          <span class="invite-meta__key">Owner</span>
+          <span class="invite-meta__val" id="invite-owner">Ananya Rao</span>
+        </div>
+        <div class="invite-meta__row">
+          <span class="invite-meta__key">Invite sent</span>
+          <span class="invite-meta__val" id="invite-sent">11 Nov 2026, 4:20 PM</span>
+        </div>
+      </div>
+
+      <form class="auth-card__form" action="#" method="post" data-demo-form>
+        <div class="field">
+          <label class="label" for="invite-email">Email address</label>
+          <input class="input" type="email" id="invite-email" name="email" value="ananya@copperspoon.in" id="invite-email-field" readonly aria-describedby="invite-email-hint">
+          <p class="hint" id="invite-email-hint">This is the address the invite was sent to.</p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="new-password">Set password</label>
+          <div class="input-group">
+            <input class="input" type="password" id="new-password" name="new-password" autocomplete="new-password" placeholder="At least 8 characters" minlength="8" required>
+            <button class="input-group__action" type="button" data-password-toggle aria-controls="new-password" aria-pressed="false" aria-label="Show password">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+          <p class="hint">At least 8 characters, with one number.</p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="confirm-password">Confirm password</label>
+          <input class="input" type="password" id="confirm-password" name="confirm-password" autocomplete="new-password" placeholder="Repeat your password" minlength="8" required>
+        </div>
+
+        <p class="hint hint--error" id="invite-error" role="alert" hidden></p>
+
+        <div class="field mt-6">
+          <button class="btn btn--primary btn--lg btn--block" type="submit">Accept invite</button>
+        </div>
+      </form>
+
+      <div class="success-state" data-form-success hidden tabindex="-1">
+        <span class="success-state__icon"><i data-lucide="check"></i></span>
+        <h2 class="success-state__title">You’re in</h2>
+        <p class="success-state__text">Your account for The Copper Spoon is ready. Sign in to add your menu and print your table QR codes.</p>
+        <a class="btn btn--primary" href="login.html">Go to login</a>
+      </div>
+
+      <p class="auth-footnote">Wrong restaurant? Ask your admin for a new invite — this link works once.</p>
+    </div>
+  </main>
+
+  <footer class="auth-page__footer">
+    © 2026 TableTap · <a class="auth-link" href="mailto:hello@tabletap.app">hello@tabletap.app</a>
+  </footer>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script type="module" src="../assets/js/auth-pages.js"></script>
+</body>
+</html>

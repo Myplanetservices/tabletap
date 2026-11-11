@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings — TableTap</title>
+<meta name="description" content="TableTap owner panel for The Olive Table.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="settings">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="owner-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap</span>
+        <span class="app-shell__brand-sub">The Olive Table</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Owner">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Service</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="orders.html"><i data-lucide="receipt"></i><span class="nav-link__text">Live Orders</span></a>
+        <a class="nav-link" href="order-history.html"><i data-lucide="history"></i><span class="nav-link__text">Order History</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="menu.html"><i data-lucide="book-open"></i><span class="nav-link__text">Menu</span></a>
+        <a class="nav-link" href="tables.html"><i data-lucide="qr-code"></i><span class="nav-link__text">Tables & QR</span></a>
+        <a class="nav-link" href="staff.html"><i data-lucide="users"></i><span class="nav-link__text">Staff</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Business</p>
+        <a class="nav-link" href="reports.html"><i data-lucide="trending-up"></i><span class="nav-link__text">Reports</span></a>
+        <a class="nav-link" href="settings.html" aria-current="page"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+        <a class="nav-link" href="account.html"><i data-lucide="user"></i><span class="nav-link__text">Account</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">AR</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Ananya Rao</span>
+          <span class="app-shell__brand-sub">Owner</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="owner-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Settings</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search</label>
+          <input class="input" id="global-search" type="search" placeholder="Search orders, tables">
+        </div>
+        <button class="btn btn--icon" type="button" aria-label="Notifications, 3 unread">
+          <i data-lucide="bell"></i><span class="count-dot">3</span>
+        </button>
+        <span class="status-pill"><span class="dot" aria-hidden="true"></span> Ordering ON</span>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Settings</h1>
+          <p class="page-head__sub">Restaurant profile, ordering rules, hours and branding.</p>
+        </div>
+      </div>
+      <div class="tabs" data-tabs>
+        <div class="tabs__list" role="tablist" aria-label="Settings sections">
+          <button class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel-profile" id="tab-profile" tabindex="0">Restaurant profile</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-ordering" id="tab-ordering" tabindex="-1">Ordering</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-hours" id="tab-hours" tabindex="-1">Opening hours</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-branding" id="tab-branding" tabindex="-1">Branding</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-notify" id="tab-notify" tabindex="-1">Notifications</button>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-profile" aria-labelledby="tab-profile">
+          <div class="card">
+            <div class="card__body">
+              <div class="form-grid form-grid--2">
+                <div class="field"><label class="label" for="rest-name">Restaurant name</label><input class="input" id="rest-name" type="text" value="The Olive Table"></div>
+                <div class="field"><label class="label" for="rest-phone">Phone</label><input class="input" id="rest-phone" type="tel" value="+91 22 4004 8812"></div>
+                <div class="field field--full"><label class="label" for="rest-address">Address</label><input class="input" id="rest-address" type="text" value="14 Turner Road, Bandra West, Mumbai 400050"></div>
+                <div class="field">
+                  <span class="label">Logo</span>
+                  <div class="row">
+                    <img class="avatar avatar--lg" src="https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=120&q=60" alt="Current logo">
+                    <button class="btn btn--secondary btn--sm" type="button"><i data-lucide="upload"></i> Replace</button>
+                  </div>
+                </div>
+                <div class="field">
+                  <span class="label">Cover image</span>
+                  <div class="row">
+                    <img class="avatar avatar--lg" src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=120&q=60" alt="Current cover image">
+                    <button class="btn btn--secondary btn--sm" type="button"><i data-lucide="upload"></i> Replace</button>
+                  </div>
+                </div>
+              </div>
+              <div class="row mt-6" style="justify-content:flex-end">
+                <button class="btn btn--primary" type="button">Save profile</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-ordering" aria-labelledby="tab-ordering" hidden>
+          <div class="card">
+            <div class="card__body">
+              <div class="list-row">
+                <div class="list-row__main">
+                  <p class="list-row__title">Accept orders</p>
+                  <p class="list-row__meta">When off, guests see “Ordering is paused” instead of the menu.</p>
+                </div>
+                <label class="switch"><input type="checkbox" checked><span class="switch__track"></span><span class="sr-only">Accept orders</span></label>
+              </div>
+              <div class="list-row">
+                <div class="list-row__main">
+                  <p class="list-row__title">Staff must approve orders before the kitchen</p>
+                  <p class="list-row__meta">New orders wait for approval on the Live orders page.</p>
+                </div>
+                <label class="switch"><input type="checkbox"><span class="switch__track"></span><span class="sr-only">Require approval</span></label>
+              </div>
+              <div class="form-grid form-grid--2 mt-6">
+                <div class="field">
+                  <label class="label" for="currency">Currency</label>
+                  <select class="select" id="currency"><option selected>$ USD</option><option>₹ INR</option><option>£ GBP</option><option>€ EUR</option></select>
+                </div>
+                <div class="field"><label class="label" for="tax">Tax (%)</label><input class="input" id="tax" type="number" step="0.5" value="8"></div>
+                <div class="field"><label class="label" for="service">Service charge (%)</label><input class="input" id="service" type="number" step="0.5" value="5"></div>
+                <div class="field"><label class="label" for="prep">Default prep time (minutes)</label><input class="input" id="prep" type="number" value="18"></div>
+              </div>
+              <div class="row mt-6" style="justify-content:flex-end">
+                <button class="btn btn--primary" type="button">Save ordering</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-hours" aria-labelledby="tab-hours" hidden>
+          <div class="card">
+            <div class="card__body">
+              <div class="hours-grid">
+                <div class="hours-row"><span class="hours-row__day">Monday</span><input class="input" type="time" value="12:00" aria-label="Monday open"><input class="input" type="time" value="23:00" aria-label="Monday close"></div>
+                <div class="hours-row"><span class="hours-row__day">Tuesday</span><input class="input" type="time" value="12:00" aria-label="Tuesday open"><input class="input" type="time" value="23:00" aria-label="Tuesday close"></div>
+                <div class="hours-row"><span class="hours-row__day">Wednesday</span><input class="input" type="time" value="12:00" aria-label="Wednesday open"><input class="input" type="time" value="23:00" aria-label="Wednesday close"></div>
+                <div class="hours-row"><span class="hours-row__day">Thursday</span><input class="input" type="time" value="12:00" aria-label="Thursday open"><input class="input" type="time" value="23:00" aria-label="Thursday close"></div>
+                <div class="hours-row"><span class="hours-row__day">Friday</span><input class="input" type="time" value="12:00" aria-label="Friday open"><input class="input" type="time" value="00:30" aria-label="Friday close"></div>
+                <div class="hours-row"><span class="hours-row__day">Saturday</span><input class="input" type="time" value="12:00" aria-label="Saturday open"><input class="input" type="time" value="00:30" aria-label="Saturday close"></div>
+                <div class="hours-row">
+                  <span class="hours-row__day">Sunday</span>
+                  <span class="row"><input class="input" type="time" value="12:00" aria-label="Sunday open" disabled><input class="input" type="time" value="22:00" aria-label="Sunday close" disabled></span>
+                  <label class="switch"><input type="checkbox"><span class="switch__track"></span><span class="switch__label">Closed</span></label>
+                </div>
+              </div>
+              <p class="hint mt-4">Outside these hours the guest menu shows the “Restaurant is closed” state.</p>
+              <div class="row mt-6" style="justify-content:flex-end">
+                <button class="btn btn--primary" type="button">Save hours</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-branding" aria-labelledby="tab-branding" hidden>
+          <div class="card">
+            <div class="card__body">
+              <div class="form-grid form-grid--2">
+                <div>
+                  <div class="field">
+                    <label class="label" for="accent">Accent colour</label>
+                    <div class="row">
+                      <input class="input" id="accent" type="color" value="#1F4D3A" style="width:56px;padding:4px;height:44px">
+                      <input class="input" type="text" value="#1F4D3A" aria-label="Accent colour hex">
+                    </div>
+                    <p class="hint">Used for buttons, chips and the cart bar on the guest menu.</p>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="welcome">Welcome line</label>
+                    <input class="input" id="welcome" type="text" value="Mediterranean kitchen · Bandra West">
+                  </div>
+                </div>
+                <div>
+                  <span class="label">Live preview</span>
+                  <div class="phone-preview" style="--preview-accent:#1F4D3A">
+                    <div class="phone-preview__cover"></div>
+                    <div class="phone-preview__body">
+                      <p class="phone-preview__title">The Olive Table</p>
+                      <p class="text-xs muted">Table 7</p>
+                      <div class="phone-preview__line"></div>
+                      <div class="phone-preview__line phone-preview__line--short"></div>
+                      <span class="phone-preview__chip">View order</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row mt-6" style="justify-content:flex-end">
+                <button class="btn btn--primary" type="button">Save branding</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-notify" aria-labelledby="tab-notify" hidden>
+          <div class="card">
+            <div class="card__body">
+              <div class="list-row">
+                <div class="list-row__main">
+                  <p class="list-row__title">Sound on new orders</p>
+                  <p class="list-row__meta">A short chime on the kitchen screen when a ticket arrives.</p>
+                </div>
+                <label class="switch"><input type="checkbox" checked><span class="switch__track"></span><span class="sr-only">Sound on new orders</span></label>
+              </div>
+              <div class="list-row">
+                <div class="list-row__main">
+                  <p class="list-row__title">Waiter call alerts</p>
+                  <p class="list-row__meta">Show a badge in the top bar when a guest calls a waiter.</p>
+                </div>
+                <label class="switch"><input type="checkbox" checked><span class="switch__track"></span><span class="sr-only">Waiter call alerts</span></label>
+              </div>
+              <div class="list-row">
+                <div class="list-row__main">
+                  <p class="list-row__title">Daily summary email</p>
+                  <p class="list-row__meta">Sent to ananya@olivetable.demo at 11:30 PM.</p>
+                </div>
+                <label class="switch"><input type="checkbox"><span class="switch__track"></span><span class="sr-only">Daily summary email</span></label>
+              </div>
+              <div class="row mt-6" style="justify-content:flex-end">
+                <button class="btn btn--primary" type="button">Save notifications</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/owner.js"></script>
+</body>
+</html>

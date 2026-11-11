@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitchen login — TableTap</title>
+<meta name="description" content="Kitchen staff login with your restaurant code and 4-digit PIN.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="theme-dark">
+<div class="kitchen-login">
+  <header class="kitchen-login__header">
+    <a class="brand" href="../index.html" aria-label="TableTap home">
+      <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+      <span class="brand__name">TableTap</span>
+    </a>
+    <a class="auth-back" href="login.html"><i data-lucide="arrow-left"></i> Owner login</a>
+  </header>
+
+  <main class="kitchen-login__main">
+    <div class="kitchen-card">
+      <h1 class="kitchen-card__title">Kitchen login</h1>
+      <p class="kitchen-card__sub">Enter your restaurant code and the 4-digit PIN your manager gave you.</p>
+
+      <form class="kitchen-card__form" action="#" method="post">
+        <div class="field">
+          <label class="label" for="restaurant-code">Restaurant code</label>
+          <input class="code-input" type="text" id="restaurant-code" name="restaurant-code" placeholder="e.g. COPPER" autocomplete="organization" autocapitalize="characters" spellcheck="false" required>
+          <p class="hint">Printed on the card taped next to the pass.</p>
+        </div>
+
+        <div class="field">
+          <span class="pin-label" id="pin-label">4-digit PIN</span>
+          <div class="pin-row" role="group" aria-labelledby="pin-label">
+            <input class="pin-box" type="password" name="pin-1" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="PIN digit 1" autocomplete="one-time-code" required>
+            <input class="pin-box" type="password" name="pin-2" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="PIN digit 2" required>
+            <input class="pin-box" type="password" name="pin-3" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="PIN digit 3" required>
+            <input class="pin-box" type="password" name="pin-4" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="PIN digit 4" required>
+          </div>
+        </div>
+
+        <p class="hint hint--error" id="kitchen-error" role="alert" hidden></p>
+
+        <div class="field mt-8">
+          <button class="btn btn--primary btn--lg btn--block" type="submit">
+            <i data-lucide="chef-hat"></i> Enter kitchen
+          </button>
+        </div>
+      </form>
+
+      <div class="demo-box">
+        <p class="demo-box__title">Demo kitchen login</p>
+        <p>Code <strong>OLIVE7</strong> · PIN <strong>1234</strong></p>
+      </div>
+
+      <p class="hint mt-6">PIN changed? Your manager can reset it in Settings → Staff. Do not share it between shifts.</p>
+    </div>
+  </main>
+
+  <footer class="auth-page__footer">
+    © 2026 TableTap · Kitchen screens stay signed in for 12 hours.
+  </footer>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script type="module" src="../assets/js/auth-pages.js"></script>
+</body>
+</html>

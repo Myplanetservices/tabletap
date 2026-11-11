@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Completed — TableTap Kitchen</title>
+<meta name="description" content="Today's served orders.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="theme-dark" data-page="kitchen-completed">
+<div class="kitchen-app">
+
+  <header class="k-topbar">
+    <div class="k-topbar__brand">
+      <span class="k-topbar__name" id="k-name">Kitchen · Completed</span>
+      <span class="k-topbar__clock" id="k-clock">—</span>
+    </div>
+    <span class="k-topbar__spacer"></span>
+    <div class="k-topbar__actions">
+      <a class="btn btn--secondary" href="index.html"><i data-lucide="arrow-left"></i> Back to kitchen</a>
+      <button class="btn btn--icon" type="button" id="k-logout" aria-label="Log out"><i data-lucide="log-out"></i></button>
+    </div>
+  </header>
+
+  <div class="k-search">
+    <label class="sr-only" for="k-search">Search by table or order number</label>
+    <input class="input" id="k-search" type="search" placeholder="Search by table or order #">
+  </div>
+
+  <div class="k-list">
+    <div class="row row--between">
+      <span class="muted text-sm" id="k-summary">Today</span>
+      <span class="muted text-xs">Served orders stay here until midnight</span>
+    </div>
+    <div id="k-rows"></div>
+  </div>
+
+</div>
+
+<script src="../assets/js/file-check.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script type="module" src="../assets/js/kitchen.js"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Olive Table — Table 7 menu</title>
+<meta name="description" content="Browse the menu at The Olive Table and order from your table.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="menu-page" data-page="menu">
+<div class="menu-app">
+
+  <header class="menu-head">
+    <div class="menu-cover">
+      <img id="menu-cover" src="" alt="The Olive Table dining room">
+    </div>
+    <div class="menu-head__body">
+      <img class="menu-logo" id="menu-logo" src="" alt="The Olive Table logo">
+      <h1 class="menu-title" id="menu-name">The Olive Table</h1>
+      <p class="menu-sub" id="menu-tagline">Mediterranean kitchen · Bandra West, Mumbai</p>
+      <div class="menu-badges">
+        <span class="badge badge--success"><span class="dot" aria-hidden="true"></span> Open now</span>
+        <span class="pill-table" id="menu-table"><i data-lucide="utensils"></i> Table 7</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="menu-toolbar">
+    <div class="menu-toolbar__row">
+      <button class="btn btn--icon" type="button" data-search-toggle aria-controls="menu-search" aria-expanded="false" aria-label="Search the menu">
+        <i data-lucide="search"></i>
+      </button>
+      <nav class="chips" id="menu-chips" aria-label="Menu categories"></nav>
+    </div>
+
+    <div class="menu-search" id="menu-search" hidden>
+      <label class="sr-only" for="menu-search-input">Search dishes</label>
+      <input class="input" id="menu-search-input" type="search" placeholder="Search dishes, e.g. halloumi">
+    </div>
+
+    <div class="filter-row" id="menu-filters" aria-label="Dietary filters"></div>
+  </div>
+
+  <div id="menu-sections">
+    <div class="empty">
+      <span class="empty__icon"><i data-lucide="utensils"></i></span>
+      <p class="empty__title">Loading the menu…</p>
+    </div>
+  </div>
+
+  <div class="float-actions">
+    <button class="btn" type="button" data-call="waiter"><i data-lucide="bell"></i> Call waiter</button>
+    <button class="btn" type="button" data-call="bill"><i data-lucide="receipt"></i> Ask for bill</button>
+  </div>
+
+  <a class="cart-bar" id="cart-bar" href="cart.html" hidden>
+    <span class="cart-bar__count"><span id="cart-count">0 items</span> · <span class="cart-bar__total" id="cart-total">$0.00</span></span>
+    <span class="cart-bar__cta">View order <i data-lucide="arrow-right"></i></span>
+  </a>
+
+  <div class="bottom-sheet" id="item-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="bottom-sheet__handle"></div>
+    <div class="bottom-sheet__body">
+      <div class="sheet-head">
+        <img class="sheet-img" id="sheet-img" src="" alt="">
+        <button class="btn btn--icon sheet-close" type="button" data-panel-close aria-label="Close item details">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <h2 class="sheet-title" id="sheet-title">Dish</h2>
+      <p class="sheet-desc" id="sheet-desc"></p>
+
+      <div class="sheet-group">
+        <p class="sheet-group__label">Size</p>
+        <div id="sheet-sizes"></div>
+      </div>
+
+      <div class="sheet-group" id="sheet-addons"></div>
+
+      <div class="sheet-group sheet-note">
+        <label class="label" for="sheet-note">Special instructions</label>
+        <textarea class="textarea" id="sheet-note" placeholder="e.g. no chilli, sauce on the side"></textarea>
+      </div>
+
+      <div class="sheet-foot">
+        <div class="qty">
+          <button class="qty__btn" type="button" id="sheet-qty-minus" aria-label="Decrease quantity">−</button>
+          <span class="qty__val" id="sheet-qty">1</span>
+          <button class="qty__btn" type="button" id="sheet-qty-plus" aria-label="Increase quantity">+</button>
+        </div>
+        <button class="btn btn--primary btn--lg" type="button" id="sheet-add">Add to order</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="../assets/js/file-check.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script type="module" src="../assets/js/customer.js"></script>
+</body>
+</html>

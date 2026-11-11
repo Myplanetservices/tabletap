@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TableTap — QR table ordering for restaurants, bars and cafés</title>
+<meta name="description" content="TableTap turns the QR code on every table into a live ordering channel. Guests order from their phone, the kitchen sees the ticket instantly. One lifetime price of $49.">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="container site-header__inner">
+    <a class="brand" href="index.html" aria-label="TableTap home">
+      <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+      <span class="brand__name">TableTap</span>
+    </a>
+
+    <nav class="site-nav" aria-label="Main">
+      <ul class="site-nav__list">
+        <li><a class="site-nav__link" href="#how-it-works">How it works</a></li>
+        <li><a class="site-nav__link" href="#features">Features</a></li>
+        <li><a class="site-nav__link" href="#pricing">Pricing</a></li>
+        <li><a class="site-nav__link" href="#faq">FAQ</a></li>
+      </ul>
+    </nav>
+
+    <div class="site-header__actions">
+      <a class="btn btn--ghost btn--sm" href="auth/login.html">Login</a>
+      <a class="btn btn--primary btn--sm" href="menu/index.html?r=olive-table">Open the demo</a>
+      <button class="btn btn--icon nav-toggle" type="button" data-nav-toggle aria-controls="mobile-nav" aria-expanded="false" aria-label="Open menu">
+        <i data-lucide="menu"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="mobile-nav" id="mobile-nav">
+    <nav aria-label="Mobile">
+      <ul class="mobile-nav__list">
+        <li><a class="mobile-nav__link" href="#how-it-works">How it works</a></li>
+        <li><a class="mobile-nav__link" href="#features">Features</a></li>
+        <li><a class="mobile-nav__link" href="#pricing">Pricing</a></li>
+        <li><a class="mobile-nav__link" href="#faq">FAQ</a></li>
+      </ul>
+    </nav>
+    <a class="btn btn--primary btn--block" href="menu/index.html?r=olive-table">Open the demo</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- The pass: the product's own board is the hero -->
+  <section class="hero-pass">
+    <div class="container">
+
+      <div class="hero-pass__head">
+        <h1 class="display hero-pass__title">Your tables<br>order for themselves.</h1>
+
+        <div class="hero-pass__lead">
+          <div class="hero-pass__pitch">
+            <p class="hero-pass__sub">A QR code on each table opens your menu in the guest's browser. They order, the ticket lands on the pass with a chime, your team marks it ready. No app, no waving for a server, no paper lost between the floor and the kitchen.</p>
+            <div class="hero-pass__actions">
+              <a class="btn btn--primary btn--lg" href="menu/index.html?r=olive-table">
+                Order from Table 7 <i data-lucide="arrow-right"></i>
+              </a>
+              <a class="btn btn--lg hero-pass__ghost" href="mailto:hello@tabletap.app?subject=Book%20a%20TableTap%20demo">
+                Book a demo
+              </a>
+            </div>
+          </div>
+          <p class="hero-pass__facts"><span>No app for guests</span><span>$49 once, never monthly</span><span>Runs on the tablet at your pass</span></p>
+        </div>
+      </div>
+
+      <!-- live pass board -->
+      <div class="pass" role="img" aria-label="The kitchen pass at The Olive Table, showing three live tickets: Table 12 new, Table 7 preparing, Table 3 ready">
+        <div class="pass__bar">
+          <span class="pass__label"><i data-lucide="chef-hat"></i> The pass · The Olive Table</span>
+          <span class="pass__meta">8:42 PM <span class="pass__live"><span class="dot"></span> live</span></span>
+        </div>
+
+        <div class="pass__rail">
+
+          <article class="docket docket--new">
+            <header class="docket__head">
+              <span class="docket__table">Table 12</span>
+              <span class="docket__stamp docket__stamp--new">New</span>
+            </header>
+            <p class="docket__meta">#1046 · 2 min</p>
+            <ul class="docket__items">
+              <li><span class="docket__qty">2×</span> Margherita <em>no basil on one</em></li>
+              <li><span class="docket__qty">1×</span> House lemonade</li>
+            </ul>
+            <p class="docket__note">One guest is vegan — no cheese on one pizza.</p>
+          </article>
+
+          <article class="docket">
+            <header class="docket__head">
+              <span class="docket__table">Table 7</span>
+              <span class="docket__stamp docket__stamp--cooking">Preparing</span>
+            </header>
+            <p class="docket__meta">#1042 · 12 min</p>
+            <ul class="docket__items">
+              <li class="is-done"><span class="docket__qty">2×</span> Margherita</li>
+              <li><span class="docket__qty">1×</span> Charred octopus <em>sauce on the side</em></li>
+              <li><span class="docket__qty">1×</span> House lemonade</li>
+            </ul>
+          </article>
+
+          <article class="docket">
+            <header class="docket__head">
+              <span class="docket__table">Table 3</span>
+              <span class="docket__stamp">Ready</span>
+            </header>
+            <p class="docket__meta">#1041 · 9 min</p>
+            <ul class="docket__items">
+              <li><span class="docket__qty">1×</span> Slow-braised lamb shoulder <em>no gremolata</em></li>
+              <li><span class="docket__qty">2×</span> House lemonade</li>
+            </ul>
+            <p class="docket__guest">Rahul S.</p>
+          </article>
+
+          <!-- the guest's phone, on the same rail -->
+          <div class="guest-phone" aria-label="Guest menu on a phone">
+            <div class="guest-phone__screen">
+              <div class="guest-phone__status"><span>9:41</span><span>Table 7</span></div>
+              <div class="guest-phone__head">
+                <p class="guest-phone__name">The Olive Table</p>
+                <p class="guest-phone__sub">Mediterranean · Bandra West</p>
+              </div>
+              <ul class="guest-phone__list">
+                <li><span>Crispy halloumi</span><span class="guest-phone__price">$9.50</span></li>
+                <li><span>Charred octopus</span><span class="guest-phone__price">$14.00</span></li>
+                <li><span>Margherita</span><span class="guest-phone__price">$13.00</span></li>
+                <li><span>House lemonade</span><span class="guest-phone__price">$4.50</span></li>
+              </ul>
+              <div class="guest-phone__cart"><span>3 items · $24.50</span><span>View order</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- How it works: a service line -->
+  <section class="section" id="how-it-works">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-title">Three stops, from table to pass</h2>
+        <p class="section-sub">Set up once in an afternoon. After that it is a QR code on the table and a screen at the pass.</p>
+      </div>
+
+      <ol class="steps">
+        <li class="step">
+          <span class="step__num">01</span>
+          <div>
+            <h3 class="step__title">They scan</h3>
+            <p class="step__text">The QR on the table opens your menu in the browser — the table number is already in the link, so nobody types it in.</p>
+          </div>
+          <span class="step__icon"><i data-lucide="scan-line"></i></span>
+        </li>
+        <li class="step">
+          <span class="step__num">02</span>
+          <div>
+            <h3 class="step__title">They order</h3>
+            <p class="step__text">Sizes, add-ons and a note like “no chilli”, priced and totalled before they send. The order is confirmed on their phone in seconds.</p>
+          </div>
+          <span class="step__icon"><i data-lucide="receipt"></i></span>
+        </li>
+        <li class="step">
+          <span class="step__num">03</span>
+          <div>
+            <h3 class="step__title">The pass sees it</h3>
+            <p class="step__text">The ticket appears with a chime and a timer that goes amber at ten minutes, red at twenty. Your team taps items off as they go.</p>
+          </div>
+          <span class="step__icon"><i data-lucide="monitor"></i></span>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Features: a spec sheet, read in one pass -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-title">One small system, three rooms</h2>
+        <p class="section-sub">The floor, the pass and the back office see the same order at the same moment.</p>
+      </div>
+
+      <div class="features">
+        <article class="feature">
+          <div>
+            <span class="feature__icon"><i data-lucide="smartphone"></i></span>
+            <h3 class="feature__title">For guests</h3>
+          </div>
+          <ul class="feature__list">
+            <li><i data-lucide="check"></i> Opens in under a second, even on patchy 3G — nothing to install.</li>
+            <li><i data-lucide="check"></i> Allergens, spice level and “contains dairy” on every dish.</li>
+            <li><i data-lucide="check"></i> A second round, the bill, or a waiter — without flagging anyone down.</li>
+          </ul>
+        </article>
+
+        <article class="feature">
+          <div>
+            <span class="feature__icon"><i data-lucide="chef-hat"></i></span>
+            <h3 class="feature__title">For the pass</h3>
+          </div>
+          <ul class="feature__list">
+            <li><i data-lucide="check"></i> A dark board built to be read from two metres away.</li>
+            <li><i data-lucide="check"></i> New-order chime, and a timer on every ticket that colours as it waits.</li>
+            <li><i data-lucide="check"></i> Tap an item off on a tablet, even with wet hands.</li>
+          </ul>
+        </article>
+
+        <article class="feature">
+          <div>
+            <span class="feature__icon"><i data-lucide="trending-up"></i></span>
+            <h3 class="feature__title">For owners</h3>
+          </div>
+          <ul class="feature__list">
+            <li><i data-lucide="check"></i> Change a price, a photo, or mark a dish sold out from your phone.</li>
+            <li><i data-lucide="check"></i> Today's takings, best-sellers and slow movers without a spreadsheet.</li>
+            <li><i data-lucide="check"></i> One lifetime price per restaurant. No commission on orders.</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing: one docket -->
+  <section class="section" id="pricing">
+    <div class="container">
+      <div class="section-head section-head--center">
+        <h2 class="section-title">One price, paid once</h2>
+        <p class="section-sub">Most table-ordering tools charge more in a month than this costs for good. No subscription, no per-cover fee, no cut of your orders.</p>
+      </div>
+
+      <div class="pricing">
+        <div class="price-card">
+          <span class="price-card__label">Lifetime · per restaurant</span>
+          <div class="price-card__amount">
+            <span class="price-card__price">$49</span>
+            <span class="price-card__period">one-time</span>
+          </div>
+          <p class="price-card__desc">Everything below, for as long as you run TableTap. Set it up yourself in an afternoon, or book a demo and we will do it with you.</p>
+
+          <div class="price-card__rule"></div>
+
+          <p class="price-card__includes">Included</p>
+          <ul class="price-card__list">
+            <li><i data-lucide="check"></i> Unlimited tables, QR codes and reprints</li>
+            <li><i data-lucide="check"></i> Live kitchen screen with chime and timers</li>
+            <li><i data-lucide="check"></i> Menu editor with photos, allergens and sold-out toggle</li>
+            <li><i data-lucide="check"></i> Guest ordering in English, हिन्दी and ಕನ್ನಡ</li>
+            <li><i data-lucide="check"></i> Daily sales and item-level reports</li>
+            <li><i data-lucide="check"></i> Staff accounts with a 4-digit kitchen PIN</li>
+            <li><i data-lucide="check"></i> Free updates and email support, for life</li>
+          </ul>
+
+          <a class="btn btn--primary btn--lg btn--block" href="mailto:hello@tabletap.app?subject=Lifetime%20access%20%E2%80%94%20TableTap">
+            Get lifetime access <i data-lucide="arrow-right"></i>
+          </a>
+          <p class="price-card__fine">Card or UPI. GST invoice on request. 14-day refund if it does not fit your service.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section" id="faq">
+    <div class="container container--narrow">
+      <div class="section-head">
+        <h2 class="section-title">Before you set it up</h2>
+      </div>
+
+      <div class="faq" data-accordion="single">
+        <div class="faq__item">
+          <h3>
+            <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-1" id="faq-1-trigger">
+              Do guests need to download an app?
+              <span class="faq__icon" aria-hidden="true"><i data-lucide="plus"></i></span>
+            </button>
+          </h3>
+          <div class="faq__panel" id="faq-1" role="region" aria-labelledby="faq-1-trigger">
+            <div>
+              <p>No. The QR code opens your menu in the phone's browser — the same place they would open a link from a text. Nothing to install, no account to create, which is why most guests order on their first visit.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq__item">
+          <h3>
+            <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-2" id="faq-2-trigger">
+              What hardware do I need?
+              <span class="faq__icon" aria-hidden="true"><i data-lucide="plus"></i></span>
+            </button>
+          </h3>
+          <div class="faq__panel" id="faq-2" role="region" aria-labelledby="faq-2-trigger">
+            <div>
+              <p>One tablet or laptop at the pass, on your existing Wi-Fi. A 10-inch tablet is what most kitchens use; a wall-mounted screen works well in a busy bar. The QR cards for the tables come as a PDF you can print locally or send to a printer.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq__item">
+          <h3>
+            <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-3" id="faq-3-trigger">
+              Can I keep my own table numbers and QR codes?
+              <span class="faq__icon" aria-hidden="true"><i data-lucide="plus"></i></span>
+            </button>
+          </h3>
+          <div class="faq__panel" id="faq-3" role="region" aria-labelledby="faq-3-trigger">
+            <div>
+              <p>Yes. Name tables however your floor works — 12, B4, Terrace 2 — and print the codes we generate. If you already have QR cards, point each one at its table's link and keep using them.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq__item">
+          <h3>
+            <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-4" id="faq-4-trigger">
+              Does it work for bars and cafés, not just restaurants?
+              <span class="faq__icon" aria-hidden="true"><i data-lucide="plus"></i></span>
+            </button>
+          </h3>
+          <div class="faq__panel" id="faq-4" role="region" aria-labelledby="faq-4-trigger">
+            <div>
+              <p>It does. A café can run a short menu with modifiers like oat milk and an extra shot; a bar can keep a drinks list with age checks and open tabs. Tables can be renamed to Bar 1 or Counter 3, and you can close ordering on a table at any time.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq__item">
+          <h3>
+            <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-5" id="faq-5-trigger">
+              What happens if the internet drops mid-service?
+              <span class="faq__icon" aria-hidden="true"><i data-lucide="plus"></i></span>
+            </button>
+          </h3>
+          <div class="faq__panel" id="faq-5" role="region" aria-labelledby="faq-5-trigger">
+            <div>
+              <p>The guest's order is held on their phone and retried; the kitchen screen reconnects on its own. In the meantime take the order on paper as usual — nothing already sent is lost, and the ticket appears once the connection is back.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq__item">
+          <h3>
+            <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-6" id="faq-6-trigger">
+              Is $49 really a one-time payment?
+              <span class="faq__icon" aria-hidden="true"><i data-lucide="plus"></i></span>
+            </button>
+          </h3>
+          <div class="faq__panel" id="faq-6" role="region" aria-labelledby="faq-6-trigger">
+            <div>
+              <p>Yes — one payment per restaurant, including updates and email support. We do not take a cut of orders, and there is no per-table or per-staff charge. A second location is a second licence, still at the same price.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__brand">
+      <a class="brand" href="index.html" aria-label="TableTap home">
+        <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+        <span class="brand__name">TableTap</span>
+      </a>
+      <p class="site-footer__tagline">QR table ordering for restaurants, bars and cafés. Built in Bengaluru.</p>
+    </div>
+    <nav class="site-footer__links" aria-label="Footer">
+      <a class="site-footer__link" href="menu/index.html?r=olive-table">Guest menu</a>
+      <a class="site-footer__link" href="owner/dashboard.html">Owner panel</a>
+      <a class="site-footer__link" href="kitchen/index.html">Kitchen screen</a>
+      <a class="site-footer__link" href="admin/dashboard.html">Admin</a>
+      <a class="site-footer__link" href="sitemap.html">Sitemap</a>
+    </nav>
+  </div>
+  <div class="container site-footer__bottom">
+    <span>© 2026 TableTap</span>
+    <span>hello@tabletap.app · +91 80 4718 2200</span>
+  </div>
+</footer>
+
+<script src="assets/js/file-check.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="assets/js/ui.js"></script>
+</body>
+</html>

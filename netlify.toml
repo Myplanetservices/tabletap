@@ -1,0 +1,13 @@
+# TableTap — static demo. No build step: Netlify serves the folder as-is.
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/assets/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"

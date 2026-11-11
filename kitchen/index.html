@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitchen — TableTap</title>
+<meta name="description" content="TableTap kitchen screen for The Olive Table.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="theme-dark" data-page="kitchen">
+<div class="kitchen-app">
+
+  <header class="k-topbar">
+    <div class="k-topbar__brand">
+      <span class="k-topbar__name" id="k-name">Kitchen</span>
+      <span class="k-topbar__clock" id="k-clock">—</span>
+    </div>
+
+    <div class="k-topbar__counters" id="k-counters" aria-label="Ticket counts"></div>
+
+    <span class="k-topbar__spacer"></span>
+
+    <div class="k-topbar__actions">
+      <button class="btn btn--icon" type="button" id="k-sound" aria-pressed="true" aria-label="Sound on"><i data-lucide="volume-2"></i></button>
+      <button class="btn btn--icon" type="button" id="k-fullscreen" aria-label="Full screen"><i data-lucide="maximize"></i></button>
+      <a class="btn btn--secondary" href="completed.html">Completed</a>
+      <button class="btn btn--icon" type="button" id="k-logout" aria-label="Log out"><i data-lucide="log-out"></i></button>
+    </div>
+  </header>
+
+  <div id="k-banner-host"></div>
+
+  <div data-tabs>
+    <div class="k-tabs" role="tablist" aria-label="Kitchen columns">
+      <button class="tab" role="tab" type="button" data-k-tab="new" aria-selected="true" aria-controls="k-new" id="k-tab-new" tabindex="0">New</button>
+      <button class="tab" role="tab" type="button" data-k-tab="preparing" aria-selected="false" aria-controls="k-prep" id="k-tab-prep" tabindex="-1">Preparing</button>
+      <button class="tab" role="tab" type="button" data-k-tab="ready" aria-selected="false" aria-controls="k-ready" id="k-tab-ready" tabindex="-1">Ready</button>
+    </div>
+
+    <div class="k-columns" id="k-columns"></div>
+  </div>
+
+</div>
+
+<script src="../assets/js/file-check.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script type="module" src="../assets/js/kitchen.js"></script>
+</body>
+</html>

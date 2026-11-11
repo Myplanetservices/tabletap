@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activity Log — TableTap Admin</title>
+<meta name="description" content="TableTap Super Admin panel for MyPlanetServices.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="activity">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="admin-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="shield"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap Admin</span>
+        <span class="app-shell__brand-sub">MyPlanetServices</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Admin">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="clients.html"><i data-lucide="users"></i><span class="nav-link__text">Clients</span></a>
+        <a class="nav-link" href="invites.html"><i data-lucide="mail"></i><span class="nav-link__text">Invites</span></a>
+        <a class="nav-link" href="activity.html" aria-current="page"><i data-lucide="history"></i><span class="nav-link__text">Activity Log</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Platform</p>
+        <a class="nav-link" href="plans.html"><i data-lucide="credit-card"></i><span class="nav-link__text">Plans</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">VK</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Vivek Kumar</span>
+          <span class="app-shell__brand-sub">Super admin</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Activity log</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search clients</label>
+          <input class="input" id="global-search" type="search" placeholder="Search clients">
+        </div>
+        <a class="btn btn--primary btn--sm" href="invites.html"><i data-lucide="user-plus"></i> Invite client</a>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Activity log</h1>
+          <p class="page-head__sub">Everything that happened across every restaurant, in order.</p>
+        </div>
+      <div class="page-head__actions"><button class="btn btn--secondary btn--sm" type="button"><i data-lucide="download"></i> Export CSV</button></div>
+      </div>
+      <div class="card">
+        <div class="card__body">
+          <div class="toolbar">
+            <select class="select" aria-label="Client"><option>All clients</option><option>The Olive Table</option><option>The Copper Kettle</option><option>Blue Fig Bistro</option><option>Harbor &amp; Rye</option></select>
+            <select class="select" aria-label="Event type"><option>All events</option><option>Login</option><option>Menu change</option><option>Order volume</option><option>Suspension</option><option>Restriction change</option><option>Invite</option></select>
+            <select class="select" aria-label="Actor"><option>All actors</option><option>Vivek Kumar</option><option>Neha Iyer</option><option>System</option></select>
+            <input class="input" type="date" aria-label="From date" value="2026-11-01">
+            <input class="input" type="date" aria-label="To date" value="2026-11-11">
+            <span class="toolbar__spacer"></span>
+            <span class="muted text-xs">1–8 of 2,146 events</span>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table table-stack">
+              <thead>
+                <tr>
+                  <th scope="col">Time</th>
+                  <th scope="col">Actor</th>
+                  <th scope="col">Client</th>
+                  <th scope="col">Event</th>
+                  <th scope="col">Details</th>
+                  <th scope="col">Device</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-label="Time">11 Nov, 8:44 PM</td>
+                  <td data-label="Actor" class="table__strong">Ananya Rao</td>
+                  <td data-label="Client">The Olive Table</td>
+                  <td data-label="Event"><span class="badge badge--neutral">Order volume</span></td>
+                  <td data-label="Details">42 orders today, $1,284.50 revenue</td>
+                  <td data-label="Device">Chrome · Windows</td>
+                </tr>
+                <tr>
+                  <td data-label="Time">11 Nov, 8:20 PM</td>
+                  <td data-label="Actor" class="table__strong">Vivek Kumar</td>
+                  <td data-label="Client">Tiffin &amp; Chai</td>
+                  <td data-label="Event"><span class="badge badge--neutral">Invite</span></td>
+                  <td data-label="Details">Invite sent to rohan@tiffinchai.in</td>
+                  <td data-label="Device">Chrome · macOS</td>
+                </tr>
+                <tr>
+                  <td data-label="Time">11 Nov, 7:02 PM</td>
+                  <td data-label="Actor" class="table__strong">Priya Nair</td>
+                  <td data-label="Client">Spice Route Kitchen</td>
+                  <td data-label="Event"><span class="badge badge--neutral">Menu change</span></td>
+                  <td data-label="Details">6 items added to the Mains category</td>
+                  <td data-label="Device">Safari · iPhone</td>
+                </tr>
+                <tr>
+                  <td data-label="Time">11 Nov, 6:15 PM</td>
+                  <td data-label="Actor" class="table__strong">System</td>
+                  <td data-label="Client">The Daily Grind</td>
+                  <td data-label="Event"><span class="badge badge--neutral">Restriction change</span></td>
+                  <td data-label="Details">Switched to read-only mode (plan limit reached)</td>
+                  <td data-label="Device">Server</td>
+                </tr>
+                <tr>
+                  <td data-label="Time">11 Nov, 5:40 PM</td>
+                  <td data-label="Actor" class="table__strong">James Whitfield</td>
+                  <td data-label="Client">The Copper Kettle</td>
+                  <td data-label="Event"><span class="badge badge--neutral">Login</span></td>
+                  <td data-label="Details">Owner logged in</td>
+                  <td data-label="Device">Chrome · Windows</td>
+                </tr>
+                <tr>
+                  <td data-label="Time">11 Nov, 3:08 PM</td>
+                  <td data-label="Actor" class="table__strong">Neha Iyer</td>
+                  <td data-label="Client">Harbor &amp; Rye</td>
+                  <td data-label="Event"><span class="badge badge--neutral">Suspension</span></td>
+                  <td data-label="Details">Account suspended for unpaid invoice</td>
+                  <td data-label="Device">Chrome · macOS</td>
+                </tr>
+                <tr>
+                  <td data-label="Time">10 Nov, 9:22 PM</td>
+                  <td data-label="Actor" class="table__strong">Thabo Ndlovu</td>
+                  <td data-label="Client">Ndlovu Grill</td>
+                  <td data-label="Event"><span class="badge badge--neutral">Order volume</span></td>
+                  <td data-label="Details">61 orders served, busiest day this month</td>
+                  <td data-label="Device">Chrome · Android</td>
+                </tr>
+                <tr>
+                  <td data-label="Time">10 Nov, 4:51 PM</td>
+                  <td data-label="Actor" class="table__strong">Vivek Kumar</td>
+                  <td data-label="Client">Casa Verde</td>
+                  <td data-label="Event"><span class="badge badge--neutral">Restriction change</span></td>
+                  <td data-label="Details">Table limit raised from 20 to 30</td>
+                  <td data-label="Device">Chrome · macOS</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="row row--between mt-6">
+            <span class="muted text-xs">25 events per page</span>
+            <nav class="pagination" aria-label="Activity pages">
+              <a class="page page--disabled" href="#"><i data-lucide="chevron-left"></i></a>
+              <a class="page" href="#" aria-current="page">1</a>
+              <a class="page" href="#">2</a>
+              <a class="page" href="#">3</a>
+              <span class="page page--disabled">…</span>
+              <a class="page" href="#">86</a>
+              <a class="page" href="#"><i data-lucide="chevron-right"></i></a>
+            </nav>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/admin.js"></script>
+</body>
+</html>

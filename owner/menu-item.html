@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu item — TableTap</title>
+<meta name="description" content="TableTap owner panel for The Olive Table.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="menu-item">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="owner-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap</span>
+        <span class="app-shell__brand-sub">The Olive Table</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Owner">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Service</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="orders.html"><i data-lucide="receipt"></i><span class="nav-link__text">Live Orders</span></a>
+        <a class="nav-link" href="order-history.html"><i data-lucide="history"></i><span class="nav-link__text">Order History</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="menu.html"><i data-lucide="book-open"></i><span class="nav-link__text">Menu</span></a>
+        <a class="nav-link" href="tables.html"><i data-lucide="qr-code"></i><span class="nav-link__text">Tables & QR</span></a>
+        <a class="nav-link" href="staff.html"><i data-lucide="users"></i><span class="nav-link__text">Staff</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Business</p>
+        <a class="nav-link" href="reports.html"><i data-lucide="trending-up"></i><span class="nav-link__text">Reports</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+        <a class="nav-link" href="account.html"><i data-lucide="user"></i><span class="nav-link__text">Account</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">AR</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Ananya Rao</span>
+          <span class="app-shell__brand-sub">Owner</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="owner-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Menu item</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search</label>
+          <input class="input" id="global-search" type="search" placeholder="Search orders, tables">
+        </div>
+        <button class="btn btn--icon" type="button" aria-label="Notifications, 3 unread">
+          <i data-lucide="bell"></i><span class="count-dot">3</span>
+        </button>
+        <span class="status-pill"><span class="dot" aria-hidden="true"></span> Ordering ON</span>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Add a menu item</h1>
+          <p class="page-head__sub">Items appear on the guest menu as soon as they are saved and available.</p>
+        </div>
+      <div class="page-head__actions"><a class="btn btn--secondary btn--sm" href="menu.html"><i data-lucide="arrow-left"></i> Back to menu</a></div>
+      </div>
+      <div class="card">
+        <div class="card__body">
+          <div class="form-grid form-grid--2">
+            <div class="field field--full">
+              <label class="label" for="item-name">Item name</label>
+              <input class="input" id="item-name" type="text" value="Charred octopus" required>
+            </div>
+
+            <div class="field field--full">
+              <label class="label" for="item-desc">Description</label>
+              <textarea class="textarea" id="item-desc">Grilled over charcoal, smoked paprika oil, salsa verde and confit potato.</textarea>
+              <p class="hint">Two lines read best on a phone. Mention allergens here.</p>
+            </div>
+
+            <div class="field">
+              <label class="label" for="item-price">Base price ($)</label>
+              <input class="input" id="item-price" type="number" step="0.50" min="0" value="14.00" required>
+            </div>
+
+            <div class="field">
+              <label class="label" for="item-category">Category</label>
+              <select class="select" id="item-category">
+                <option selected>Starters</option>
+                <option>Mains</option>
+                <option>Pizza</option>
+                <option>Desserts</option>
+                <option>Drinks</option>
+              </select>
+            </div>
+
+            <div class="field field--full">
+              <span class="label">Photo</span>
+              <div class="dropzone">
+                <img class="dropzone__preview" src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=440&q=60" alt="Current photo of charred octopus">
+                <span>Drag a JPG or PNG here, or choose a file. Max 5 MB, resized to 800px wide.</span>
+                <button class="btn btn--secondary btn--sm" type="button"><i data-lucide="upload"></i> Choose file</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <span class="label">Tags</span>
+              <div class="stack-2">
+                <label class="check"><input type="checkbox" checked><span class="check__text">Veg</span></label>
+                <label class="check"><input type="checkbox"><span class="check__text">Vegan</span></label>
+                <label class="check"><input type="checkbox" checked><span class="check__text">Gluten-free</span></label>
+                <label class="check"><input type="checkbox" checked><span class="check__text">Spicy</span></label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="prep-time">Prep time (minutes)</label>
+              <input class="input" id="prep-time" type="number" min="1" value="12">
+              <p class="hint">Used for the estimated time on the guest order page.</p>
+            </div>
+
+            <div class="field field--full">
+              <span class="label">Sizes</span>
+              <div class="repeat-block">
+                <div class="repeat-block__head">
+                  <span class="repeat-block__title">Size 1</span>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Remove size"><i data-lucide="x"></i></button>
+                </div>
+                <div class="form-grid form-grid--2">
+                  <div class="field"><label class="label" for="size-1-name">Name</label><input class="input" id="size-1-name" type="text" value="Regular"></div>
+                  <div class="field"><label class="label" for="size-1-price">Price ($)</label><input class="input" id="size-1-price" type="number" step="0.50" value="14.00"></div>
+                </div>
+              </div>
+              <div class="repeat-block">
+                <div class="repeat-block__head">
+                  <span class="repeat-block__title">Size 2</span>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Remove size"><i data-lucide="x"></i></button>
+                </div>
+                <div class="form-grid form-grid--2">
+                  <div class="field"><label class="label" for="size-2-name">Name</label><input class="input" id="size-2-name" type="text" value="Large (2 pieces)"></div>
+                  <div class="field"><label class="label" for="size-2-price">Price ($)</label><input class="input" id="size-2-price" type="number" step="0.50" value="19.00"></div>
+                </div>
+              </div>
+              <button class="btn btn--secondary btn--sm mt-4" type="button"><i data-lucide="plus"></i> Add size</button>
+            </div>
+
+            <div class="field field--full">
+              <span class="label">Add-on groups</span>
+              <div class="repeat-block">
+                <div class="repeat-block__head">
+                  <span class="repeat-block__title">Extras</span>
+                  <button class="btn btn--icon btn--sm" type="button" aria-label="Remove group"><i data-lucide="x"></i></button>
+                </div>
+                <div class="form-grid form-grid--2">
+                  <div class="field"><label class="label" for="group-name">Group name</label><input class="input" id="group-name" type="text" value="Extras"></div>
+                  <div class="field">
+                    <label class="label" for="group-min">Selection limits</label>
+                    <select class="select" id="group-min">
+                      <option>Optional, up to 3</option>
+                      <option>Choose exactly 1</option>
+                      <option>Choose up to 2</option>
+                      <option>Required, at least 1</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field-row mt-4">
+                  <div class="field"><label class="label" for="opt-1">Option</label><input class="input" id="opt-1" type="text" value="Extra salsa verde"></div>
+                  <div class="field"><label class="label" for="opt-1-price">+ $</label><input class="input" id="opt-1-price" type="number" step="0.25" value="1.50"></div>
+                  <button class="btn btn--icon" type="button" aria-label="Remove option"><i data-lucide="trash-2"></i></button>
+                </div>
+                <div class="field-row mt-2">
+                  <div class="field"><label class="label" for="opt-2">Option</label><input class="input" id="opt-2" type="text" value="Grilled pita"></div>
+                  <div class="field"><label class="label" for="opt-2-price">+ $</label><input class="input" id="opt-2-price" type="number" step="0.25" value="2.00"></div>
+                  <button class="btn btn--icon" type="button" aria-label="Remove option"><i data-lucide="trash-2"></i></button>
+                </div>
+                <button class="btn btn--secondary btn--sm mt-4" type="button"><i data-lucide="plus"></i> Add option</button>
+              </div>
+              <button class="btn btn--secondary btn--sm mt-4" type="button"><i data-lucide="plus"></i> Add group</button>
+            </div>
+
+            <div class="field field--full">
+              <label class="switch">
+                <input type="checkbox" checked>
+                <span class="switch__track"></span>
+                <span class="switch__label">Available to order</span>
+              </label>
+              <p class="hint">Turn this off to hide the item from the guest menu without deleting it.</p>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <a class="btn btn--secondary" href="menu.html">Cancel</a>
+            <button class="btn btn--primary" type="button">Save item</button>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/owner.js"></script>
+</body>
+</html>

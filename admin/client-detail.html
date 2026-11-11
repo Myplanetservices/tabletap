@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client — TableTap Admin</title>
+<meta name="description" content="TableTap Super Admin panel for MyPlanetServices.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="client-detail">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="admin-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="shield"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap Admin</span>
+        <span class="app-shell__brand-sub">MyPlanetServices</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Admin">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="clients.html" aria-current="page"><i data-lucide="users"></i><span class="nav-link__text">Clients</span></a>
+        <a class="nav-link" href="invites.html"><i data-lucide="mail"></i><span class="nav-link__text">Invites</span></a>
+        <a class="nav-link" href="activity.html"><i data-lucide="history"></i><span class="nav-link__text">Activity Log</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Platform</p>
+        <a class="nav-link" href="plans.html"><i data-lucide="credit-card"></i><span class="nav-link__text">Plans</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">VK</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Vivek Kumar</span>
+          <span class="app-shell__brand-sub">Super admin</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Clients / The Olive Table</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search clients</label>
+          <input class="input" id="global-search" type="search" placeholder="Search clients">
+        </div>
+        <a class="btn btn--primary btn--sm" href="invites.html"><i data-lucide="user-plus"></i> Invite client</a>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+
+      <div class="detail-head">
+        <div class="detail-head__brand">
+          <span class="detail-logo">OT</span>
+          <div>
+            <h1 class="detail-head__name">The Olive Table</h1>
+            <p class="detail-head__meta">Ananya Rao · owner@olivetable.demo · India · joined 4 March 2026</p>
+            <p class="mt-2"><span class="badge badge--success">Active</span> <span class="badge badge--neutral">Lifetime Pro</span></p>
+          </div>
+        </div>
+        <div class="detail-head__actions">
+          <button class="btn btn--secondary btn--sm" type="button"><i data-lucide="log-in"></i> Login as owner</button>
+          <button class="btn btn--secondary btn--sm" type="button" data-modal-open="suspend-modal"><i data-lucide="ban"></i> Suspend</button>
+          <button class="btn btn--secondary btn--sm" type="button"><i data-lucide="key"></i> Reset password</button>
+          <button class="btn btn--secondary btn--sm" type="button"><i data-lucide="mail"></i> Resend invite</button>
+          <button class="btn btn--danger btn--sm" type="button" data-modal-open="delete-modal"><i data-lucide="trash-2"></i> Delete</button>
+        </div>
+      </div>
+
+      <div class="tabs" data-tabs>
+        <div class="tabs__list" role="tablist" aria-label="Client sections">
+          <button class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel-overview" id="tab-overview" tabindex="0">Overview</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-usage" id="tab-usage" tabindex="-1">Usage</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-restrictions" id="tab-restrictions" tabindex="-1">Restrictions</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-activity" id="tab-activity" tabindex="-1">Activity</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-notes" id="tab-notes" tabindex="-1">Notes</button>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-overview" aria-labelledby="tab-overview">
+          <div class="split">
+            <div class="card">
+              <div class="card__header"><span class="card__title">Restaurant details</span></div>
+              <div class="card__body">
+                <div class="info-list">
+                  <div class="info-list__row"><span class="info-list__key">Address</span><span class="info-list__val">14 Turner Road, Bandra West, Mumbai 400050</span></div>
+                  <div class="info-list__row"><span class="info-list__key">Country</span><span class="info-list__val">India</span></div>
+                  <div class="info-list__row"><span class="info-list__key">Joined</span><span class="info-list__val">4 March 2026</span></div>
+                  <div class="info-list__row"><span class="info-list__key">Plan</span><span class="info-list__val">Lifetime Pro · $49 one-time</span></div>
+                  <div class="info-list__row"><span class="info-list__key">Kitchen code</span><span class="info-list__val mono">OLIVE7</span></div>
+                  <div class="info-list__row"><span class="info-list__key">Menu link</span><span class="info-list__val">menu/index.html?r=olive-table</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card__header"><span class="card__title">Owner</span></div>
+              <div class="card__body">
+                <div class="row mb-4">
+                  <span class="avatar avatar--lg">AR</span>
+                  <div>
+                    <p class="strong">Ananya Rao</p>
+                    <p class="muted text-xs">owner@olivetable.demo</p>
+                  </div>
+                </div>
+                <div class="info-list">
+                  <div class="info-list__row"><span class="info-list__key">Phone</span><span class="info-list__val">+91 98200 41127</span></div>
+                  <div class="info-list__row"><span class="info-list__key">Last login</span><span class="info-list__val">2 minutes ago</span></div>
+                  <div class="info-list__row"><span class="info-list__key">Invite accepted</span><span class="info-list__val">4 March 2026</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-grid mt-4">
+        <div class="stat">
+          <p class="stat__label">Orders (30 days)</p>
+          <p class="stat__value">1,148</p>
+          <div class="stat__meta"><span class="stat__delta stat__delta--up"><i data-lucide="arrow-up"></i> +7.4%</span><span class="muted">vs previous 30</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">Revenue (30 days)</p>
+          <p class="stat__value">$32,860</p>
+          <div class="stat__meta"><span class="stat__delta stat__delta--up"><i data-lucide="arrow-up"></i> +9.2%</span><span class="muted">vs previous 30</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">Tables</p>
+          <p class="stat__value">12</p>
+          <div class="stat__meta"><span class="muted">of 30 allowed</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">Menu items</p>
+          <p class="stat__value">48</p>
+          <div class="stat__meta"><span class="muted">of 200 allowed</span></div>
+        </div>
+        <div class="stat">
+          <p class="stat__label">Staff</p>
+          <p class="stat__value">3</p>
+          <div class="stat__meta"><span class="muted">of 5 allowed</span></div>
+        </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-usage" aria-labelledby="tab-usage" hidden>
+          <div class="card">
+            <div class="card__header"><span class="card__title">Orders per day</span><span class="muted text-xs">Last 7 days</span></div>
+            <div class="card__body">        <div class="chart">
+          <div class="chart__col">
+            <span class="chart__value">38</span>
+            <span class="chart__bar" style="height:62%"></span>
+            <span class="chart__label">Thu</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">54</span>
+            <span class="chart__bar" style="height:88%"></span>
+            <span class="chart__label">Fri</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">61</span>
+            <span class="chart__bar chart__bar--hi" style="height:100%"></span>
+            <span class="chart__label">Sat</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">45</span>
+            <span class="chart__bar" style="height:74%"></span>
+            <span class="chart__label">Sun</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">29</span>
+            <span class="chart__bar" style="height:48%"></span>
+            <span class="chart__label">Mon</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">35</span>
+            <span class="chart__bar" style="height:57%"></span>
+            <span class="chart__label">Tue</span>
+          </div>
+          <div class="chart__col">
+            <span class="chart__value">42</span>
+            <span class="chart__bar" style="height:69%"></span>
+            <span class="chart__label">Wed</span>
+          </div>
+        </div></div>
+          </div>
+
+          <div class="card">
+            <div class="card__header"><span class="card__title">Usage against plan limits</span></div>
+            <div class="card__body">
+              <div class="usage">
+                <div class="usage__head"><span>Tables</span><span class="usage__value">12 / 30</span></div>
+                <div class="usage-bar"><div class="usage-bar__fill" style="width:40%"></div></div>
+              </div>
+              <div class="usage">
+                <div class="usage__head"><span>Menu items</span><span class="usage__value">48 / 200</span></div>
+                <div class="usage-bar"><div class="usage-bar__fill" style="width:24%"></div></div>
+              </div>
+              <div class="usage">
+                <div class="usage__head"><span>Staff accounts</span><span class="usage__value">3 / 5</span></div>
+                <div class="usage-bar"><div class="usage-bar__fill usage-bar__fill--warn" style="width:60%"></div></div>
+              </div>
+              <p class="hint mt-4">Custom limits can be set in the Restrictions tab.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-restrictions" aria-labelledby="tab-restrictions" hidden>
+          <div class="card">
+            <div class="card__body">
+              <div class="restriction-row">
+                <div><p class="restriction-row__title">Ordering enabled</p><p class="restriction-row__text">Guests can place orders from the table menu.</p></div>
+                <label class="switch"><input type="checkbox" checked><span class="switch__track"></span><span class="sr-only">Ordering enabled</span></label>
+              </div>
+              <div class="restriction-row">
+                <div><p class="restriction-row__title">Read-only mode</p><p class="restriction-row__text">Owner can look, but cannot add, edit or delete anything.</p></div>
+                <label class="switch"><input type="checkbox"><span class="switch__track"></span><span class="sr-only">Read-only mode</span></label>
+              </div>
+              <div class="restriction-row">
+                <div><p class="restriction-row__title">Kitchen panel access</p><p class="restriction-row__text">Allows the restaurant code and PIN login.</p></div>
+                <label class="switch"><input type="checkbox" checked><span class="switch__track"></span><span class="sr-only">Kitchen panel access</span></label>
+              </div>
+              <div class="restriction-row">
+                <div><p class="restriction-row__title">Reports access</p><p class="restriction-row__text">Hides the Reports page in the owner panel.</p></div>
+                <label class="switch"><input type="checkbox" checked><span class="switch__track"></span><span class="sr-only">Reports access</span></label>
+              </div>
+
+              <div class="form-grid form-grid--2 mt-6">
+                <div class="field"><label class="label" for="max-tables">Max tables</label><input class="input" id="max-tables" type="number" value="30"></div>
+                <div class="field"><label class="label" for="max-items">Max menu items</label><input class="input" id="max-items" type="number" value="200"></div>
+                <div class="field"><label class="label" for="max-staff">Max staff accounts</label><input class="input" id="max-staff" type="number" value="5"></div>
+                <div class="field"><label class="label" for="max-plan">Plan</label>
+                  <select class="select" id="max-plan"><option selected>Lifetime Pro</option><option>Lifetime Starter</option></select>
+                </div>
+                <div class="field field--full">
+                  <label class="label" for="restriction-reason">Reason for the change</label>
+                  <textarea class="textarea" id="restriction-reason" placeholder="Shown in the activity log, e.g. “Custom limit agreed for a second location.”"></textarea>
+                </div>
+              </div>
+
+              <div class="row mt-6" style="justify-content:flex-end">
+                <button class="btn btn--secondary" type="button">Cancel</button>
+                <button class="btn btn--primary" type="button">Save restrictions</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-activity" aria-labelledby="tab-activity" hidden>
+          <div class="card">
+            <div class="card__body">
+              <div class="timeline">
+                <div class="timeline__item"><span class="timeline__dot"></span><div><p class="timeline__body">Owner logged in from Mumbai, Chrome on Windows</p><p class="timeline__time">2 minutes ago</p></div></div>
+                <div class="timeline__item"><span class="timeline__dot"></span><div><p class="timeline__body">Menu item “Baklava cheesecake” marked sold out</p><p class="timeline__time">1 hour ago</p></div></div>
+                <div class="timeline__item"><span class="timeline__dot"></span><div><p class="timeline__body">Ordering turned back on after the lunch break</p><p class="timeline__time">4 hours ago</p></div></div>
+                <div class="timeline__item"><span class="timeline__dot"></span><div><p class="timeline__body">Kitchen staff PIN reset for Meera Joshi</p><p class="timeline__time">Yesterday, 6:12 PM</p></div></div>
+                <div class="timeline__item"><span class="timeline__dot"></span><div><p class="timeline__body">Table 14 added, QR code generated</p><p class="timeline__time">2 days ago</p></div></div>
+                <div class="timeline__item"><span class="timeline__dot"></span><div><p class="timeline__body">Reports access enabled by Vivek Kumar</p><p class="timeline__time">6 days ago</p></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-notes" aria-labelledby="tab-notes" hidden>
+          <div class="card">
+            <div class="card__body">
+              <div class="note-item">
+                <p class="note-item__meta">Vivek Kumar · 3 March 2026</p>
+                <p>Second location planned for June. Wants a single dashboard for both — told them it is on the roadmap.</p>
+              </div>
+              <div class="note-item">
+                <p class="note-item__meta">Neha Iyer · 12 October 2026</p>
+                <p>Asked about card payments on the guest menu. Explained it is version 2, they were fine with paying at the counter.</p>
+              </div>
+              <div class="field mt-6">
+                <label class="label" for="new-note">Add an internal note</label>
+                <textarea class="textarea" id="new-note" placeholder="Only admins can see this."></textarea>
+              </div>
+              <div class="row mt-4" style="justify-content:flex-end">
+                <button class="btn btn--primary" type="button">Add note</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal" id="suspend-modal" role="dialog" aria-modal="true" aria-labelledby="suspend-title" hidden>
+        <div class="modal__dialog">
+          <div class="modal__header">
+            <div><p class="modal__title" id="suspend-title">Suspend The Olive Table</p><p class="muted text-xs">Owner and kitchen logins stop working immediately.</p></div>
+            <button class="btn btn--icon" type="button" data-modal-close aria-label="Close"><i data-lucide="x"></i></button>
+          </div>
+          <div class="modal__body">
+            <div class="field">
+              <label class="label" for="suspend-reason">Reason</label>
+              <select class="select" id="suspend-reason">
+                <option>Unpaid invoice</option>
+                <option>Terms of service breach</option>
+                <option>Client request</option>
+                <option>Duplicate account</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label" for="suspend-note">Note <span class="label__optional">(optional)</span></label>
+              <textarea class="textarea" id="suspend-note" placeholder="Anything the next admin should know"></textarea>
+            </div>
+            <div class="cart-info mt-4">
+              <i data-lucide="info"></i>
+              <span>The guest menu will show “Ordering is paused” while the account is suspended.</span>
+            </div>
+          </div>
+          <div class="modal__footer">
+            <button class="btn btn--secondary" type="button" data-modal-close>Cancel</button>
+            <button class="btn btn--danger" type="button">Suspend account</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-title" hidden>
+        <div class="modal__dialog">
+          <div class="modal__header">
+            <div><p class="modal__title" id="delete-title">Delete The Olive Table</p><p class="muted text-xs">This cannot be undone.</p></div>
+            <button class="btn btn--icon" type="button" data-modal-close aria-label="Close"><i data-lucide="x"></i></button>
+          </div>
+          <div class="modal__body">
+            <div class="danger-zone">
+              <p class="danger-zone__title">Everything is removed</p>
+              <p class="danger-zone__text">Menu, tables, QR codes, staff, orders and reports for this restaurant are deleted permanently.</p>
+            </div>
+            <div class="field mt-4">
+              <label class="label" for="confirm-name">Type <strong>The Olive Table</strong> to confirm</label>
+              <input class="input" id="confirm-name" type="text" placeholder="Restaurant name">
+            </div>
+          </div>
+          <div class="modal__footer">
+            <button class="btn btn--secondary" type="button" data-modal-close>Cancel</button>
+            <button class="btn btn--danger" type="button" disabled>Delete restaurant</button>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/admin.js"></script>
+</body>
+</html>

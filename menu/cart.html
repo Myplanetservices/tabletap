@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your order — The Olive Table</title>
+<meta name="description" content="Review your order at The Olive Table.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="menu-page" data-page="cart">
+<div class="menu-app">
+
+  <div class="menu-topbar">
+    <a class="btn btn--icon" href="index.html" aria-label="Back to the menu">
+      <i data-lucide="arrow-left"></i>
+    </a>
+    <div>
+      <p class="menu-topbar__title">Your order</p>
+      <p class="menu-topbar__meta" id="cart-table">Table 7 · The Olive Table</p>
+    </div>
+  </div>
+
+  <div class="cart-body">
+
+    <div id="cart-filled">
+      <div class="cart-list" id="cart-list"></div>
+
+      <div class="cart-fields">
+        <div class="field">
+          <label class="label" for="kitchen-note">Note for the kitchen <span class="label__optional">(optional)</span></label>
+          <textarea class="textarea" id="kitchen-note" placeholder="Allergies, spice level, anything we should know"></textarea>
+        </div>
+        <div class="field">
+          <label class="label" for="guest-name">Your name <span class="label__optional">(optional)</span></label>
+          <input class="input" id="guest-name" type="text" placeholder="So we know whose order it is">
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="summary__row"><span>Subtotal</span><span id="sum-subtotal">$0.00</span></div>
+        <div class="summary__row"><span id="sum-tax-label">Tax (8%)</span><span id="sum-tax">$0.00</span></div>
+        <div class="summary__row"><span id="sum-service-label">Service charge (5%)</span><span id="sum-service">$0.00</span></div>
+        <div class="summary__row summary__row--total"><span>Total</span><span id="sum-total">$0.00</span></div>
+      </div>
+
+      <div class="cart-info">
+        <i data-lucide="info"></i>
+        <span>Pay at the counter or to your waiter. No card details needed here.</span>
+      </div>
+    </div>
+
+    <div id="cart-empty" hidden>
+      <div class="empty">
+        <span class="empty__icon"><i data-lucide="shopping-bag"></i></span>
+        <p class="empty__title">Your order is empty</p>
+        <p class="empty__text">Add a dish from the menu and it will show up here, ready to send to the kitchen.</p>
+        <div class="empty__action">
+          <a class="btn btn--primary" href="index.html">Browse the menu</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="cart-sticky" id="cart-sticky">
+    <button class="btn btn--primary btn--lg btn--block" type="button" id="place-order">Place order · <span id="place-total">$0.00</span></button>
+  </div>
+
+</div>
+
+<script src="../assets/js/file-check.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script type="module" src="../assets/js/customer.js"></script>
+</body>
+</html>

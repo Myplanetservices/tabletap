@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plans — TableTap Admin</title>
+<meta name="description" content="TableTap Super Admin panel for MyPlanetServices.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-page="plans">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+
+  <aside class="app-shell__sidebar" id="admin-sidebar">
+    <div class="app-shell__brand">
+      <span class="brand__mark"><i data-lucide="shield"></i></span>
+      <span class="app-shell__brand-text">
+        <span class="brand__name">TableTap Admin</span>
+        <span class="app-shell__brand-sub">MyPlanetServices</span>
+      </span>
+    </div>
+
+    <nav class="app-shell__nav" aria-label="Admin">
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Manage</p>
+        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
+        <a class="nav-link" href="clients.html"><i data-lucide="users"></i><span class="nav-link__text">Clients</span></a>
+        <a class="nav-link" href="invites.html"><i data-lucide="mail"></i><span class="nav-link__text">Invites</span></a>
+        <a class="nav-link" href="activity.html"><i data-lucide="history"></i><span class="nav-link__text">Activity Log</span></a>
+      </div>
+      <div class="app-shell__nav-group">
+        <p class="app-shell__nav-label">Platform</p>
+        <a class="nav-link" href="plans.html" aria-current="page"><i data-lucide="credit-card"></i><span class="nav-link__text">Plans</span></a>
+        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
+      </div>    </nav>
+
+    <div class="app-shell__sidebar-footer">
+      <div class="row">
+        <span class="avatar">VK</span>
+        <span class="app-shell__brand-text">
+          <span class="owner-name">Vivek Kumar</span>
+          <span class="app-shell__brand-sub">Super admin</span>
+        </span>
+        <a class="btn btn--icon" href="../auth/login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-shell__scrim" data-panel-close></div>
+
+  <div class="app-shell__main">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="false" aria-label="Open menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <span class="app-shell__title">Plans</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <div class="topbar-search">
+          <i data-lucide="search"></i>
+          <label class="sr-only" for="global-search">Search clients</label>
+          <input class="input" id="global-search" type="search" placeholder="Search clients">
+        </div>
+        <a class="btn btn--primary btn--sm" href="invites.html"><i data-lucide="user-plus"></i> Invite client</a>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner">
+      <div class="page-head">
+        <div>
+          <h1 class="page-head__title">Plans</h1>
+          <p class="page-head__sub">Two lifetime plans. Limits are applied to new clients automatically.</p>
+        </div>
+      <div class="page-head__actions"><button class="btn btn--secondary btn--sm" type="button"><i data-lucide="plus"></i> New plan</button></div>
+      </div>
+      <div class="split split--even">
+        <div class="plan-card-lg">
+          <p class="plan-card-lg__label">Lifetime Starter</p>
+          <p class="plan-card-lg__price">$29 <span>one-time</span></p>
+          <p class="muted text-sm mt-2">For cafés and small rooms that only need the basics.</p>
+          <div class="plan-limits">
+            <span><strong>10</strong> tables</span>
+            <span><strong>80</strong> menu items</span>
+            <span><strong>2</strong> staff</span>
+          </div>
+          <div class="row row--between mt-6">
+            <span class="badge badge--neutral">4 clients</span>
+            <button class="btn btn--secondary btn--sm" type="button" data-modal-open="plan-modal"><i data-lucide="pencil"></i> Edit plan</button>
+          </div>
+        </div>
+
+        <div class="plan-card-lg">
+          <p class="plan-card-lg__label">Lifetime Pro</p>
+          <p class="plan-card-lg__price">$49 <span>one-time</span></p>
+          <p class="muted text-sm mt-2">The default plan for restaurants and bars running full service.</p>
+          <div class="plan-limits">
+            <span><strong>30</strong> tables</span>
+            <span><strong>200</strong> menu items</span>
+            <span><strong>5</strong> staff</span>
+          </div>
+          <div class="row row--between mt-6">
+            <span class="badge badge--success">8 clients</span>
+            <button class="btn btn--secondary btn--sm" type="button" data-modal-open="plan-modal"><i data-lucide="pencil"></i> Edit plan</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-6">
+        <div class="card__header"><span class="card__title">Clients on each plan</span></div>
+        <div class="card__body">
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th scope="col">Plan</th><th scope="col" class="table__num">Price</th><th scope="col" class="table__num">Clients</th><th scope="col" class="table__num">Revenue</th></tr></thead>
+              <tbody>
+                <tr><td class="table__strong">Lifetime Starter</td><td class="table__num">$29</td><td class="table__num">4</td><td class="table__num">$116</td></tr>
+                <tr><td class="table__strong">Lifetime Pro</td><td class="table__num">$49</td><td class="table__num">8</td><td class="table__num">$392</td></tr>
+                <tr><td class="table__strong">Total</td><td class="table__num">—</td><td class="table__num">12</td><td class="table__num">$508</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal" id="plan-modal" role="dialog" aria-modal="true" aria-labelledby="plan-modal-title" hidden>
+        <div class="modal__dialog">
+          <div class="modal__header">
+            <div><p class="modal__title" id="plan-modal-title">Edit plan</p><p class="muted text-xs">Changes apply to new clients on this plan.</p></div>
+            <button class="btn btn--icon" type="button" data-modal-close aria-label="Close"><i data-lucide="x"></i></button>
+          </div>
+          <div class="modal__body">
+            <div class="field"><label class="label" for="plan-name">Plan name</label><input class="input" id="plan-name" type="text" value="Lifetime Pro"></div>
+            <div class="field"><label class="label" for="plan-price">Price ($)</label><input class="input" id="plan-price" type="number" value="49"></div>
+            <div class="form-grid form-grid--2 mt-4">
+              <div class="field"><label class="label" for="plan-tables">Max tables</label><input class="input" id="plan-tables" type="number" value="30"></div>
+              <div class="field"><label class="label" for="plan-items">Max menu items</label><input class="input" id="plan-items" type="number" value="200"></div>
+              <div class="field"><label class="label" for="plan-staff">Max staff</label><input class="input" id="plan-staff" type="number" value="5"></div>
+            </div>
+            <p class="hint mt-4">Clients with custom limits keep their own numbers.</p>
+          </div>
+          <div class="modal__footer">
+            <button class="btn btn--secondary" type="button" data-modal-close>Cancel</button>
+            <button class="btn btn--primary" type="button">Save plan</button>
+          </div>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/file-check.js"></script>
+<script type="module" src="../assets/js/admin.js"></script>
+</body>
+</html>
