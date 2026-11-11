@@ -3,12 +3,6 @@
   "version": "1.0.0",
   "description": "TableTap - QR Table Ordering & Restaurant Management Platform",
   "type": "module",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
-    "build": "echo 'Vercel build complete'"
-  },
   "dependencies": {
     "dotenv": "^18.0.10",
     "mongodb": "^7.8.0"
