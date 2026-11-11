@@ -391,6 +391,49 @@ function showPaymentModal(method, totals, settings, table, onConfirm) {
         <p class="hint mt-2 text-xs muted">Click to simulate Google Pay 1-tap confirmation</p>
       </div>
     `;
+  } else if (method === 'paypal') {
+    bodyHtml = `
+      <div style="text-align: center; padding: 0.5rem 0 1rem 0;">
+        <div style="font-size: 1.8rem; margin-bottom: 0.25rem;">🅿️</div>
+        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">PayPal &amp; Venmo</h3>
+        <p class="muted text-xs" style="margin-bottom: 1.25rem;">The Olive Table · ${esc(table.name)}</p>
+
+        <div style="background: var(--surface-2, #F8F6F1); border-radius: 12px; padding: 12px 16px; margin-bottom: 1.25rem; text-align: left; font-size: 0.85rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span class="muted">PayPal Diner</span>
+            <span style="font-weight: 600;">alex.diner@gmail.com</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border, rgba(0,0,0,0.08)); padding-top: 6px; font-weight: 700; font-size: 0.95rem;">
+            <span>Total to Pay</span>
+            <span style="color: var(--primary, #8C3A27);">${money(totals.total)}</span>
+          </div>
+        </div>
+
+        <button class="btn btn--block btn--lg" id="confirm-paypal-btn" type="button" style="background: #003087; color: #fff; border-radius: 12px; height: 52px; font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span>Pay ${money(totals.total)} with PayPal</span>
+        </button>
+        <p class="hint mt-2 text-xs muted">Click to simulate PayPal 1-tap confirmation</p>
+      </div>
+    `;
+  } else if (method === 'upi') {
+    bodyHtml = `
+      <div style="text-align: center; padding: 0.5rem 0 1rem 0;">
+        <div style="font-size: 1.8rem; margin-bottom: 0.25rem;">📱</div>
+        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">UPI Instant Pay</h3>
+        <p class="muted text-xs" style="margin-bottom: 1rem;">The Olive Table (${esc(settings.payments?.razorpay?.vpa || 'olivetable@icici')})</p>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 1rem;">
+          <button type="button" class="btn btn--secondary btn--sm is-active" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">GPay</button>
+          <button type="button" class="btn btn--secondary btn--sm" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">PhonePe</button>
+          <button type="button" class="btn btn--secondary btn--sm" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">Paytm</button>
+          <button type="button" class="btn btn--secondary btn--sm" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">BHIM</button>
+        </div>
+
+        <button class="btn btn--primary btn--block btn--lg" id="confirm-upi-pay-btn" type="button" style="height: 50px; font-size: 1rem; font-weight: 700; background: #059669; border-color: #059669;">
+          Pay ${money(totals.total)} via UPI
+        </button>
+      </div>
+    `;
   } else {
     bodyHtml = `
       <div style="text-align: center; padding: 0.5rem 0 1rem 0;">
@@ -424,11 +467,11 @@ function showPaymentModal(method, totals, settings, table, onConfirm) {
 
   modal.querySelector('#close-pay-sheet-btn').addEventListener('click', () => modal.remove());
 
-  const btn = modal.querySelector('#confirm-apple-pay-btn') || modal.querySelector('#confirm-gpay-btn') || modal.querySelector('#confirm-card-pay-btn');
+  const btn = modal.querySelector('#confirm-apple-pay-btn') || modal.querySelector('#confirm-gpay-btn') || modal.querySelector('#confirm-card-pay-btn') || modal.querySelector('#confirm-paypal-btn') || modal.querySelector('#confirm-upi-pay-btn');
   if (btn) {
     btn.addEventListener('click', () => {
       btn.disabled = true;
-      btn.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 8px;"><span class="dot" style="background: #fff; width: 8px; height: 8px; border-radius: 50%; animation: pulse 0.6s infinite alternate;"></span> Authorizing ${method === 'apple_pay' ? 'Face ID' : 'Card'}…</span>`;
+      btn.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 8px;"><span class="dot" style="background: #fff; width: 8px; height: 8px; border-radius: 50%; animation: pulse 0.6s infinite alternate;"></span> Authorizing ${method === 'apple_pay' ? 'Face ID' : 'Payment'}…</span>`;
       
       setTimeout(() => {
         btn.innerHTML = `<span style="color: #10B981; font-weight: 700;">✓ Payment Approved!</span>`;
@@ -436,7 +479,7 @@ function showPaymentModal(method, totals, settings, table, onConfirm) {
           modal.remove();
           onConfirm({
             method,
-            txnId: (method === 'apple_pay' ? 'APL_' : method === 'google_pay' ? 'GPY_' : 'CRD_') + Math.random().toString(36).slice(2, 8).toUpperCase(),
+            txnId: (method === 'apple_pay' ? 'APL_' : method === 'google_pay' ? 'GPY_' : method === 'paypal' ? 'PYP_' : method === 'upi' ? 'UPI_' : 'CRD_') + Math.random().toString(36).slice(2, 8).toUpperCase(),
           });
         }, 500);
       }, 700);
@@ -964,10 +1007,54 @@ function initCart(ctx) {
 
   const placeButton = document.getElementById('place-order');
 
-  let selectedMethod = 'apple_pay';
-  const payRadios = document.querySelectorAll('input[name="pay-method"]');
-  const methodBtns = document.querySelectorAll('.pay-method-btn');
+  const payGrid = document.getElementById('pay-methods-grid');
   const payDesc = document.getElementById('pay-method-desc');
+  const paymentsConf = settings.payments || {};
+  const payPolicy = paymentsConf.policy || (settings.payAtOrder?.enabled !== false ? 'pay_at_order' : 'flexible');
+  const stripe = paymentsConf.stripe || {};
+  const paypal = paymentsConf.paypal || {};
+  const inPerson = paymentsConf.inPerson || { cash: true, cardMachine: true };
+
+  const methodsList = [];
+  if (stripe.connected !== false && stripe.applePay !== false) {
+    methodsList.push({ id: 'apple_pay', name: 'Apple Pay', icon: '🍏', desc: 'Instant 1-tap checkout via Apple Pay. Order is verified and fired straight to the chef.' });
+  }
+  if (stripe.connected !== false && stripe.googlePay !== false) {
+    methodsList.push({ id: 'google_pay', name: 'Google Pay', icon: '🌐', desc: 'Fast 1-tap Google Pay. Seamless payment using cards saved in your Google Account.' });
+  }
+  if (stripe.connected !== false && stripe.cards !== false) {
+    methodsList.push({ id: 'card', name: 'Credit Card', icon: '💳', desc: 'Secure 256-bit encrypted Visa, Mastercard, or American Express payment.' });
+  }
+  if (paypal.connected !== false && paypal.paypalWallet !== false) {
+    methodsList.push({ id: 'paypal', name: 'PayPal / Venmo', icon: '🅿️', desc: 'Checkout with your PayPal balance, linked bank, or Venmo.' });
+  }
+  if (settings.currency === '₹' || paymentsConf.razorpay?.connected) {
+    methodsList.push({ id: 'upi', name: 'UPI Pay', icon: '📱', desc: 'Instant UPI via GPay, PhonePe, Paytm, or BHIM.' });
+  }
+  if (payPolicy !== 'pay_at_order' && inPerson.cash !== false) {
+    methodsList.push({ id: 'counter', name: 'Pay Server', icon: '💵', desc: 'Pay server in person at your table (cash or portable card reader).' });
+  }
+  if (!methodsList.length) {
+    methodsList.push({ id: 'apple_pay', name: 'Apple Pay', icon: '🍏', desc: 'Instant 1-tap checkout via Apple Pay.' });
+    methodsList.push({ id: 'card', name: 'Credit Card', icon: '💳', desc: 'Secure credit/debit card payment.' });
+    if (payPolicy !== 'pay_at_order') {
+      methodsList.push({ id: 'counter', name: 'Pay Server', icon: '💵', desc: 'Pay server in person at your table.' });
+    }
+  }
+
+  if (payGrid) {
+    payGrid.innerHTML = methodsList.map((m, idx) => `
+      <label class="pay-method-btn ${idx === 0 ? 'is-selected' : ''}" data-method="${m.id}" style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fff; border: ${idx === 0 ? '2px solid var(--primary, #8C3A27)' : '1px solid var(--border, rgba(0,0,0,0.12))'}; border-radius: 10px; cursor: pointer;">
+        <input type="radio" name="pay-method" value="${m.id}" ${idx === 0 ? 'checked' : ''} style="accent-color: var(--primary, #8C3A27);">
+        <span style="font-size: 1.1rem;">${m.icon}</span>
+        <span style="font-size: 0.85rem; font-weight: 700; color: var(--text, #1A1A1A);">${esc(m.name)}</span>
+      </label>
+    `).join('');
+  }
+
+  let selectedMethod = methodsList[0]?.id || 'apple_pay';
+  let methodBtns = document.querySelectorAll('.pay-method-btn');
+  let payRadios = document.querySelectorAll('input[name="pay-method"]');
 
   function updatePaymentUi(method) {
     selectedMethod = method;
@@ -976,11 +1063,9 @@ function initCart(ctx) {
       btn.style.borderColor = isSel ? 'var(--primary, #8C3A27)' : 'var(--border, rgba(0,0,0,0.12))';
       btn.style.borderWidth = isSel ? '2px' : '1px';
     });
-    if (payDesc) {
-      if (method === 'apple_pay') payDesc.textContent = 'Instant 1-tap checkout via Apple Pay. Order is verified and fired straight to the chef.';
-      else if (method === 'google_pay') payDesc.textContent = 'Fast 1-tap Google Pay. Seamless payment using cards saved in your Google Account.';
-      else if (method === 'card') payDesc.textContent = 'Secure 256-bit encrypted Visa, Mastercard, or American Express payment.';
-      else payDesc.textContent = 'Pay server in person at your table (cash or portable card reader).';
+    const matched = methodsList.find((m) => m.id === method);
+    if (payDesc && matched) {
+      payDesc.textContent = matched.desc;
     }
     const totSpan = document.getElementById('place-total');
     const totVal = totSpan ? totSpan.textContent : '';
@@ -988,6 +1073,8 @@ function initCart(ctx) {
       if (method === 'apple_pay') placeButton.innerHTML = `🍏 Pay with Apple Pay · <span id="place-total">${totVal}</span>`;
       else if (method === 'google_pay') placeButton.innerHTML = `🌐 Pay with Google Pay · <span id="place-total">${totVal}</span>`;
       else if (method === 'card') placeButton.innerHTML = `💳 Pay with Credit Card · <span id="place-total">${totVal}</span>`;
+      else if (method === 'paypal') placeButton.innerHTML = `🅿️ Pay with PayPal · <span id="place-total">${totVal}</span>`;
+      else if (method === 'upi') placeButton.innerHTML = `📱 Pay via UPI · <span id="place-total">${totVal}</span>`;
       else placeButton.innerHTML = `Place order (Pay Server) · <span id="place-total">${totVal}</span>`;
     }
   }

@@ -90,7 +90,7 @@
           <button class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel-profile" id="tab-profile" tabindex="0">Restaurant profile</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-ordering" id="tab-ordering" tabindex="-1">Ordering</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-security" id="tab-security" tabindex="-1">Security & Geofence</button>
-          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-payments" id="tab-payments" tabindex="-1">Stripe & Payments (US / UK)</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-payments" id="tab-payments" tabindex="-1">Payment Gateways & Methods</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-hours" id="tab-hours" tabindex="-1">Opening hours</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-branding" id="tab-branding" tabindex="-1">Branding</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-notify" id="tab-notify" tabindex="-1">Notifications</button>
@@ -224,63 +224,96 @@
         </div>
 
         <div class="tab-panel" role="tabpanel" id="panel-payments" aria-labelledby="tab-payments" hidden>
-          <div class="card">
+          <!-- 1. Dining Payment & Anti-Spam Policy -->
+          <div class="card mb-4">
             <div class="card__body">
-              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem;">
+              <h3 class="card__title mb-2" style="font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="shield-check" style="color:#059669;"></i> Dining Payment & Anti-Spam Policy
+              </h3>
+              <p class="muted text-sm mb-4">Choose how guests settle payments to stop unpaid ghost orders and speed up table turnover.</p>
+              
+              <div class="form-grid form-grid--3" style="gap:12px;">
+                <label class="pay-policy-card" style="border:2px solid var(--primary, #8C3A27); background:#fff; border-radius:12px; padding:14px; cursor:pointer; display:block;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <strong style="font-size:0.95rem;">🛡️ Pay-at-Order (Recommended)</strong>
+                    <input type="radio" name="payment-policy" value="pay_at_order" checked style="accent-color:var(--primary, #8C3A27);">
+                  </div>
+                  <p class="text-xs muted" style="margin:0; line-height:1.4;">Guest pays upfront on their phone (Apple Pay, GPay, Card, UPI). Orders are verified before kitchen prepares food. 100% spam-proof.</p>
+                </label>
+
+                <label class="pay-policy-card" style="border:1px solid var(--border, rgba(0,0,0,0.12)); background:#fff; border-radius:12px; padding:14px; cursor:pointer; display:block;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <strong style="font-size:0.95rem;">🛎️ Flexible Dining</strong>
+                    <input type="radio" name="payment-policy" value="flexible" style="accent-color:var(--primary, #8C3A27);">
+                  </div>
+                  <p class="text-xs muted" style="margin:0; line-height:1.4;">Guests can pay online immediately or select "Pay Server" to settle in cash or card machine at the table.</p>
+                </label>
+
+                <label class="pay-policy-card" style="border:1px solid var(--border, rgba(0,0,0,0.12)); background:#fff; border-radius:12px; padding:14px; cursor:pointer; display:block;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <strong style="font-size:0.95rem;">🧾 Traditional Bill at End</strong>
+                    <input type="radio" name="payment-policy" value="post_pay" style="accent-color:var(--primary, #8C3A27);">
+                  </div>
+                  <p class="text-xs muted" style="margin:0; line-height:1.4;">Guests order freely without checkout prompts and request the bill at the end of their meal.</p>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Stripe Connect (US, UK, Europe & Global) -->
+          <div class="card mb-4">
+            <div class="card__body">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
                 <div>
                   <h3 class="card__title" style="font-size:1.15rem; display:flex; align-items:center; gap:8px;">
                     <span style="background:#635BFF; color:#fff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.85rem;">stripe</span>
-                    Global Payments (US, UK & Europe)
+                    Stripe Connect (US, UK, Europe & Global)
                   </h3>
-                  <p class="muted text-sm mt-1">Accept Apple Pay, Google Pay, and international cards. Direct daily payouts to your restaurant's bank account.</p>
+                  <p class="muted text-sm mt-1">Accept Apple Pay, Google Pay, and international cards with direct daily payouts to your local bank account.</p>
                 </div>
-                <span class="badge badge--success" style="font-size:0.8rem; padding:4px 10px;">
-                  <span class="dot" style="background:#10B981;"></span> Stripe Connect Active
+                <span class="badge badge--success" id="stripe-status-badge" style="font-size:0.8rem; padding:4px 10px;">
+                  <span class="dot" style="background:#10B981;"></span> Stripe Connected
                 </span>
               </div>
 
-              <!-- 1-Click Connect Button -->
-              <div style="background:var(--surface-2, #F8F6F1); border-radius:12px; padding:1.25rem; border:1px solid var(--border, rgba(0,0,0,0.08)); margin-bottom:1.5rem;">
-                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+              <div style="background:var(--surface-2, #F8F6F1); border-radius:12px; padding:1rem; border:1px solid var(--border, rgba(0,0,0,0.08)); margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                  <div style="font-weight:700; font-size:0.95rem;">Connected Account: The Olive Table Ltd</div>
+                  <div class="muted text-xs mt-0.5">Payout Bank: Barclays Business / Chase Bank (•••• 4192) · Daily Rolling Payouts</div>
+                </div>
+                <button type="button" class="btn btn--sm" id="btn-reconnect-stripe" style="background:#635BFF; color:#fff; border:none; font-weight:700; padding:8px 16px; border-radius:8px;">
+                  Manage Stripe Dashboard
+                </button>
+              </div>
+
+              <h4 class="text-sm font-bold uppercase tracking-wider text-muted mb-2">Stripe Payment Methods Offered to Diners</h4>
+              <div class="form-grid form-grid--3 mb-4">
+                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">
                   <div>
-                    <div style="font-weight:700; font-size:0.95rem;">Connected Account: The Olive Table Ltd</div>
-                    <div class="muted text-xs mt-0.5">Payout Bank: Barclays Business (•••• 4192) · Daily Rolling Payouts</div>
+                    <strong>🍏 Apple Pay</strong>
+                    <p class="text-xs muted" style="margin:2px 0 0;">Face ID / Touch ID</p>
                   </div>
-                  <button type="button" class="btn btn--sm" id="btn-reconnect-stripe" style="background:#635BFF; color:#fff; border:none; font-weight:700; padding:8px 16px; border-radius:8px;">
-                    Manage Stripe Dashboard
-                  </button>
+                  <label class="switch"><input type="checkbox" id="stripe-opt-apple" checked><span class="switch__track"></span></label>
+                </div>
+
+                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <strong>🌐 Google Pay</strong>
+                    <p class="text-xs muted" style="margin:2px 0 0;">Android / Chrome</p>
+                  </div>
+                  <label class="switch"><input type="checkbox" id="stripe-opt-google" checked><span class="switch__track"></span></label>
+                </div>
+
+                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <strong>💳 Visa / MC / Amex</strong>
+                    <p class="text-xs muted" style="margin:2px 0 0;">Global Debit & Credit</p>
+                  </div>
+                  <label class="switch"><input type="checkbox" id="stripe-opt-cards" checked><span class="switch__track"></span></label>
                 </div>
               </div>
 
-              <h4 class="text-sm font-bold uppercase tracking-wider text-muted mb-3">Supported US / UK Payment Methods</h4>
-              <div class="form-grid form-grid--3 mb-6">
-                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <span style="font-weight:700; font-size:0.9rem;">🍏 Apple Pay</span>
-                    <span style="color:#059669; font-size:0.75rem; font-weight:700;">Active</span>
-                  </div>
-                  <p class="text-xs muted">Enabled for Safari, iPhone, and Apple Watch diners.</p>
-                </div>
-
-                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <span style="font-weight:700; font-size:0.9rem;">🌐 Google Pay</span>
-                    <span style="color:#059669; font-size:0.75rem; font-weight:700;">Active</span>
-                  </div>
-                  <p class="text-xs muted">Enabled for Android and Chrome browser diners.</p>
-                </div>
-
-                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <span style="font-weight:700; font-size:0.9rem;">💳 Visa / MC / Amex</span>
-                    <span style="color:#059669; font-size:0.75rem; font-weight:700;">Active</span>
-                  </div>
-                  <p class="text-xs muted">Domestic and international debit/credit cards.</p>
-                </div>
-              </div>
-
-              <h4 class="text-sm font-bold uppercase tracking-wider text-muted mb-3">API Keys & Webhooks</h4>
-              <div class="form-grid form-grid--2 mb-4">
+              <div class="form-grid form-grid--2 mb-2">
                 <div class="field">
                   <label class="label" for="stripe-pub-key">Stripe Publishable Key</label>
                   <input class="input" id="stripe-pub-key" type="text" placeholder="pk_test_... or pk_live_..." style="font-family:var(--font-mono); font-size:0.85rem;">
@@ -290,11 +323,139 @@
                   <input class="input" id="stripe-sec-key" type="password" placeholder="sk_test_... or sk_live_..." style="font-family:var(--font-mono); font-size:0.85rem;">
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div class="row mt-6" style="justify-content:flex-end">
-                <button class="btn btn--primary" type="button" data-save="payments">Save Stripe Settings</button>
+          <!-- 3. PayPal & Venmo (US & UK Diners) -->
+          <div class="card mb-4">
+            <div class="card__body">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
+                <div>
+                  <h3 class="card__title" style="font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+                    <span style="background:#003087; color:#fff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.85rem;">PayPal</span>
+                    PayPal &amp; Venmo (US &amp; UK Diners)
+                  </h3>
+                  <p class="muted text-sm mt-1">Allow diners to checkout with PayPal wallet or Venmo (popular for younger US diners).</p>
+                </div>
+                <span class="badge badge--success" style="font-size:0.8rem; padding:4px 10px;">
+                  <span class="dot" style="background:#10B981;"></span> Active
+                </span>
+              </div>
+
+              <div class="form-grid form-grid--2 mb-3">
+                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <strong>🅿️ PayPal Wallet Checkout</strong>
+                    <p class="text-xs muted" style="margin:2px 0 0;">Standard PayPal web pay</p>
+                  </div>
+                  <label class="switch"><input type="checkbox" id="paypal-opt-wallet" checked><span class="switch__track"></span></label>
+                </div>
+
+                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <strong>📱 Venmo Checkout</strong>
+                    <p class="text-xs muted" style="margin:2px 0 0;">Direct Venmo app pay (US)</p>
+                  </div>
+                  <label class="switch"><input type="checkbox" id="paypal-opt-venmo" checked><span class="switch__track"></span></label>
+                </div>
+              </div>
+
+              <div class="form-grid form-grid--2">
+                <div class="field">
+                  <label class="label" for="paypal-client-id">PayPal Client ID</label>
+                  <input class="input" id="paypal-client-id" type="text" placeholder="e.g. Ae8X... (Sandbox or Live)" style="font-family:var(--font-mono); font-size:0.85rem;">
+                </div>
+                <div class="field">
+                  <label class="label" for="paypal-sec-key">PayPal Secret</label>
+                  <input class="input" id="paypal-sec-key" type="password" placeholder="e.g. EL29..." style="font-family:var(--font-mono); font-size:0.85rem;">
+                </div>
               </div>
             </div>
+          </div>
+
+          <!-- 4. Square & Clover POS Sync (US & UK In-Store) -->
+          <div class="card mb-4">
+            <div class="card__body">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
+                <div>
+                  <h3 class="card__title" style="font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+                    <span style="background:#000; color:#fff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.85rem;">Square</span>
+                    Square &amp; Clover POS Terminal Sync
+                  </h3>
+                  <p class="muted text-sm mt-1">Sync digital table orders with physical handheld card terminals and POS cash registers.</p>
+                </div>
+                <span class="badge badge--neutral" style="font-size:0.8rem; padding:4px 10px;">Ready to Link</span>
+              </div>
+              <div class="form-grid form-grid--2">
+                <div class="field">
+                  <label class="label" for="square-loc-id">POS Location ID</label>
+                  <input class="input" id="square-loc-id" type="text" placeholder="e.g. L938FKLW..." style="font-family:var(--font-mono); font-size:0.85rem;">
+                </div>
+                <div class="field">
+                  <label class="label" for="square-token">POS Terminal Access Token</label>
+                  <input class="input" id="square-token" type="password" placeholder="e.g. sq0atp-..." style="font-family:var(--font-mono); font-size:0.85rem;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Razorpay & UPI Gateway (India & South Asia) -->
+          <div class="card mb-4">
+            <div class="card__body">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
+                <div>
+                  <h3 class="card__title" style="font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+                    <span style="background:#02042B; color:#00D09C; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.85rem;">UPI</span>
+                    Razorpay &amp; UPI Gateway (India &amp; South Asia)
+                  </h3>
+                  <p class="muted text-sm mt-1">Accept GPay, PhonePe, Paytm, and BHIM with auto-reconciliation.</p>
+                </div>
+                <span class="badge badge--success" style="font-size:0.8rem; padding:4px 10px;">
+                  <span class="dot" style="background:#10B981;"></span> Active
+                </span>
+              </div>
+              <div class="form-grid form-grid--2">
+                <div class="field">
+                  <label class="label" for="razorpay-vpa">Merchant UPI ID / VPA</label>
+                  <input class="input" id="razorpay-vpa" type="text" value="olivetable@icici" style="font-family:var(--font-mono); font-size:0.85rem;">
+                </div>
+                <div class="field">
+                  <label class="label" for="razorpay-key-id">Razorpay Key ID</label>
+                  <input class="input" id="razorpay-key-id" type="text" placeholder="rzp_live_..." style="font-family:var(--font-mono); font-size:0.85rem;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Physical In-Person Dining Methods -->
+          <div class="card mb-4">
+            <div class="card__body">
+              <h3 class="card__title mb-2" style="font-size:1.05rem;">Physical In-Person Dining Methods</h3>
+              <p class="muted text-sm mb-4">Methods where guests pay staff directly at the table or counter.</p>
+              <div class="form-grid form-grid--2">
+                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <strong>💵 Cash to Server / Counter</strong>
+                    <p class="text-xs muted" style="margin:2px 0 0;">Guest pays paper cash to waiter</p>
+                  </div>
+                  <label class="switch"><input type="checkbox" id="pay-opt-cash" checked><span class="switch__track"></span></label>
+                </div>
+
+                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <strong>📟 Handheld POS Terminal at Table</strong>
+                    <p class="text-xs muted" style="margin:2px 0 0;">Server brings portable card reader</p>
+                  </div>
+                  <label class="switch"><input type="checkbox" id="pay-opt-terminal" checked><span class="switch__track"></span></label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mt-6" style="justify-content:flex-end">
+            <button class="btn btn--primary btn--lg" type="button" data-save="payments">
+              <i data-lucide="save"></i> Save Payment Gateways &amp; Settings
+            </button>
           </div>
         </div>
 

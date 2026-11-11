@@ -260,10 +260,52 @@ function seed() {
         tips: { enabled: false, presets: [10, 15, 20], allowCustom: true },
         paymentMethods: [
           { id: 'apple_pay', name: 'Apple Pay', enabled: true },
+          { id: 'google_pay', name: 'Google Pay', enabled: true },
+          { id: 'card', name: 'Credit / Debit Card', enabled: true },
+          { id: 'paypal', name: 'PayPal / Venmo', enabled: true },
           { id: 'upi', name: 'UPI (GPay / PhonePe / Paytm)', enabled: true },
-          { id: 'card', name: 'Card', enabled: true },
-          { id: 'cash', name: 'Cash / Waiter', enabled: true },
+          { id: 'cash', name: 'Cash to Waiter', enabled: true },
         ],
+        payments: {
+          policy: 'pay_at_order',
+          stripe: {
+            connected: true,
+            accountName: 'The Olive Table Ltd',
+            bankName: 'Barclays Business (•••• 4192)',
+            payoutSchedule: 'Daily Rolling Payouts',
+            liveMode: true,
+            pubKey: '',
+            secKey: '',
+            applePay: true,
+            googlePay: true,
+            cards: true,
+          },
+          paypal: {
+            connected: true,
+            clientId: '',
+            secKey: '',
+            paypalWallet: true,
+            venmo: true,
+          },
+          square: {
+            connected: false,
+            locationId: '',
+            accessToken: '',
+            syncPos: true,
+          },
+          razorpay: {
+            connected: true,
+            keyId: '',
+            keySecret: '',
+            vpa: 'olivetable@icici',
+            upi: true,
+            netbanking: true,
+          },
+          inPerson: {
+            cash: true,
+            cardMachine: true,
+          },
+        },
         geofence: {
           enabled: true,
           lat: 19.0596,
@@ -734,6 +776,13 @@ export function closeSession(sessionId, payment, bill) {
     bill,
   });
   update('tables', session.tableId, { status: 'free', tableKey: null, activeSecret: null });
+  // Mark all orders belonging to this session as paid
+  (session.orderIds || []).forEach((oid) => {
+    update('orders', oid, { paid: true, payment });
+  });
+  // Auto-resolve any open waiter calls or bill requests for this session
+  query('waiterCalls', (c) => (c.sessionId === sessionId || c.tableId === session.tableId) && c.status === 'open')
+    .forEach((c) => update('waiterCalls', c.id, { status: 'done' }));
   return closed;
 }
 

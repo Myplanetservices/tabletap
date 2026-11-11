@@ -347,9 +347,13 @@ function openBillModal(sessionId, onDone) {
       '<input class="input" id="discount-value" type="number" min="0" step="0.5" placeholder="0" style="width:110px" value="' + (session.discount && session.discount.value ? session.discount.value : '') + '">' +
       '<input class="input" id="discount-reason" type="text" placeholder="Reason (e.g. staff meal)" value="' + esc((session.discount && session.discount.reason) || '') + '">' +
       '<button class="btn btn--secondary" type="button" data-apply-discount>Apply</button></div></div>' +
-      '<p class="label mt-6">Mark as paid</p>' +
+      '<div class="mt-5">' +
+      '<button class="btn btn--primary btn--block btn--lg" id="btn-open-terminal" type="button" style="background:#059669; border-color:#059669; font-weight:700; height:48px; display:flex; align-items:center; justify-content:center; gap:8px;">' +
+      '<i data-lucide="credit-card"></i> Take Payment / Collect Now (' + money(bill.total) + ')</button>' +
+      '</div>' +
+      '<p class="label mt-4">Quick Settle</p>' +
       (session.paymentMethod ? '<div class="notice-banner"><i data-lucide="wallet"></i><span>' + esc(guestPayLine({ sessionId: session.id, paymentMethod: session.paymentMethod })) + '</span></div>' : '') +
-      '<div class="row row--wrap mt-4">' +
+      '<div class="row row--wrap mt-2">' +
       (settings.paymentMethods || []).filter((m) => m.enabled).map((m) =>
         '<button class="btn ' + (m.id === session.paymentMethod ? 'btn--primary' : 'btn--secondary') +
         '" type="button" data-pay="' + m.id + '">' + esc(m.name) + '</button>').join('') +
@@ -361,6 +365,14 @@ function openBillModal(sessionId, onDone) {
     hostEl.querySelector('[data-close]').addEventListener('click', close);
     hostEl.querySelector('.modal').addEventListener('click', (event) => { if (event.target.classList.contains('modal')) close(); });
     hostEl.querySelector('#discount-type').value = (session.discount && session.discount.type) || 'percent';
+
+    const openTerminalBtn = hostEl.querySelector('#btn-open-terminal');
+    if (openTerminalBtn) {
+      openTerminalBtn.addEventListener('click', () => {
+        close();
+        openTakePaymentModal(sessionId, onDone);
+      });
+    }
 
     hostEl.querySelector('[data-apply-discount]').addEventListener('click', () => {
       const type = hostEl.querySelector('#discount-type').value;
@@ -398,6 +410,319 @@ function openBillModal(sessionId, onDone) {
       else if (page === 'orders') renderOrders();
       else if (page === 'tables') renderTables();
     }));
+  }
+
+  draw();
+}
+
+/* ----------------------------------------------------- take payment modal -- */
+function openTakePaymentModal(sessionId, onDone) {
+  let session = store.getById('sessions', sessionId);
+  if (!session) return;
+
+  const hostEl = document.createElement('div');
+  hostEl.id = 'take-payment-host';
+  document.body.appendChild(hostEl);
+
+  function close() {
+    hostEl.remove();
+  }
+
+  let selectedTab = 'apple_pay';
+  let tipPercent = 0;
+  let customTipAmount = 0;
+  let cashTendered = 0;
+  let isCompleted = false;
+
+  function draw() {
+    session = store.getById('sessions', sessionId) || session;
+    const orders = sessionOrders(session);
+    const subtotalLines = sessionLines(session);
+
+    let tipObj = session.tip || { type: 'percent', value: 0, amount: 0 };
+    if (tipPercent > 0) {
+      const sub = subtotalLines.reduce((acc, l) => acc + (l.price * l.qty), 0);
+      tipObj = { type: 'percent', value: tipPercent, amount: Math.round(sub * (tipPercent / 100) * 100) / 100 };
+    } else if (customTipAmount > 0) {
+      tipObj = { type: 'amount', value: customTipAmount, amount: customTipAmount };
+    }
+
+    const bill = computeBill({
+      lines: subtotalLines,
+      settings,
+      removedChargeIds: session.removedChargeIds,
+      addedChargeIds: session.addedChargeIds,
+      discount: session.discount,
+      tip: tipObj,
+    });
+
+    const changeDue = Math.max(0, cashTendered - bill.total);
+
+    if (isCompleted) {
+      hostEl.innerHTML =
+        '<div class="modal is-open" role="dialog" aria-modal="true">' +
+        '<div class="modal__dialog" style="max-width:440px;text-align:center;">' +
+        '<div style="font-size:3rem;margin-bottom:0.5rem;">🎉</div>' +
+        '<h2 style="font-size:1.4rem;font-weight:800;color:#059669;margin-bottom:0.25rem;">Payment Successful!</h2>' +
+        '<p class="muted text-sm mb-4">Table ' + esc(session.tableName) + ' is marked clean &amp; free.</p>' +
+        '<div style="background:var(--surface-2, #F8F6F1);border-radius:12px;padding:1.25rem;text-align:left;font-size:0.88rem;margin-bottom:1.5rem;border:1px dashed var(--border, rgba(0,0,0,0.15));font-family:var(--font-mono);">' +
+        '<div style="text-align:center;font-weight:700;font-size:1rem;margin-bottom:4px;">' + esc(client.name) + '</div>' +
+        '<div style="text-align:center;color:var(--text-muted);font-size:0.75rem;margin-bottom:12px;">RECEIPT #' + Math.floor(100000 + Math.random() * 900000) + ' · ' + new Date().toLocaleTimeString() + '</div>' +
+        '<div style="border-top:1px dashed rgba(0,0,0,0.1);padding-top:8px;margin-bottom:6px;">' +
+        orders.map((o) => o.items.map((i) => '<div style="display:flex;justify-content:space-between;"><span>' + i.qty + '× ' + esc(i.name) + '</span><span>' + money(i.price * i.qty) + '</span></div>').join('')).join('') +
+        '</div><div style="border-top:1px solid rgba(0,0,0,0.1);padding-top:6px;margin-top:6px;">' +
+        '<div style="display:flex;justify-content:space-between;"><span>Subtotal:</span><span>' + money(bill.subtotal) + '</span></div>' +
+        bill.taxes.map((t) => '<div style="display:flex;justify-content:space-between;color:var(--text-muted);"><span>' + esc(t.name) + ' ' + t.rate + '%:</span><span>' + money(t.amount) + '</span></div>').join('') +
+        (bill.tip.amount > 0 ? '<div style="display:flex;justify-content:space-between;color:var(--text-muted);"><span>Tip:</span><span>' + money(bill.tip.amount) + '</span></div>' : '') +
+        '<div style="display:flex;justify-content:space-between;font-weight:800;font-size:1.05rem;margin-top:6px;border-top:1px dashed rgba(0,0,0,0.15);padding-top:6px;">' +
+        '<span>TOTAL PAID:</span><span style="color:#059669;">' + money(bill.total) + '</span></div>' +
+        '<div style="margin-top:8px;font-size:0.75rem;color:var(--text-muted);text-align:center;">Paid via <strong>' + esc(selectedTab.replace('_', ' ').toUpperCase()) + '</strong> · Auth #' + Math.random().toString(36).slice(2, 8).toUpperCase() + '</div>' +
+        '</div></div>' +
+        '<div class="row gap-2" style="justify-content:center;">' +
+        '<button class="btn btn--secondary" id="btn-print-receipt" type="button"><i data-lucide="printer"></i> Print Receipt</button>' +
+        '<button class="btn btn--primary" id="btn-done-payment" type="button" style="background:#059669;border-color:#059669;font-weight:700;">Done</button>' +
+        '</div></div></div>';
+      if (window.lucide) window.lucide.createIcons();
+      hostEl.querySelector('#btn-print-receipt').addEventListener('click', () => window.print());
+      hostEl.querySelector('#btn-done-payment').addEventListener('click', () => {
+        close();
+        if (onDone) onDone();
+        else if (page === 'orders') renderOrders();
+        else if (page === 'tables') renderTables();
+        else if (page === 'dashboard') renderDashboard();
+      });
+      return;
+    }
+
+    let methodHtml = '';
+    if (selectedTab === 'apple_pay') {
+      methodHtml =
+        '<div style="text-align:center;padding:1.25rem 0.5rem;">' +
+        '<div style="width:64px;height:64px;background:#000;color:#fff;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;box-shadow:0 0 0 8px rgba(0,0,0,0.06);">' +
+        '</div>' +
+        '<h4 style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">Tap to Pay on Staff Device</h4>' +
+        '<p class="muted text-xs" style="max-width:300px;margin:0 auto 1.25rem;">Ask customer to tap their iPhone, Apple Watch, or Contactless Card against the top of your device.</p>' +
+        '<button class="btn btn--primary btn--block btn--lg" id="btn-simulate-tap-pay" type="button" style="background:#000;border-color:#000;height:50px;font-size:1rem;font-weight:700;">' +
+        '<span>Tap to Pay (' + money(bill.total) + ')</span></button>' +
+        '<p class="hint mt-2 text-xs muted">Simulates NFC Tap to Pay contactless authorization</p></div>';
+    } else if (selectedTab === 'google_pay') {
+      methodHtml =
+        '<div style="text-align:center;padding:1.25rem 0.5rem;">' +
+        '<div style="width:64px;height:64px;background:#1F2937;color:#fff;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;box-shadow:0 0 0 8px rgba(0,0,0,0.06);">' +
+        'GPay</div>' +
+        '<h4 style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">Google Pay &amp; Contactless</h4>' +
+        '<p class="muted text-xs" style="max-width:300px;margin:0 auto 1.25rem;">Hold customer\'s Android device or Contactless card near reader.</p>' +
+        '<button class="btn btn--primary btn--block btn--lg" id="btn-simulate-tap-pay" type="button" style="background:#1F2937;border-color:#1F2937;height:50px;font-size:1rem;font-weight:700;">' +
+        '<span>Authorize Google Pay (' + money(bill.total) + ')</span></button></div>';
+    } else if (selectedTab === 'card') {
+      methodHtml =
+        '<div style="padding:1rem 0.25rem;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface-2, #F8F6F1);padding:10px 14px;border-radius:10px;margin-bottom:1rem;border:1px solid var(--border, rgba(0,0,0,0.08));">' +
+        '<div><div style="font-weight:700;font-size:0.88rem;">POS Reader: Counter Terminal 1</div>' +
+        '<div class="muted text-xs">Stripe / Square Terminal · Ready</div></div>' +
+        '<span class="badge badge--success" style="font-size:0.75rem;"><span class="dot" style="background:#10B981;"></span> Online</span></div>' +
+        '<button class="btn btn--primary btn--block btn--lg" id="btn-send-to-pos" type="button" style="height:50px;font-size:1rem;font-weight:700;margin-bottom:0.75rem;">' +
+        'Send ' + money(bill.total) + ' to Card Terminal</button>' +
+        '<button class="btn btn--secondary btn--block" id="btn-key-card" type="button" style="font-size:0.85rem;">' +
+        'Key in Card Manually (MOTO)</button></div>';
+    } else if (selectedTab === 'qr_pay') {
+      const qrUrl = encodeURIComponent(window.location.origin + '/menu/bill.html?s=' + session.id);
+      methodHtml =
+        '<div style="text-align:center;padding:1rem 0.5rem;">' +
+        '<h4 style="font-size:1rem;font-weight:700;margin-bottom:4px;">Dynamic Bill QR Code</h4>' +
+        '<p class="muted text-xs mb-3">Turn screen toward diner. Scanning lets them pay with Apple Pay, Google Pay, or UPI on their phone.</p>' +
+        '<div style="display:inline-block;padding:12px;background:#fff;border-radius:16px;border:2px solid var(--border, rgba(0,0,0,0.15));box-shadow:0 4px 12px rgba(0,0,0,0.05);margin-bottom:1rem;">' +
+        '<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&amp;data=' + qrUrl + '" alt="Bill QR" style="width:160px;height:160px;display:block;">' +
+        '<div style="font-weight:700;font-size:0.85rem;margin-top:6px;color:var(--primary, #8C3A27);">' + money(bill.total) + '</div></div>' +
+        '<button class="btn btn--primary btn--block" id="btn-guest-paid" type="button" style="background:#059669;border-color:#059669;height:46px;font-weight:700;">' +
+        '✓ Confirm Guest Paid on Phone</button></div>';
+    } else if (selectedTab === 'cash') {
+      methodHtml =
+        '<div style="padding:0.75rem 0.25rem;">' +
+        '<div class="row gap-2 mb-3" style="justify-content:center;">' +
+        '<button class="btn btn--secondary btn--sm btn-tender-preset" type="button" data-val="' + bill.total + '">Exact (' + money(bill.total) + ')</button>' +
+        '<button class="btn btn--secondary btn--sm btn-tender-preset" type="button" data-val="' + (Math.ceil(bill.total / 10) * 10) + '">$' + (Math.ceil(bill.total / 10) * 10) + '</button>' +
+        '<button class="btn btn--secondary btn--sm btn-tender-preset" type="button" data-val="' + (Math.ceil(bill.total / 20) * 20 || 20) + '">$' + (Math.ceil(bill.total / 20) * 20 || 20) + '</button>' +
+        '<button class="btn btn--secondary btn--sm btn-tender-preset" type="button" data-val="50">$50</button>' +
+        '<button class="btn btn--secondary btn--sm btn-tender-preset" type="button" data-val="100">$100</button>' +
+        '</div>' +
+        '<div class="field mb-3"><label class="label text-xs">Cash Tendered by Guest</label>' +
+        '<input class="input" id="cash-tendered-input" type="number" step="0.5" value="' + (cashTendered || '') + '" placeholder="0.00" style="font-size:1.2rem;font-weight:700;text-align:center;"></div>' +
+        '<div style="background:' + (cashTendered >= bill.total && cashTendered > 0 ? '#ECFDF5' : 'var(--surface-2, #F8F6F1)') + ';border:1px solid ' + (cashTendered >= bill.total && cashTendered > 0 ? '#10B981' : 'var(--border, rgba(0,0,0,0.1))') + ';border-radius:10px;padding:10px 14px;text-align:center;margin-bottom:1rem;">' +
+        (cashTendered >= bill.total && cashTendered > 0
+          ? '<div style="color:#059669;font-size:0.8rem;font-weight:600;text-transform:uppercase;">Change Due to Guest</div><div style="font-size:1.6rem;font-weight:800;color:#059669;">' + money(changeDue) + '</div>'
+          : '<div class="muted text-xs">Enter cash received to calculate change due</div><div style="font-size:1.2rem;font-weight:700;color:var(--text);">' + money(bill.total) + ' due</div>') +
+        '</div>' +
+        '<button class="btn btn--primary btn--block btn--lg" id="btn-collect-cash" type="button" style="background:#059669;border-color:#059669;height:50px;font-size:1rem;font-weight:700;" ' + (cashTendered < bill.total && cashTendered > 0 ? 'disabled' : '') + '>' +
+        'Collect Cash &amp; Free Table</button></div>';
+    } else {
+      methodHtml =
+        '<div style="text-align:center;padding:1.25rem 0.5rem;">' +
+        '<div style="width:64px;height:64px;background:#003087;color:#fff;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;">🅿️</div>' +
+        '<h4 style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">PayPal &amp; Venmo</h4>' +
+        '<p class="muted text-xs mb-4">Request payment directly to diner\'s PayPal or Venmo account.</p>' +
+        '<button class="btn btn--primary btn--block btn--lg" id="btn-simulate-tap-pay" type="button" style="background:#003087;border-color:#003087;height:50px;font-weight:700;">' +
+        'Charge ' + money(bill.total) + ' via PayPal / Venmo</button></div>';
+    }
+
+    hostEl.innerHTML =
+      '<div class="modal is-open" role="dialog" aria-modal="true" aria-labelledby="take-pay-title">' +
+      '<div class="modal__dialog" style="max-width:520px;padding:1.5rem;">' +
+      '<div class="modal__header" style="margin-bottom:1rem;">' +
+      '<div><p class="modal__title" id="take-pay-title" style="font-size:1.2rem;font-weight:800;">Take Payment · ' + esc(session.tableName) + '</p>' +
+      '<p class="muted text-xs">' + orders.length + ' order(s) · Opened ' + formatTime(session.openedAt) + '</p></div>' +
+      '<button class="btn btn--icon" type="button" data-close aria-label="Close"><i data-lucide="x"></i></button></div>' +
+
+      '<div style="background:linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%);color:#fff;border-radius:14px;padding:1rem 1.25rem;display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;box-shadow:0 4px 14px rgba(0,0,0,0.12);">' +
+      '<div><span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.7);font-weight:600;">Total Balance Due</span>' +
+      '<div style="font-size:1.8rem;font-weight:800;letter-spacing:-0.5px;color:#fff;">' + money(bill.total) + '</div></div>' +
+      '<div style="text-align:right;font-size:0.78rem;color:rgba(255,255,255,0.8);">' +
+      '<div>Subtotal: ' + money(bill.subtotal) + '</div>' +
+      '<div>Tax: ' + money(bill.taxes.reduce((acc, t) => acc + t.amount, 0)) + '</div>' +
+      (bill.tip.amount > 0 ? '<div style="color:#34D399;font-weight:700;">Tip: +' + money(bill.tip.amount) + '</div>' : '') +
+      '</div></div>' +
+
+      '<div style="margin-bottom:1.25rem;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+      '<span class="label text-xs" style="margin:0;">Add Tip</span>' +
+      '<span class="muted text-xs">' + (bill.tip.amount > 0 ? money(bill.tip.amount) : 'No tip') + '</span></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;">' +
+      '<button type="button" class="btn btn--sm btn-tip-chip ' + (tipPercent === 0 && customTipAmount === 0 ? 'is-active' : 'btn--secondary') + '" data-tip="0">No Tip</button>' +
+      '<button type="button" class="btn btn--sm btn-tip-chip ' + (tipPercent === 10 ? 'is-active' : 'btn--secondary') + '" data-tip="10">10%</button>' +
+      '<button type="button" class="btn btn--sm btn-tip-chip ' + (tipPercent === 15 ? 'is-active' : 'btn--secondary') + '" data-tip="15">15%</button>' +
+      '<button type="button" class="btn btn--sm btn-tip-chip ' + (tipPercent === 20 ? 'is-active' : 'btn--secondary') + '" data-tip="20">20%</button>' +
+      '</div></div>' +
+
+      '<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:1rem;border-bottom:1px solid var(--border, rgba(0,0,0,0.08));">' +
+      '<button type="button" class="btn btn--sm btn-method-tab ' + (selectedTab === 'apple_pay' ? 'btn--primary' : 'btn--secondary') + '" data-tab="apple_pay" style="white-space:nowrap;">🍏 Apple Pay</button>' +
+      '<button type="button" class="btn btn--sm btn-method-tab ' + (selectedTab === 'google_pay' ? 'btn--primary' : 'btn--secondary') + '" data-tab="google_pay" style="white-space:nowrap;">🌐 Google Pay</button>' +
+      '<button type="button" class="btn btn--sm btn-method-tab ' + (selectedTab === 'card' ? 'btn--primary' : 'btn--secondary') + '" data-tab="card" style="white-space:nowrap;">💳 Card Terminal</button>' +
+      '<button type="button" class="btn btn--sm btn-method-tab ' + (selectedTab === 'qr_pay' ? 'btn--primary' : 'btn--secondary') + '" data-tab="qr_pay" style="white-space:nowrap;">📱 Dynamic QR</button>' +
+      '<button type="button" class="btn btn--sm btn-method-tab ' + (selectedTab === 'cash' ? 'btn--primary' : 'btn--secondary') + '" data-tab="cash" style="white-space:nowrap;">💵 Cash</button>' +
+      '<button type="button" class="btn btn--sm btn-method-tab ' + (selectedTab === 'paypal' ? 'btn--primary' : 'btn--secondary') + '" data-tab="paypal" style="white-space:nowrap;">🅿️ PayPal</button>' +
+      '</div>' +
+
+      '<div style="background:#fff;border:1px solid var(--border, rgba(0,0,0,0.1));border-radius:12px;padding:1rem;margin-bottom:1rem;">' +
+      methodHtml + '</div>' +
+      '</div></div>';
+
+    if (window.lucide) window.lucide.createIcons();
+    hostEl.querySelector('[data-close]').addEventListener('click', close);
+
+    hostEl.querySelectorAll('.btn-tip-chip').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        tipPercent = Number(btn.getAttribute('data-tip')) || 0;
+        customTipAmount = 0;
+        draw();
+      });
+    });
+
+    hostEl.querySelectorAll('.btn-method-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        selectedTab = btn.getAttribute('data-tab');
+        draw();
+      });
+    });
+
+    hostEl.querySelectorAll('.btn-tender-preset').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        cashTendered = Number(btn.getAttribute('data-val')) || 0;
+        draw();
+      });
+    });
+
+    const cashInput = hostEl.querySelector('#cash-tendered-input');
+    if (cashInput) {
+      cashInput.addEventListener('input', (e) => {
+        cashTendered = Number(e.target.value) || 0;
+      });
+      cashInput.addEventListener('change', (e) => {
+        cashTendered = Number(e.target.value) || 0;
+        draw();
+      });
+    }
+
+    function processPayment(methodName) {
+      const finalBill = computeBill({
+        lines: subtotalLines,
+        settings,
+        removedChargeIds: session.removedChargeIds,
+        addedChargeIds: session.addedChargeIds,
+        discount: session.discount,
+        tip: tipObj,
+      });
+
+      const paymentRecord = {
+        method: methodName,
+        at: new Date().toISOString(),
+        amount: finalBill.total,
+        tip: tipObj.amount,
+        cashTendered: selectedTab === 'cash' ? cashTendered : finalBill.total,
+        changeDue: selectedTab === 'cash' ? changeDue : 0,
+        txnId: (selectedTab === 'apple_pay' ? 'APL_' : selectedTab === 'card' ? 'CRD_' : selectedTab === 'cash' ? 'CSH_' : 'TXN_') + Math.random().toString(36).slice(2, 8).toUpperCase(),
+        cashier: (session && session.name) || 'Staff',
+      };
+
+      closeSession(sessionId, paymentRecord, finalBill);
+      store.logActivity({
+        actor: session.name || 'Owner',
+        clientId: client.id,
+        type: 'Payment',
+        details: session.tableName + ' paid ' + money(finalBill.total) + ' via ' + methodName,
+      });
+      emit('order:update', { clientId: client.id });
+      emit('session:paid', { clientId: client.id, sessionId });
+      emit('session:close', { clientId: client.id, sessionId, tableId: session.tableId });
+      toast(session.tableName + ' paid ' + money(finalBill.total) + ' via ' + methodName);
+
+      isCompleted = true;
+      draw();
+    }
+
+    const tapPayBtn = hostEl.querySelector('#btn-simulate-tap-pay');
+    if (tapPayBtn) {
+      tapPayBtn.addEventListener('click', () => {
+        tapPayBtn.disabled = true;
+        tapPayBtn.innerHTML = '<span><span class="dot" style="background:#fff;width:8px;height:8px;border-radius:50%;display:inline-block;animation:pulse 0.6s infinite alternate;margin-right:6px;"></span> Reading NFC…</span>';
+        setTimeout(() => {
+          tapPayBtn.innerHTML = '<span style="color:#10B981;">✓ Approved!</span>';
+          setTimeout(() => processPayment(selectedTab === 'apple_pay' ? 'Apple Pay (Tap to Pay)' : selectedTab === 'google_pay' ? 'Google Pay' : 'PayPal / Venmo'), 400);
+        }, 600);
+      });
+    }
+
+    const posBtn = hostEl.querySelector('#btn-send-to-pos');
+    if (posBtn) {
+      posBtn.addEventListener('click', () => {
+        posBtn.disabled = true;
+        posBtn.innerHTML = '<span><span class="dot" style="background:#fff;width:8px;height:8px;border-radius:50%;display:inline-block;animation:pulse 0.6s infinite alternate;margin-right:6px;"></span> Waiting for terminal tap…</span>';
+        setTimeout(() => {
+          posBtn.innerHTML = '<span style="color:#10B981;">✓ Card Approved!</span>';
+          setTimeout(() => processPayment('Card Terminal (Stripe / Square POS)'), 400);
+        }, 700);
+      });
+    }
+
+    const keyCardBtn = hostEl.querySelector('#btn-key-card');
+    if (keyCardBtn) {
+      keyCardBtn.addEventListener('click', () => {
+        processPayment('Manual Card Entry (Keyed)');
+      });
+    }
+
+    const guestPaidBtn = hostEl.querySelector('#btn-guest-paid');
+    if (guestPaidBtn) {
+      guestPaidBtn.addEventListener('click', () => {
+        processPayment('Mobile Bill QR Pay');
+      });
+    }
+
+    const collectCashBtn = hostEl.querySelector('#btn-collect-cash');
+    if (collectCashBtn) {
+      collectCashBtn.addEventListener('click', () => {
+        processPayment('Cash');
+      });
+    }
   }
 
   draw();
@@ -479,7 +804,9 @@ function renderDashboard() {
       '<p class="list-row__meta">' + (call.type === 'bill'
         ? 'Bill · ' + (guestPayLine(call) || 'Bill requested')
         : 'Call waiter') + ' · ' + timeAgo(call.createdAt) + '</p></div>' +
-      '<div class="list-row__side"><button class="btn btn--secondary btn--sm" type="button" data-done-call="' + call.id + '">Done</button></div></div>').join('')
+      '<div class="list-row__side">' +
+      (call.type === 'bill' && call.sessionId ? '<button class="btn btn--sm" style="background:#059669; color:#fff; border-color:#059669; margin-right:6px;" type="button" data-take-pay="' + call.sessionId + '"><i data-lucide="credit-card"></i> Take Payment</button>' : '') +
+      '<button class="btn btn--secondary btn--sm" type="button" data-done-call="' + call.id + '">Done</button></div></div>').join('')
       : '<p class="muted text-sm">No open calls.</p>') +
     '</div></div></div>' +
     '<div class="split split--even mt-4"><div class="card"><div class="card__header"><span class="card__title">Top items today</span>' +
@@ -501,6 +828,15 @@ function renderDashboard() {
       toast('Marked as done');
       renderDashboard();
       refreshChrome();
+    });
+  });
+
+  host.querySelectorAll('[data-take-pay]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      openTakePaymentModal(btn.getAttribute('data-take-pay'), () => {
+        renderDashboard();
+        refreshChrome();
+      });
     });
   });
 }
@@ -568,11 +904,17 @@ function renderOrders() {
 
     cardsHost.innerHTML = slice.length ? slice.map((order) => {
       const session = order.sessionId ? store.getById('sessions', order.sessionId) : sessionForTable(client.id, order.tableId);
+      const isPaid = order.paid || (session && session.status === 'paid');
+      const payBadge = isPaid
+        ? '<span class="badge badge--success" style="font-size:0.72rem; padding:2px 7px;"><span class="dot" style="background:#10B981;"></span> Paid</span>'
+        : '<span class="badge badge--warning" style="font-size:0.72rem; padding:2px 7px;">Unpaid</span>';
+      const takePayBtn = (!isPaid && session && session.status === 'open')
+        ? '<button class="btn btn--sm" style="background:#059669; color:#fff; border-color:#059669;" type="button" data-take-pay="' + session.id + '"><i data-lucide="credit-card"></i> Take Payment</button>' : '';
       const billBtn = session && session.status === 'open'
         ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '">View bill</button>' : '';
-      return '<div class="order-card"><div><p class="order-card__id">#' + order.number + ' ' + statusBadge(order.status) + '</p>' +
+      return '<div class="order-card"><div><p class="order-card__id">#' + order.number + ' ' + statusBadge(order.status) + ' ' + payBadge + '</p>' +
         '<p class="order-card__meta">' + esc(order.tableName) + ' · ' + order.items.length + ' items · ' + timeAgo(order.createdAt) + '</p></div>' +
-        '<div class="order-card__side"><span class="order-card__total">' + money(order.total) + '</span>' + billBtn +
+        '<div class="order-card__side"><span class="order-card__total">' + money(order.total) + '</span>' + takePayBtn + billBtn +
         '<button class="btn btn--secondary btn--sm" type="button" data-open="' + order.id + '">Details</button>' +
         '<button class="btn btn--primary btn--sm" type="button" data-next="' + order.id + '">' + nextLabel(order) + '</button></div></div>';
     }).join('')
@@ -622,6 +964,8 @@ function renderOrders() {
     if (openBtn) openOrderDrawer(openBtn.getAttribute('data-open'));
     const billBtn = event.target.closest('[data-bill]');
     if (billBtn) openBillModal(billBtn.getAttribute('data-bill'));
+    const takePayBtn = event.target.closest('[data-take-pay]');
+    if (takePayBtn) openTakePaymentModal(takePayBtn.getAttribute('data-take-pay'), () => draw());
     if (rejectBtn) {
       const ok = await confirmDialog('Reject this order? The guest will see that it was not accepted.', { confirmLabel: 'Reject order' });
       if (ok) setStatus(rejectBtn.getAttribute('data-reject'), 'rejected');
@@ -1369,8 +1713,9 @@ function renderFloor() {
         (isOccupied && session && session.tableKey ? '<div class="text-xs muted text-center mt-1">Backup Key: <strong style="font-family:var(--font-mono);letter-spacing:2px;">' + esc(session.tableKey) + '</strong></div>' : '') +
         '<div class="table-card__actions">' +
         (isOccupied
-          ? '<button class="btn btn--primary btn--sm" type="button" data-show-visit="' + table.id + '"><i data-lucide="qr-code"></i> Show visit QR</button>' +
-            (session ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '"><i data-lucide="receipt"></i> View bill</button>' : '') +
+          ? (session ? '<button class="btn btn--sm" style="background:#059669; color:#fff; border-color:#059669;" type="button" data-take-pay="' + session.id + '"><i data-lucide="credit-card"></i> Take Payment</button>' : '') +
+            '<button class="btn btn--secondary btn--sm" type="button" data-show-visit="' + table.id + '"><i data-lucide="qr-code"></i> Visit QR</button>' +
+            (session ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '"><i data-lucide="receipt"></i> Bill</button>' : '') +
             '<button class="btn btn--danger btn--sm" type="button" data-close-table="' + table.id + '"><i data-lucide="check-circle"></i> Close table</button>'
           : '<button class="btn btn--primary btn--sm" type="button" data-seat="' + table.id + '"><i data-lucide="user-check"></i> Seat guests</button>') +
         '</div></div>';
@@ -1380,6 +1725,10 @@ function renderFloor() {
   }
 
   grid.addEventListener('click', (event) => {
+    const takePayBtn = event.target.closest('[data-take-pay]');
+    if (takePayBtn) {
+      openTakePaymentModal(takePayBtn.getAttribute('data-take-pay'), () => draw());
+    }
     const seatBtn = event.target.closest('[data-seat]');
     const showVisitBtn = event.target.closest('[data-show-visit]');
     const closeBtn = event.target.closest('[data-close-table]');
@@ -1931,10 +2280,17 @@ function renderReports() {
 function renderSettings() {
   const h = settings.hours;
   const days = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']];
+  const payments = settings.payments || {};
+  const stripeConf = payments.stripe || {};
+  const paypalConf = payments.paypal || {};
+  const razorpayConf = payments.razorpay || {};
+  const squareConf = payments.square || {};
+  const inPersonConf = payments.inPerson || { cash: true, cardMachine: true };
+  const payPolicy = payments.policy || 'pay_at_order';
 
   paint(head('Settings', 'Restaurant profile, ordering rules, hours and branding.') +
     '<div class="tabs" data-tabs><div class="tabs__list" role="tablist" aria-label="Settings sections">' +
-    ['Restaurant profile|profile', 'Ordering|ordering', 'Security|security', 'Opening hours|hours', 'Branding|branding', 'Notifications|notify', 'Cloud & Sync|sync'].map((pair, i) => {
+    ['Restaurant profile|profile', 'Ordering|ordering', 'Security|security', 'Payment Gateways & Methods|payments', 'Opening hours|hours', 'Branding|branding', 'Notifications|notify', 'Cloud & Sync|sync'].map((pair, i) => {
       const [label, key] = pair.split('|');
       return '<button class="tab" role="tab" type="button" data-tab="' + key + '" aria-selected="' + (i === 0) + '" tabindex="' + (i === 0 ? 0 : -1) + '">' + label + '</button>';
     }).join('') + '</div>' +
@@ -1978,6 +2334,117 @@ function renderSettings() {
     '<label class="switch"><input type="checkbox" id="set-print-slip"' + (settings.printVisitSlip ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Print visit QR slip</span></label></div>' +
     '<div class="row mt-6" style="justify-content:flex-end"><button class="btn btn--primary" type="button" data-save="security">Save security</button></div>' +
     '</div></div></div>' +
+
+    '<div class="tab-panel" data-panel="payments" hidden>' +
+    '<div class="card mb-4"><div class="card__body">' +
+    '<h3 class="card__title mb-2" style="font-size:1.1rem; display:flex; align-items:center; gap:8px;"><i data-lucide="shield-check" style="color:#059669;"></i> Dining Payment &amp; Anti-Spam Policy</h3>' +
+    '<p class="muted text-sm mb-4">Choose how guests settle payments to stop unpaid ghost orders and speed up table turnover.</p>' +
+    '<div class="form-grid form-grid--3" style="gap:12px;">' +
+    '<label class="policy-opt" style="border:2px solid var(--primary, #8C3A27); background:#fff; border-radius:12px; padding:14px; cursor:pointer; display:block;">' +
+    '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><strong style="font-size:0.95rem;">🛡️ Pay-at-Order (Recommended)</strong>' +
+    '<input type="radio" name="set-pay-policy" value="pay_at_order"' + ((payments.policy || 'pay_at_order') === 'pay_at_order' ? ' checked' : '') + ' style="accent-color:var(--primary, #8C3A27);"></div>' +
+    '<p class="text-xs muted" style="margin:0;">Guest pays upfront on their phone (Apple Pay, GPay, Card, UPI). Orders are verified before kitchen prepares food. 100% spam-proof.</p></label>' +
+    '<label class="policy-opt" style="border:1px solid var(--border, rgba(0,0,0,0.12)); background:#fff; border-radius:12px; padding:14px; cursor:pointer; display:block;">' +
+    '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><strong style="font-size:0.95rem;">🛎️ Flexible Checkout</strong>' +
+    '<input type="radio" name="set-pay-policy" value="flexible"' + (payments.policy === 'flexible' ? ' checked' : '') + ' style="accent-color:var(--primary, #8C3A27);"></div>' +
+    '<p class="text-xs muted" style="margin:0;">Guests can pay online immediately or select "Pay Server" to settle in cash or card machine at the table.</p></label>' +
+    '<label class="policy-opt" style="border:1px solid var(--border, rgba(0,0,0,0.12)); background:#fff; border-radius:12px; padding:14px; cursor:pointer; display:block;">' +
+    '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><strong style="font-size:0.95rem;">🧾 Traditional Bill at End</strong>' +
+    '<input type="radio" name="set-pay-policy" value="post_pay"' + (payments.policy === 'post_pay' ? ' checked' : '') + ' style="accent-color:var(--primary, #8C3A27);"></div>' +
+    '<p class="text-xs muted" style="margin:0;">Guests order freely without checkout prompts and request the bill at the end of their meal.</p></label>' +
+    '</div></div></div>' +
+
+    '<div class="card mb-4"><div class="card__body">' +
+    '<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">' +
+    '<div><h3 class="card__title" style="font-size:1.15rem; display:flex; align-items:center; gap:8px;">' +
+    '<span style="background:#635BFF; color:#fff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.85rem;">stripe</span>' +
+    'Stripe Connect (US, UK, Europe &amp; Global)</h3>' +
+    '<p class="muted text-sm mt-1">Accept Apple Pay, Google Pay, and international cards with direct daily payouts to your local bank account.</p></div>' +
+    '<span class="badge badge--success" id="stripe-status-badge" style="font-size:0.8rem; padding:4px 10px;"><span class="dot" style="background:#10B981;"></span> Stripe Connected</span>' +
+    '</div>' +
+    '<div style="background:var(--surface-2, #F8F6F1); border-radius:12px; padding:1rem; border:1px solid var(--border, rgba(0,0,0,0.08)); margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">' +
+    '<div><div style="font-weight:700; font-size:0.95rem;">Connected Account: ' + esc(client.name) + ' Ltd</div>' +
+    '<div class="muted text-xs mt-0.5">Payout Bank: Barclays Business / Chase Bank (•••• 4192) · Daily Rolling Payouts</div></div>' +
+    '<button type="button" class="btn btn--sm" id="btn-toggle-stripe" style="background:#635BFF; color:#fff; border:none; font-weight:700; padding:8px 16px; border-radius:8px;">Manage Stripe Account</button>' +
+    '</div>' +
+    '<h4 class="text-sm font-bold uppercase tracking-wider text-muted mb-2">Stripe Payment Methods Offered to Diners</h4>' +
+    '<div class="form-grid form-grid--3 mb-4">' +
+    '<div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">' +
+    '<div><strong>🍏 Apple Pay</strong><p class="text-xs muted" style="margin:2px 0 0;">Face ID / Touch ID</p></div>' +
+    '<label class="switch"><input type="checkbox" id="stripe-opt-apple"' + (stripeConf.applePay !== false ? ' checked' : '') + '><span class="switch__track"></span></label></div>' +
+    '<div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">' +
+    '<div><strong>🌐 Google Pay</strong><p class="text-xs muted" style="margin:2px 0 0;">Android / Chrome</p></div>' +
+    '<label class="switch"><input type="checkbox" id="stripe-opt-google"' + (stripeConf.googlePay !== false ? ' checked' : '') + '><span class="switch__track"></span></label></div>' +
+    '<div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">' +
+    '<div><strong>💳 Visa / MC / Amex</strong><p class="text-xs muted" style="margin:2px 0 0;">Global Debit &amp; Credit</p></div>' +
+    '<label class="switch"><input type="checkbox" id="stripe-opt-cards"' + (stripeConf.cards !== false ? ' checked' : '') + '><span class="switch__track"></span></label></div>' +
+    '</div>' +
+    '<div class="form-grid form-grid--2 mb-2">' +
+    '<div class="field"><label class="label" for="stripe-pub-key">Stripe Publishable Key</label><input class="input" id="stripe-pub-key" type="text" placeholder="pk_test_... or pk_live_..." style="font-family:var(--font-mono); font-size:0.85rem;" value="' + esc(stripeConf.pubKey || '') + '"></div>' +
+    '<div class="field"><label class="label" for="stripe-sec-key">Stripe Secret Key</label><input class="input" id="stripe-sec-key" type="password" placeholder="sk_test_... or sk_live_..." style="font-family:var(--font-mono); font-size:0.85rem;" value="' + esc(stripeConf.secKey || '') + '"></div>' +
+    '</div></div></div>' +
+
+    '<div class="card mb-4"><div class="card__body">' +
+    '<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">' +
+    '<div><h3 class="card__title" style="font-size:1.15rem; display:flex; align-items:center; gap:8px;">' +
+    '<span style="background:#003087; color:#fff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.85rem;">PayPal</span>' +
+    'PayPal &amp; Venmo (US &amp; UK Diners)</h3>' +
+    '<p class="muted text-sm mt-1">Allow diners to checkout with PayPal wallet or Venmo (popular for younger US diners).</p></div>' +
+    '<span class="badge badge--success" id="paypal-status-badge" style="font-size:0.8rem; padding:4px 10px;"><span class="dot" style="background:#10B981;"></span> Active</span>' +
+    '</div>' +
+    '<div class="form-grid form-grid--2 mb-3">' +
+    '<div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">' +
+    '<div><strong>🅿️ PayPal Wallet Checkout</strong><p class="text-xs muted" style="margin:2px 0 0;">Standard PayPal web pay</p></div>' +
+    '<label class="switch"><input type="checkbox" id="paypal-opt-wallet"' + (paypalConf.paypalWallet !== false ? ' checked' : '') + '><span class="switch__track"></span></label></div>' +
+    '<div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">' +
+    '<div><strong>📱 Venmo Checkout</strong><p class="text-xs muted" style="margin:2px 0 0;">Direct Venmo app pay (US)</p></div>' +
+    '<label class="switch"><input type="checkbox" id="paypal-opt-venmo"' + (paypalConf.venmo !== false ? ' checked' : '') + '><span class="switch__track"></span></label></div>' +
+    '</div>' +
+    '<div class="form-grid form-grid--2">' +
+    '<div class="field"><label class="label" for="paypal-client-id">PayPal Client ID</label><input class="input" id="paypal-client-id" type="text" placeholder="e.g. Ae8X... (Sandbox or Live)" style="font-family:var(--font-mono); font-size:0.85rem;" value="' + esc(paypalConf.clientId || '') + '"></div>' +
+    '<div class="field"><label class="label" for="paypal-sec-key">PayPal Secret</label><input class="input" id="paypal-sec-key" type="password" placeholder="e.g. EL29..." style="font-family:var(--font-mono); font-size:0.85rem;" value="' + esc(paypalConf.secKey || '') + '"></div>' +
+    '</div></div></div>' +
+
+    '<div class="card mb-4"><div class="card__body">' +
+    '<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">' +
+    '<div><h3 class="card__title" style="font-size:1.15rem; display:flex; align-items:center; gap:8px;">' +
+    '<span style="background:#000; color:#fff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.85rem;">Square</span>' +
+    'Square &amp; Clover POS Terminal Sync</h3>' +
+    '<p class="muted text-sm mt-1">Sync digital table orders with physical handheld card terminals and POS cash registers.</p></div>' +
+    '<span class="badge badge--neutral" style="font-size:0.8rem; padding:4px 10px;">Ready to Link</span>' +
+    '</div>' +
+    '<div class="form-grid form-grid--2">' +
+    '<div class="field"><label class="label" for="square-loc-id">POS Location ID</label><input class="input" id="square-loc-id" type="text" placeholder="e.g. L938FKLW..." style="font-family:var(--font-mono); font-size:0.85rem;" value="' + esc(squareConf.locationId || '') + '"></div>' +
+    '<div class="field"><label class="label" for="square-token">POS Terminal Access Token</label><input class="input" id="square-token" type="password" placeholder="e.g. sq0atp-..." style="font-family:var(--font-mono); font-size:0.85rem;" value="' + esc(squareConf.accessToken || '') + '"></div>' +
+    '</div></div></div>' +
+
+    '<div class="card mb-4"><div class="card__body">' +
+    '<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">' +
+    '<div><h3 class="card__title" style="font-size:1.15rem; display:flex; align-items:center; gap:8px;">' +
+    '<span style="background:#02042B; color:#00D09C; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.85rem;">UPI</span>' +
+    'Razorpay &amp; UPI Gateway (India &amp; South Asia)</h3>' +
+    '<p class="muted text-sm mt-1">Accept GPay, PhonePe, Paytm, and BHIM with auto-reconciliation.</p></div>' +
+    '<span class="badge badge--success" style="font-size:0.8rem; padding:4px 10px;"><span class="dot" style="background:#10B981;"></span> Active</span>' +
+    '</div>' +
+    '<div class="form-grid form-grid--2">' +
+    '<div class="field"><label class="label" for="razorpay-vpa">Merchant UPI ID / VPA</label><input class="input" id="razorpay-vpa" type="text" value="' + esc(razorpayConf.vpa || 'olivetable@icici') + '" style="font-family:var(--font-mono); font-size:0.85rem;"></div>' +
+    '<div class="field"><label class="label" for="razorpay-key-id">Razorpay Key ID</label><input class="input" id="razorpay-key-id" type="text" placeholder="rzp_live_..." style="font-family:var(--font-mono); font-size:0.85rem;" value="' + esc(razorpayConf.keyId || '') + '"></div>' +
+    '</div></div></div>' +
+
+    '<div class="card mb-4"><div class="card__body">' +
+    '<h3 class="card__title mb-2" style="font-size:1.05rem;">Physical In-Person Dining Methods</h3>' +
+    '<p class="muted text-sm mb-4">Methods where guests pay staff directly at the table or counter.</p>' +
+    '<div class="form-grid form-grid--2">' +
+    '<div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">' +
+    '<div><strong>💵 Cash to Server / Counter</strong><p class="text-xs muted" style="margin:2px 0 0;">Guest pays paper cash to waiter</p></div>' +
+    '<label class="switch"><input type="checkbox" id="pay-opt-cash"' + (inPersonConf.cash !== false ? ' checked' : '') + '><span class="switch__track"></span></label></div>' +
+    '<div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center;">' +
+    '<div><strong>📟 Handheld POS Terminal at Table</strong><p class="text-xs muted" style="margin:2px 0 0;">Server brings portable card reader</p></div>' +
+    '<label class="switch"><input type="checkbox" id="pay-opt-terminal"' + (inPersonConf.cardMachine !== false ? ' checked' : '') + '><span class="switch__track"></span></label></div>' +
+    '</div></div></div>' +
+
+    '<div class="row mt-6" style="justify-content:flex-end"><button class="btn btn--primary btn--lg" type="button" data-save="payments"><i data-lucide="save"></i> Save Payment Gateways &amp; Settings</button></div>' +
+    '</div>' +
 
     '<div class="tab-panel" data-panel="sync" hidden><div class="card"><div class="card__body">' +
     '<h3 class="card__title mb-2">Google Sheets & Google Drive Integration</h3>' +
@@ -2345,18 +2812,82 @@ function renderSettings() {
         toast('Security & anti-spam settings saved');
       }
       if (which === 'payments') {
-        next.stripe = {
-          connected: true,
-          pubKey: host.querySelector('#stripe-pub-key')?.value.trim() || '',
-          secKey: host.querySelector('#stripe-sec-key')?.value.trim() || '',
+        const policyVal = host.querySelector('input[name="set-pay-policy"]:checked')?.value || host.querySelector('input[name="payment-policy"]:checked')?.value || 'pay_at_order';
+        const applePayOn = host.querySelector('#stripe-opt-apple') ? host.querySelector('#stripe-opt-apple').checked : true;
+        const googlePayOn = host.querySelector('#stripe-opt-google') ? host.querySelector('#stripe-opt-google').checked : true;
+        const cardsOn = host.querySelector('#stripe-opt-cards') ? host.querySelector('#stripe-opt-cards').checked : true;
+        const paypalWalletOn = host.querySelector('#paypal-opt-wallet') ? host.querySelector('#paypal-opt-wallet').checked : true;
+        const venmoOn = host.querySelector('#paypal-opt-venmo') ? host.querySelector('#paypal-opt-venmo').checked : true;
+        const cashOn = host.querySelector('#pay-opt-cash') ? host.querySelector('#pay-opt-cash').checked : true;
+        const terminalOn = host.querySelector('#pay-opt-terminal') ? host.querySelector('#pay-opt-terminal').checked : true;
+
+        next.payments = {
+          policy: policyVal,
+          stripe: {
+            connected: true,
+            accountName: client.name + ' Ltd',
+            bankName: 'Barclays Business / Chase Bank (•••• 4192)',
+            payoutSchedule: 'Daily Rolling Payouts',
+            liveMode: true,
+            pubKey: host.querySelector('#stripe-pub-key')?.value.trim() || '',
+            secKey: host.querySelector('#stripe-sec-key')?.value.trim() || '',
+            applePay: applePayOn,
+            googlePay: googlePayOn,
+            cards: cardsOn,
+          },
+          paypal: {
+            connected: true,
+            clientId: host.querySelector('#paypal-client-id')?.value.trim() || '',
+            secKey: host.querySelector('#paypal-sec-key')?.value.trim() || '',
+            paypalWallet: paypalWalletOn,
+            venmo: venmoOn,
+          },
+          square: {
+            connected: true,
+            locationId: host.querySelector('#square-loc-id')?.value.trim() || '',
+            accessToken: host.querySelector('#square-token')?.value.trim() || '',
+            syncPos: true,
+          },
+          razorpay: {
+            connected: true,
+            vpa: host.querySelector('#razorpay-vpa')?.value.trim() || 'olivetable@icici',
+            keyId: host.querySelector('#razorpay-key-id')?.value.trim() || '',
+            upi: true,
+            netbanking: true,
+          },
+          inPerson: {
+            cash: cashOn,
+            cardMachine: terminalOn,
+          },
         };
+
+        next.paymentMethods = [
+          { id: 'apple_pay', name: 'Apple Pay', enabled: applePayOn },
+          { id: 'google_pay', name: 'Google Pay', enabled: googlePayOn },
+          { id: 'card', name: 'Credit / Debit Card', enabled: cardsOn },
+          { id: 'paypal', name: 'PayPal / Venmo', enabled: paypalWalletOn || venmoOn },
+          { id: 'upi', name: 'UPI (GPay / PhonePe / Paytm)', enabled: true },
+          { id: 'cash', name: 'Cash to Waiter', enabled: cashOn },
+        ];
+        next.payAtOrder = {
+          enabled: policyVal === 'pay_at_order',
+          methods: ['apple_pay', 'google_pay', 'card', 'paypal', 'upi', 'counter'],
+        };
+
         store.update('clients', client.id, { settings: next });
         emit('settings:update', { clientId: client.id });
-        toast('Stripe Global Payments settings saved');
+        toast('Payment Gateways & Methods saved');
       }
       store.logActivity({ actor: session.name, clientId: client.id, type: 'Settings', details: 'Settings saved (' + which + ')' });
     });
   });
+
+  const toggleStripeBtn = host.querySelector('#btn-toggle-stripe') || host.querySelector('#btn-reconnect-stripe');
+  if (toggleStripeBtn) {
+    toggleStripeBtn.addEventListener('click', () => {
+      toast('Stripe Connect Dashboard: Barclays Business (•••• 4192) active · Payouts daily');
+    });
+  }
 
   host.querySelectorAll('[data-pick]').forEach((btn) => {
     btn.addEventListener('click', () => toast('Photo upload is available in the full build — this demo keeps the seeded image.', 'warning'));
