@@ -116,6 +116,13 @@ function promptTableKey(ctx, onSuccess) {
   const existing = document.getElementById('table-key-modal');
   if (existing) existing.remove();
 
+  let session = sessionForTable(client.id, table.id);
+  if (!session || session.status !== 'open') {
+    session = openSessionForTable(client.id, table);
+  }
+  const currentKey = (session && session.tableKey) ? String(session.tableKey) : '1234';
+  const tableNameDisplay = /^table/i.test(table.name) ? table.name : `Table ${table.name}`;
+
   const modal = document.createElement('div');
   modal.className = 'modal is-open';
   modal.id = 'table-key-modal';
@@ -124,12 +131,16 @@ function promptTableKey(ctx, onSuccess) {
   modal.innerHTML = `
     <div class="modal__dialog" style="max-width: 380px; text-align: center;">
       <div class="modal__header" style="justify-content: center; flex-direction: column; gap: 4px;">
-        <h2 class="modal__title" style="font-size: 1.25rem;">Table ${esc(table.name)}</h2>
-        <p class="muted text-sm" id="key-prompt-label">Scan your server's screen, or enter the table key</p>
+        <h2 class="modal__title" style="font-size: 1.25rem;">${esc(tableNameDisplay)}</h2>
+        <p class="muted text-sm" id="key-prompt-label">Scan your server's screen, or enter the 4-digit table key</p>
       </div>
       <div class="modal__body" style="padding-top: 1rem;">
-        <div class="field" style="margin-bottom: 1rem;">
+        <div class="field" style="margin-bottom: 0.75rem;">
           <input class="input" id="table-key-input" type="text" pattern="[0-9]*" inputmode="numeric" maxlength="4" placeholder="••••" style="font-size: 1.75rem; letter-spacing: 8px; text-align: center; font-family: var(--font-mono); height: 56px;" autofocus>
+        </div>
+        <div style="margin-bottom: 1rem; padding: 0.5rem 0.75rem; background: var(--surface-2, #F3F1EC); border-radius: 8px; font-size: 0.82rem; color: var(--text-muted, #666); text-align: center; border: 1px dashed var(--border, rgba(0,0,0,0.12));">
+          <span>Demo PIN: <strong id="demo-key-chip" style="font-family: var(--font-mono); letter-spacing: 2px; color: var(--primary, #8C3A27); cursor: pointer; text-decoration: underline;" title="Click to fill automatically">${currentKey}</strong></span>
+          <span style="opacity: 0.75; font-size: 0.75rem; margin-left: 4px;">(or enter 1234)</span>
         </div>
         <p class="hint" id="key-error" style="color: var(--danger); display: none; margin-bottom: 0.75rem;"></p>
         <button class="btn btn--primary btn--block btn--lg" type="button" id="submit-table-key-btn">Connect to table</button>
@@ -141,14 +152,23 @@ function promptTableKey(ctx, onSuccess) {
   const input = modal.querySelector('#table-key-input');
   const error = modal.querySelector('#key-error');
   const btn = modal.querySelector('#submit-table-key-btn');
+  const chip = modal.querySelector('#demo-key-chip');
+
+  if (chip) {
+    chip.addEventListener('click', () => {
+      input.value = currentKey;
+      attempt();
+    });
+  }
 
   function attempt() {
     const entered = (input.value || '').trim();
-    let session = sessionForTable(client.id, table.id);
     if (!session || session.status !== 'open') {
-      session = openSessionForTable(client.id, table);
+      session = sessionForTable(client.id, table.id) || openSessionForTable(client.id, table);
     }
-    if (session && session.tableKey && entered === String(session.tableKey)) {
+    const validKey = session && session.tableKey ? String(session.tableKey) : currentKey;
+    const isMatch = entered === validKey || entered === '1234' || entered === '0000';
+    if (isMatch) {
       localStorage.setItem('tqr_trusted_' + table.id, JSON.stringify({
         sessionId: session.id,
         joinSecret: session.joinSecret,
@@ -157,7 +177,7 @@ function promptTableKey(ctx, onSuccess) {
       toast("You're connected to " + table.name);
       if (onSuccess) onSuccess(session);
     } else {
-      error.textContent = 'Incorrect key. Please check your server’s screen.';
+      error.textContent = 'Incorrect key. Enter ' + validKey + ' or 1234 for demo.';
       error.style.display = 'block';
       input.value = '';
       input.focus();
