@@ -363,28 +363,32 @@ function showPaymentModal(method, totals, settings, table, onConfirm) {
         <p class="hint mt-2 text-xs muted">Click to simulate biometric Face ID confirmation</p>
       </div>
     `;
-  } else if (method === 'upi') {
+  } else if (method === 'google_pay') {
     bodyHtml = `
       <div style="text-align: center; padding: 0.5rem 0 1rem 0;">
-        <div style="font-size: 1.8rem; margin-bottom: 0.25rem;">📱</div>
-        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">UPI Instant Payment</h3>
-        <p class="muted text-xs" style="margin-bottom: 1rem;">To: The Olive Table (olivetable@icici)</p>
+        <div style="font-size: 1.8rem; margin-bottom: 0.25rem;">🌐 <strong style="font-size: 1.35rem; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">GPay</strong></div>
+        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">Google Pay</h3>
+        <p class="muted text-xs" style="margin-bottom: 1.25rem;">The Olive Table · ${esc(table.name)}</p>
 
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 1rem;">
-          <button type="button" class="btn btn--secondary btn--sm is-active" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">GPay</button>
-          <button type="button" class="btn btn--secondary btn--sm" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">PhonePe</button>
-          <button type="button" class="btn btn--secondary btn--sm" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">Paytm</button>
-          <button type="button" class="btn btn--secondary btn--sm" style="padding: 8px 4px; font-size: 0.72rem; font-weight: 700;">BHIM</button>
+        <div style="background: var(--surface-2, #F8F6F1); border-radius: 12px; padding: 12px 16px; margin-bottom: 1.25rem; text-align: left; font-size: 0.85rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span class="muted">Google Account</span>
+            <span style="font-weight: 600;">alex.diner@gmail.com</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span class="muted">Payment Card</span>
+            <span style="font-weight: 600;">Chase Sapphire (•••• 8821)</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border, rgba(0,0,0,0.08)); padding-top: 6px; font-weight: 700; font-size: 0.95rem;">
+            <span>Total to Pay</span>
+            <span style="color: var(--primary, #8C3A27);">${money(totals.total)}</span>
+          </div>
         </div>
 
-        <div class="field" style="margin-bottom: 1rem; text-align: left;">
-          <label class="label text-xs">UPI ID / VPA</label>
-          <input class="input" id="upi-vpa-input" type="text" value="guest@okhdfcbank" style="font-family: var(--font-mono); font-size: 0.88rem;">
-        </div>
-
-        <button class="btn btn--primary btn--block btn--lg" id="confirm-upi-pay-btn" type="button" style="height: 50px; font-size: 1rem; font-weight: 700; background: #059669; border-color: #059669;">
-          Pay ${money(totals.total)} via UPI
+        <button class="btn btn--block btn--lg" id="confirm-gpay-btn" type="button" style="background: #1F2937; color: #fff; border-radius: 12px; height: 52px; font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span>Pay ${money(totals.total)} with Google Pay</span>
         </button>
+        <p class="hint mt-2 text-xs muted">Click to simulate Google Pay 1-tap confirmation</p>
       </div>
     `;
   } else {
@@ -392,7 +396,7 @@ function showPaymentModal(method, totals, settings, table, onConfirm) {
       <div style="text-align: center; padding: 0.5rem 0 1rem 0;">
         <div style="font-size: 1.8rem; margin-bottom: 0.25rem;">💳</div>
         <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">Credit / Debit Card</h3>
-        <p class="muted text-xs" style="margin-bottom: 1rem;">Encrypted & Tokenized 256-bit</p>
+        <p class="muted text-xs" style="margin-bottom: 1rem;">Visa · Mastercard · American Express</p>
 
         <div style="background: var(--surface-2, #F8F6F1); border-radius: 10px; padding: 12px; margin-bottom: 1rem; text-align: left; font-family: var(--font-mono); font-size: 0.85rem;">
           <div style="color: var(--text-muted); font-size: 0.72rem; margin-bottom: 2px;">CARD NUMBER</div>
@@ -420,11 +424,11 @@ function showPaymentModal(method, totals, settings, table, onConfirm) {
 
   modal.querySelector('#close-pay-sheet-btn').addEventListener('click', () => modal.remove());
 
-  const btn = modal.querySelector('#confirm-apple-pay-btn') || modal.querySelector('#confirm-upi-pay-btn') || modal.querySelector('#confirm-card-pay-btn');
+  const btn = modal.querySelector('#confirm-apple-pay-btn') || modal.querySelector('#confirm-gpay-btn') || modal.querySelector('#confirm-card-pay-btn');
   if (btn) {
     btn.addEventListener('click', () => {
       btn.disabled = true;
-      btn.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 8px;"><span class="dot" style="background: #fff; width: 8px; height: 8px; border-radius: 50%; animation: pulse 0.6s infinite alternate;"></span> Authorizing ${method === 'apple_pay' ? 'Face ID' : 'Gateway'}…</span>`;
+      btn.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 8px;"><span class="dot" style="background: #fff; width: 8px; height: 8px; border-radius: 50%; animation: pulse 0.6s infinite alternate;"></span> Authorizing ${method === 'apple_pay' ? 'Face ID' : 'Card'}…</span>`;
       
       setTimeout(() => {
         btn.innerHTML = `<span style="color: #10B981; font-weight: 700;">✓ Payment Approved!</span>`;
@@ -432,7 +436,7 @@ function showPaymentModal(method, totals, settings, table, onConfirm) {
           modal.remove();
           onConfirm({
             method,
-            txnId: (method === 'apple_pay' ? 'APL_' : method === 'upi' ? 'UPI_' : 'CRD_') + Math.random().toString(36).slice(2, 8).toUpperCase(),
+            txnId: (method === 'apple_pay' ? 'APL_' : method === 'google_pay' ? 'GPY_' : 'CRD_') + Math.random().toString(36).slice(2, 8).toUpperCase(),
           });
         }, 500);
       }, 700);
@@ -974,17 +978,17 @@ function initCart(ctx) {
     });
     if (payDesc) {
       if (method === 'apple_pay') payDesc.textContent = 'Instant 1-tap checkout via Apple Pay. Order is verified and fired straight to the chef.';
-      else if (method === 'upi') payDesc.textContent = 'Fast UPI payment via Google Pay, PhonePe, or Paytm. Verified before cooking.';
-      else if (method === 'card') payDesc.textContent = 'Secure 256-bit encrypted credit or debit card payment.';
-      else payDesc.textContent = 'Pay in person at the counter or to your waiter when served.';
+      else if (method === 'google_pay') payDesc.textContent = 'Fast 1-tap Google Pay. Seamless payment using cards saved in your Google Account.';
+      else if (method === 'card') payDesc.textContent = 'Secure 256-bit encrypted Visa, Mastercard, or American Express payment.';
+      else payDesc.textContent = 'Pay server in person at your table (cash or portable card reader).';
     }
     const totSpan = document.getElementById('place-total');
     const totVal = totSpan ? totSpan.textContent : '';
     if (placeButton) {
       if (method === 'apple_pay') placeButton.innerHTML = `🍏 Pay with Apple Pay · <span id="place-total">${totVal}</span>`;
-      else if (method === 'upi') placeButton.innerHTML = `📱 Pay with UPI · <span id="place-total">${totVal}</span>`;
-      else if (method === 'card') placeButton.innerHTML = `💳 Pay with Card · <span id="place-total">${totVal}</span>`;
-      else placeButton.innerHTML = `Place order (Pay Waiter) · <span id="place-total">${totVal}</span>`;
+      else if (method === 'google_pay') placeButton.innerHTML = `🌐 Pay with Google Pay · <span id="place-total">${totVal}</span>`;
+      else if (method === 'card') placeButton.innerHTML = `💳 Pay with Credit Card · <span id="place-total">${totVal}</span>`;
+      else placeButton.innerHTML = `Place order (Pay Server) · <span id="place-total">${totVal}</span>`;
     }
   }
 

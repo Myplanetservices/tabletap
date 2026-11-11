@@ -324,8 +324,8 @@ function ticketHtml(order, column) {
     '</div></div>' : '';
 
   const payBadge = order.paid
-    ? '<span style="background: rgba(16,185,129,0.15); color: #059669; border: 1px solid rgba(16,185,129,0.3); padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="shield-check" style="width:12px;height:12px;"></i> PAID (' + esc((order.paymentMethod || 'apple_pay').toUpperCase()) + ')</span>'
-    : '<span style="background: rgba(245,158,11,0.15); color: #D97706; border: 1px solid rgba(245,158,11,0.3); padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="clock" style="width:12px;height:12px;"></i> PAY WAITER</span>';
+    ? '<span style="background: rgba(16,185,129,0.15); color: #059669; border: 1px solid rgba(16,185,129,0.3); padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="shield-check" style="width:12px;height:12px;"></i> PAID (' + esc((order.paymentMethod || 'apple_pay').replace('_', ' ').toUpperCase()) + ')</span>'
+    : '<span style="background: rgba(245,158,11,0.15); color: #D97706; border: 1px solid rgba(245,158,11,0.3); padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="clock" style="width:12px;height:12px;"></i> PAY SERVER</span>';
 
   return '<article class="k-ticket' + (order.__flash ? ' k-ticket--flash' : '') + '" data-order="' + order.id + '">' +
     '<div class="k-ticket__head"><div><p class="k-ticket__table">' + esc(order.tableName) + '</p>' +

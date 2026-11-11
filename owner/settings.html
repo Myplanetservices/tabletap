@@ -89,7 +89,8 @@
         <div class="tabs__list" role="tablist" aria-label="Settings sections">
           <button class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel-profile" id="tab-profile" tabindex="0">Restaurant profile</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-ordering" id="tab-ordering" tabindex="-1">Ordering</button>
-          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-security" id="tab-security" tabindex="-1">Security</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-security" id="tab-security" tabindex="-1">Security & Geofence</button>
+          <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-payments" id="tab-payments" tabindex="-1">Stripe & Payments (US / UK)</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-hours" id="tab-hours" tabindex="-1">Opening hours</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-branding" id="tab-branding" tabindex="-1">Branding</button>
           <button class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-notify" id="tab-notify" tabindex="-1">Notifications</button>
@@ -217,6 +218,81 @@
 
               <div class="row mt-6" style="justify-content:flex-end">
                 <button class="btn btn--primary" type="button" data-save="security">Save security</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-payments" aria-labelledby="tab-payments" hidden>
+          <div class="card">
+            <div class="card__body">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem;">
+                <div>
+                  <h3 class="card__title" style="font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+                    <span style="background:#635BFF; color:#fff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:0.85rem;">stripe</span>
+                    Global Payments (US, UK & Europe)
+                  </h3>
+                  <p class="muted text-sm mt-1">Accept Apple Pay, Google Pay, and international cards. Direct daily payouts to your restaurant's bank account.</p>
+                </div>
+                <span class="badge badge--success" style="font-size:0.8rem; padding:4px 10px;">
+                  <span class="dot" style="background:#10B981;"></span> Stripe Connect Active
+                </span>
+              </div>
+
+              <!-- 1-Click Connect Button -->
+              <div style="background:var(--surface-2, #F8F6F1); border-radius:12px; padding:1.25rem; border:1px solid var(--border, rgba(0,0,0,0.08)); margin-bottom:1.5rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                  <div>
+                    <div style="font-weight:700; font-size:0.95rem;">Connected Account: The Olive Table Ltd</div>
+                    <div class="muted text-xs mt-0.5">Payout Bank: Barclays Business (•••• 4192) · Daily Rolling Payouts</div>
+                  </div>
+                  <button type="button" class="btn btn--sm" id="btn-reconnect-stripe" style="background:#635BFF; color:#fff; border:none; font-weight:700; padding:8px 16px; border-radius:8px;">
+                    Manage Stripe Dashboard
+                  </button>
+                </div>
+              </div>
+
+              <h4 class="text-sm font-bold uppercase tracking-wider text-muted mb-3">Supported US / UK Payment Methods</h4>
+              <div class="form-grid form-grid--3 mb-6">
+                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-weight:700; font-size:0.9rem;">🍏 Apple Pay</span>
+                    <span style="color:#059669; font-size:0.75rem; font-weight:700;">Active</span>
+                  </div>
+                  <p class="text-xs muted">Enabled for Safari, iPhone, and Apple Watch diners.</p>
+                </div>
+
+                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-weight:700; font-size:0.9rem;">🌐 Google Pay</span>
+                    <span style="color:#059669; font-size:0.75rem; font-weight:700;">Active</span>
+                  </div>
+                  <p class="text-xs muted">Enabled for Android and Chrome browser diners.</p>
+                </div>
+
+                <div style="padding:12px; border:1px solid var(--border, rgba(0,0,0,0.1)); border-radius:10px; background:#fff;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-weight:700; font-size:0.9rem;">💳 Visa / MC / Amex</span>
+                    <span style="color:#059669; font-size:0.75rem; font-weight:700;">Active</span>
+                  </div>
+                  <p class="text-xs muted">Domestic and international debit/credit cards.</p>
+                </div>
+              </div>
+
+              <h4 class="text-sm font-bold uppercase tracking-wider text-muted mb-3">API Keys & Webhooks</h4>
+              <div class="form-grid form-grid--2 mb-4">
+                <div class="field">
+                  <label class="label" for="stripe-pub-key">Stripe Publishable Key</label>
+                  <input class="input" id="stripe-pub-key" type="text" placeholder="pk_test_... or pk_live_..." style="font-family:var(--font-mono); font-size:0.85rem;">
+                </div>
+                <div class="field">
+                  <label class="label" for="stripe-sec-key">Stripe Secret Key</label>
+                  <input class="input" id="stripe-sec-key" type="password" placeholder="sk_test_... or sk_live_..." style="font-family:var(--font-mono); font-size:0.85rem;">
+                </div>
+              </div>
+
+              <div class="row mt-6" style="justify-content:flex-end">
+                <button class="btn btn--primary" type="button" data-save="payments">Save Stripe Settings</button>
               </div>
             </div>
           </div>

@@ -2344,6 +2344,16 @@ function renderSettings() {
         emit('settings:update', { clientId: client.id });
         toast('Security & anti-spam settings saved');
       }
+      if (which === 'payments') {
+        next.stripe = {
+          connected: true,
+          pubKey: host.querySelector('#stripe-pub-key')?.value.trim() || '',
+          secKey: host.querySelector('#stripe-sec-key')?.value.trim() || '',
+        };
+        store.update('clients', client.id, { settings: next });
+        emit('settings:update', { clientId: client.id });
+        toast('Stripe Global Payments settings saved');
+      }
       store.logActivity({ actor: session.name, clientId: client.id, type: 'Settings', details: 'Settings saved (' + which + ')' });
     });
   });
