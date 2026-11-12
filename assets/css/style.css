@@ -4574,12 +4574,12 @@ img.avatar { font-size:0; object-fit:cover; }
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .menu-qr-code canvas,
 .menu-qr-code img {
-  display: block;
   max-width: 100%;
 }
 
