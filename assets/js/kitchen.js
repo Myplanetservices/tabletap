@@ -373,6 +373,32 @@ function draw() {
       (pending ? '<span class="k-counter"><strong>' + pending + '</strong> Waiting approval</span>' : '');
   }
 
+  if (bannerHost) {
+    const openCalls = store.query('waiterCalls', (c) => c.clientId === client.id && c.status === 'open');
+    if (openCalls.length) {
+      bannerHost.innerHTML =
+        '<div style="background:linear-gradient(90deg, #F59E0B 0%, #D97706 100%);color:#000;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-weight:700;box-shadow:0 4px 12px rgba(245, 158, 11, 0.25);border-bottom:1px solid rgba(0,0,0,0.1);">' +
+        '<div style="display:flex;align-items:center;gap:10px;font-size:0.95rem;">' +
+        '<span style="font-size:1.3rem;">🔔</span>' +
+        '<span>' + openCalls.map((c) => '<strong>' + esc(c.tableName) + '</strong>: ' + (c.type === 'bill' ? 'Bill requested (' + (c.paymentMethod ? c.paymentMethod.toUpperCase() : 'Pay') + ')' : 'Waiter called')).join(' · ') + '</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;">' +
+        openCalls.map((c) => '<button class="btn btn--sm" style="background:#000;color:#fff;border:none;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;" type="button" data-k-done-call="' + c.id + '">Acknowledge ' + esc(c.tableName) + '</button>').join('') +
+        '</div></div>';
+      bannerHost.querySelectorAll('[data-k-done-call]').forEach((b) => {
+        b.addEventListener('click', () => {
+          const callId = b.getAttribute('data-k-done-call');
+          store.update('waiterCalls', callId, { status: 'done' });
+          emit('call:done', { id: callId });
+          emit('call:update', { clientId: client.id });
+          draw();
+        });
+      });
+    } else {
+      bannerHost.innerHTML = '';
+    }
+  }
+
   if (!columnsHost) return;
 
   columnsHost.innerHTML = COLUMNS.map(([status, defaultLabel, colClass, id, tabId]) => {
@@ -518,7 +544,12 @@ on('order:new', (payload) => {
 });
 
 on('order:update', () => draw());
-on('call:new', () => draw());
+on('call:new', () => {
+  beep();
+  draw();
+});
+on('call:done', () => draw());
+on('call:update', () => draw());
 
 /* --------------------------------------------------- completed page ------- */
 if (page === 'kitchen-completed') {
