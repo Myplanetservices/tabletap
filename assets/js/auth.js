@@ -55,7 +55,7 @@ export function login(email, password) {
 
   const owner = query('owners', (o) => o.email.toLowerCase() === mail && o.password === pass)[0];
   if (!owner) {
-    throw new Error('That email and password do not match. Try the demo details below.');
+    throw new Error('That email and password do not match. Please check your credentials and try again.');
   }
 
   const client = getById('clients', owner.clientId);
