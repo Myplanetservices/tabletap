@@ -193,7 +193,7 @@ export function exportCSV(rows, filename = 'tabletap-export.csv') {
       link.click();
       setTimeout(() => link.remove(), 1000);
     } catch (e) {
-      alert('Could not export CSV: ' + err.message);
+      toast('Could not export CSV: ' + (e.message || err.message), 'danger');
     }
   }
 }

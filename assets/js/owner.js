@@ -1243,25 +1243,269 @@ function renderMenu() {
   let itemPage = 1;
   const itemsPerPage = 8;
 
+  function openCategoryModal(catToEdit = null, triggerBtn = null) {
+    const isEdit = !!catToEdit;
+    const modal = document.createElement('div');
+    modal.className = 'modal category-modal is-open';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'cat-modal-title');
+
+    const taxOptions = [
+      '<option value="default"' + (!catToEdit?.taxOverride || catToEdit?.taxOverride === 'default' ? ' selected' : '') + '>Default</option>',
+      '<option value="none"' + (catToEdit?.taxOverride === 'none' ? ' selected' : '') + '>No tax</option>',
+      ...(settings.taxes || []).filter((t) => t.enabled).map((t) =>
+        '<option value="' + t.id + '"' + (catToEdit?.taxOverride === t.id ? ' selected' : '') + '>' + esc(t.name) + ' (' + t.rate + '%)</option>'
+      ),
+    ].join('');
+
+    const currentName = catToEdit ? catToEdit.name : '';
+
+    modal.innerHTML =
+      '<div class="modal__dialog category-modal__dialog">' +
+      '<div class="modal__header" style="padding:0 0 1rem; margin-bottom:1rem; border-bottom:1px solid var(--line);">' +
+      '<div><p class="modal__title" id="cat-modal-title">' + (isEdit ? 'Edit category' : 'Add category') + '</p></div>' +
+      '<button class="btn btn--icon" type="button" data-close-cat aria-label="Close"><i data-lucide="x"></i></button>' +
+      '</div>' +
+      '<div class="modal__body" style="padding:0;">' +
+      '<div class="field mb-4">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+      '<label class="label" for="cat-modal-name" style="margin-bottom:0;">Category name <span class="text-danger">*</span></label>' +
+      '<span class="muted text-xs" id="cat-name-count">' + currentName.length + '/40</span>' +
+      '</div>' +
+      '<input class="input mt-1" id="cat-modal-name" type="text" maxlength="40" value="' + esc(currentName) + '" placeholder="e.g. Desserts" required>' +
+      '<p class="hint hint--error mt-1" id="cat-name-error" style="color:var(--danger); display:none;"></p>' +
+      '</div>' +
+      '<div class="field mb-4">' +
+      '<label class="label" for="cat-modal-tax">Tax</label>' +
+      '<select class="select" id="cat-modal-tax">' + taxOptions + '</select>' +
+      '<p class="hint mt-1">Leave as Default unless this category is taxed differently (e.g. alcohol).</p>' +
+      '</div>' +
+      '</div>' +
+      '<div class="modal__footer" style="padding:1rem 0 0; margin-top:1.5rem; display:flex; justify-content:flex-end; gap:8px;">' +
+      '<button class="btn btn--secondary" type="button" data-close-cat>Cancel</button>' +
+      '<button class="btn btn--primary" type="button" id="cat-modal-submit" disabled>' + (isEdit ? 'Save changes' : 'Add category') + '</button>' +
+      '</div></div>';
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const nameInput = modal.querySelector('#cat-modal-name');
+    const taxSelect = modal.querySelector('#cat-modal-tax');
+    const submitBtn = modal.querySelector('#cat-modal-submit');
+    const errText = modal.querySelector('#cat-name-error');
+    const countSpan = modal.querySelector('#cat-name-count');
+
+    const validate = () => {
+      const val = nameInput.value.trim();
+      countSpan.textContent = nameInput.value.length + '/40';
+      const allCats = store.categoriesOf(client.id);
+      const isDuplicate = allCats.some((c) => (!isEdit || c.id !== catToEdit.id) && c.name.toLowerCase() === val.toLowerCase());
+
+      if (!val) {
+        errText.style.display = 'none';
+        submitBtn.disabled = true;
+        return false;
+      }
+      if (isDuplicate) {
+        errText.textContent = 'A category with this name already exists.';
+        errText.style.display = 'block';
+        submitBtn.disabled = true;
+        return false;
+      }
+      errText.style.display = 'none';
+      submitBtn.disabled = false;
+      return true;
+    };
+
+    nameInput.addEventListener('input', validate);
+    validate();
+    setTimeout(() => nameInput.focus(), 50);
+
+    const closeModal = () => {
+      modal.remove();
+      if (triggerBtn) {
+        try { triggerBtn.focus(); } catch (e) {}
+      }
+    };
+
+    modal.querySelectorAll('[data-close-cat]').forEach((b) => b.addEventListener('click', closeModal));
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    const submit = () => {
+      if (!validate()) return;
+      const finalName = nameInput.value.trim();
+      const finalTax = taxSelect.value;
+      closeModal();
+
+      if (isEdit) {
+        store.update('categories', catToEdit.id, { name: finalName, taxOverride: finalTax });
+        selectedCat = store.getById('categories', catToEdit.id);
+        drawCats();
+        drawItems();
+        emit('menu:update', { clientId: client.id });
+        toast('Category updated');
+      } else {
+        const newCat = store.insert('categories', {
+          clientId: client.id,
+          name: finalName,
+          taxOverride: finalTax,
+          position: store.categoriesOf(client.id).length,
+        });
+        selectedCat = newCat;
+        drawCats();
+        drawItems();
+        emit('menu:update', { clientId: client.id });
+        toast('Category added');
+      }
+
+      // Scroll selected category into view
+      setTimeout(() => {
+        const activeEl = catList.querySelector('.cat-item--active');
+        if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    };
+
+    submitBtn.addEventListener('click', submit);
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+      if (e.key === 'Enter' && e.target === nameInput) {
+        e.preventDefault();
+        submit();
+      }
+    });
+  }
+
+  function openCategoryDeleteModal(cat, triggerBtn = null) {
+    const items = store.query('items', (i) => i.categoryId === cat.id);
+    const count = items.length;
+    const otherCats = store.categoriesOf(client.id).filter((c) => c.id !== cat.id);
+
+    const modal = document.createElement('div');
+    modal.className = 'modal category-modal is-open';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'cat-del-title');
+
+    let bodyHtml = '';
+    if (count === 0) {
+      bodyHtml = '<p class="text-sm">This can\'t be undone.</p>';
+    } else {
+      const moveOpts = otherCats.map((c) => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
+      bodyHtml =
+        '<p class="text-sm mb-3">This category has ' + count + ' ' + (count === 1 ? 'item' : 'items') + '.</p>' +
+        '<div style="display:flex; flex-direction:column; gap:10px;" class="mb-2">' +
+        (otherCats.length > 0
+          ? '<label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px;">' +
+            '<input type="radio" name="cat-del-action" value="move" checked> Move items to ' +
+            '<select class="select" id="cat-del-target" style="height:32px; min-height:32px; width:auto; display:inline-block; margin-left:6px; font-size:13px; padding-top:2px; padding-bottom:2px;">' +
+            moveOpts + '</select></label>'
+          : '') +
+        '<label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px;">' +
+        '<input type="radio" name="cat-del-action" value="delete"' + (otherCats.length === 0 ? ' checked' : '') + '> Delete the items too</label>' +
+        '</div>';
+    }
+
+    modal.innerHTML =
+      '<div class="modal__dialog category-modal__dialog">' +
+      '<div class="modal__header" style="padding:0 0 1rem; margin-bottom:1rem; border-bottom:1px solid var(--line);">' +
+      '<div><p class="modal__title" id="cat-del-title">Delete “' + esc(cat.name) + '”?</p></div>' +
+      '<button class="btn btn--icon" type="button" data-close-del aria-label="Close"><i data-lucide="x"></i></button>' +
+      '</div>' +
+      '<div class="modal__body" style="padding:0;">' + bodyHtml + '</div>' +
+      '<div class="modal__footer" style="padding:1rem 0 0; margin-top:1.5rem; display:flex; justify-content:flex-end; gap:8px;">' +
+      '<button class="btn btn--secondary" type="button" data-close-del>Cancel</button>' +
+      '<button class="btn btn--danger" type="button" id="cat-modal-del-confirm">Delete</button>' +
+      '</div></div>';
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const closeModal = () => {
+      modal.remove();
+      if (triggerBtn) {
+        try { triggerBtn.focus(); } catch (e) {}
+      }
+    };
+
+    modal.querySelectorAll('[data-close-del]').forEach((b) => b.addEventListener('click', closeModal));
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    modal.querySelector('#cat-modal-del-confirm').addEventListener('click', () => {
+      if (count > 0) {
+        const action = modal.querySelector('input[name="cat-del-action"]:checked')?.value || 'delete';
+        if (action === 'move') {
+          const targetCatId = modal.querySelector('#cat-del-target')?.value;
+          if (targetCatId) {
+            items.forEach((item) => store.update('items', item.id, { categoryId: targetCatId }));
+          }
+        } else {
+          items.forEach((item) => store.remove('items', item.id));
+        }
+      }
+
+      store.remove('categories', cat.id);
+      closeModal();
+
+      const remainingCats = store.categoriesOf(client.id);
+      if (selectedCat && selectedCat.id === cat.id) {
+        selectedCat = remainingCats[0] || null;
+      }
+      drawCats();
+      drawItems();
+      emit('menu:update', { clientId: client.id });
+      toast('Category deleted');
+    });
+
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+  }
+
   function drawCats() {
     const cats = store.categoriesOf(client.id);
-    catList.innerHTML = cats.map((cat, index) =>
-      '<div class="cat-item' + (cat.id === selectedCat?.id ? ' cat-item--active' : '') + '" data-cat="' + cat.id + '">' +
-      '<div><p class="cat-item__name">' + esc(cat.name) + '</p>' +
-      '<p class="cat-item__count">' + store.query('items', (i) => i.categoryId === cat.id).length + ' items</p>' +
-      '<select class="select cat-tax" data-cat-tax="' + cat.id + '" aria-label="Tax override for ' + esc(cat.name) + '">' +
-      '<option value="default"' + (!cat.taxOverride || cat.taxOverride === 'default' ? ' selected' : '') + '>Tax: default</option>' +
-      '<option value="none"' + (cat.taxOverride === 'none' ? ' selected' : '') + '>Tax: none</option>' +
-      (settings.taxes || []).filter((t) => t.enabled).map((t) =>
-        '<option value="' + t.id + '"' + (cat.taxOverride === t.id ? ' selected' : '') + '>Tax: ' + esc(t.name) + '</option>').join('') +
-      '</select></div>' +
-      '<div class="cat-item__actions">' +
-      '<button class="btn btn--icon btn--sm" type="button" data-move="up" data-id="' + cat.id + '" aria-label="Move up"><i data-lucide="arrow-up"></i></button>' +
-      '<button class="btn btn--icon btn--sm" type="button" data-move="down" data-id="' + cat.id + '" aria-label="Move down"><i data-lucide="arrow-down"></i></button>' +
-      '<button class="btn btn--icon btn--sm" type="button" data-rename="' + cat.id + '" aria-label="Rename"><i data-lucide="pencil"></i></button>' +
-      '<button class="btn btn--icon btn--sm" type="button" data-del-cat="' + cat.id + '" aria-label="Delete"><i data-lucide="trash-2"></i></button>' +
-      '</div></div>').join('');
+    catList.innerHTML = cats.map((cat, index) => {
+      const isSelected = cat.id === selectedCat?.id;
+      const count = store.query('items', (i) => i.categoryId === cat.id).length;
+
+      let taxBadgeHtml = '';
+      if (cat.taxOverride && cat.taxOverride !== 'default') {
+        let taxLabel = 'No tax';
+        if (cat.taxOverride !== 'none') {
+          const tObj = (settings.taxes || []).find((t) => t.id === cat.taxOverride);
+          if (tObj) taxLabel = tObj.name + ' ' + tObj.rate + '%';
+        }
+        taxBadgeHtml = '<span class="cat-item__tax-badge">Tax: ' + esc(taxLabel) + '</span>';
+      }
+
+      const isFirst = index === 0;
+      const isLast = index === cats.length - 1;
+
+      return '<div class="cat-item' + (isSelected ? ' cat-item--active' : '') + '" data-cat="' + cat.id + '" tabindex="0" role="button" aria-pressed="' + isSelected + '">' +
+        '<div class="cat-item__main">' +
+        '<p class="cat-item__name" title="' + esc(cat.name) + '">' + esc(cat.name) + '</p>' +
+        '<div class="cat-item__meta-row">' +
+        '<span class="cat-item__count">' + count + (count === 1 ? ' item' : ' items') + '</span>' +
+        taxBadgeHtml +
+        '</div></div>' +
+        '<div class="cat-item__actions cat-item__actions-full">' +
+        '<button class="btn btn--icon btn--sm" type="button" data-move="up" data-id="' + cat.id + '" aria-label="Move up" title="Move up"' + (isFirst ? ' disabled' : '') + '><i data-lucide="arrow-up"></i></button>' +
+        '<button class="btn btn--icon btn--sm" type="button" data-move="down" data-id="' + cat.id + '" aria-label="Move down" title="Move down"' + (isLast ? ' disabled' : '') + '><i data-lucide="arrow-down"></i></button>' +
+        '<button class="btn btn--icon btn--sm" type="button" data-edit-cat="' + cat.id + '" aria-label="Edit" title="Edit"><i data-lucide="pencil"></i></button>' +
+        '<button class="btn btn--icon btn--sm" type="button" data-del-cat="' + cat.id + '" aria-label="Delete" title="Delete"><i data-lucide="trash-2"></i></button>' +
+        '</div>' +
+        '<div class="cat-item__dropdown">' +
+        '<button class="btn btn--icon btn--sm cat-item__menu-btn" type="button" data-cat-menu-toggle="' + cat.id + '" aria-label="More actions"><i data-lucide="more-horizontal"></i></button>' +
+        '<div class="cat-dropdown-menu" id="dropdown-' + cat.id + '" style="display:none;">' +
+        '<button type="button" data-move="up" data-id="' + cat.id + '"' + (isFirst ? ' disabled' : '') + '><i data-lucide="arrow-up" style="width:14px;height:14px;"></i> Move up</button>' +
+        '<button type="button" data-move="down" data-id="' + cat.id + '"' + (isLast ? ' disabled' : '') + '><i data-lucide="arrow-down" style="width:14px;height:14px;"></i> Move down</button>' +
+        '<button type="button" data-edit-cat="' + cat.id + '"><i data-lucide="pencil" style="width:14px;height:14px;"></i> Edit</button>' +
+        '<button type="button" data-del-cat="' + cat.id + '" style="color:var(--danger);"><i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete</button>' +
+        '</div></div></div>';
+    }).join('');
+
     host.querySelector('#cat-count').textContent = cats.length + ' total';
+    if (window.lucide) window.lucide.createIcons();
   }
 
   function drawItems() {
@@ -1316,19 +1560,27 @@ function renderMenu() {
     });
   }
 
-  catList.addEventListener('change', (event) => {
-    const select = event.target.closest('[data-cat-tax]');
-    if (!select) return;
-    store.update('categories', select.getAttribute('data-cat-tax'), { taxOverride: select.value });
-    emit('menu:update', { clientId: client.id });
-    toast('Category tax updated');
-  });
-
-  catList.addEventListener('click', async (event) => {
-    const row = event.target.closest('[data-cat]');
+  catList.addEventListener('click', (event) => {
+    const menuToggle = event.target.closest('[data-cat-menu-toggle]');
     const moveBtn = event.target.closest('[data-move]');
-    const renameBtn = event.target.closest('[data-rename]');
+    const editBtn = event.target.closest('[data-edit-cat]');
     const delBtn = event.target.closest('[data-del-cat]');
+    const row = event.target.closest('[data-cat]');
+
+    if (menuToggle) {
+      event.stopPropagation();
+      const catId = menuToggle.getAttribute('data-cat-menu-toggle');
+      const menu = catList.querySelector('#dropdown-' + catId);
+      const isVisible = menu && menu.style.display !== 'none';
+      catList.querySelectorAll('.cat-dropdown-menu').forEach((m) => { m.style.display = 'none'; });
+      if (menu && !isVisible) {
+        menu.style.display = 'flex';
+      }
+      return;
+    }
+
+    // Close any open dropdowns if clicked elsewhere
+    catList.querySelectorAll('.cat-dropdown-menu').forEach((m) => { m.style.display = 'none'; });
 
     if (moveBtn) {
       event.stopPropagation();
@@ -1342,30 +1594,17 @@ function renderMenu() {
       return;
     }
 
-    if (renameBtn) {
+    if (editBtn) {
       event.stopPropagation();
-      const cat = store.getById('categories', renameBtn.getAttribute('data-rename'));
-      const name = prompt('Category name', cat.name);
-      if (name && name.trim()) {
-        store.update('categories', cat.id, { name: name.trim() });
-        drawCats();
-        toast('Category renamed');
-      }
+      const cat = store.getById('categories', editBtn.getAttribute('data-edit-cat'));
+      if (cat) openCategoryModal(cat, editBtn);
       return;
     }
 
     if (delBtn) {
       event.stopPropagation();
       const cat = store.getById('categories', delBtn.getAttribute('data-del-cat'));
-      const count = store.query('items', (i) => i.categoryId === cat.id).length;
-      const ok = await confirmDialog('Delete “' + cat.name + '” and its ' + count + ' items? This cannot be undone.', { confirmLabel: 'Delete category' });
-      if (!ok) return;
-      store.query('items', (i) => i.categoryId === cat.id).forEach((i) => store.remove('items', i.id));
-      store.remove('categories', cat.id);
-      if (selectedCat && selectedCat.id === cat.id) selectedCat = store.categoriesOf(client.id)[0];
-      drawCats();
-      drawItems();
-      toast('Category deleted');
+      if (cat) openCategoryDeleteModal(cat, delBtn);
       return;
     }
 
@@ -1374,6 +1613,19 @@ function renderMenu() {
       itemPage = 1;
       drawCats();
       drawItems();
+    }
+  });
+
+  catList.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      const row = event.target.closest('[data-cat]');
+      if (row && event.target === row) {
+        event.preventDefault();
+        selectedCat = store.getById('categories', row.getAttribute('data-cat'));
+        itemPage = 1;
+        drawCats();
+        drawItems();
+      }
     }
   });
 
@@ -1399,11 +1651,7 @@ function renderMenu() {
   });
 
   host.querySelectorAll('[data-add-cat]').forEach((btn) => btn.addEventListener('click', () => {
-    const name = prompt('New category name');
-    if (!name || !name.trim()) return;
-    store.insert('categories', { clientId: client.id, name: name.trim(), position: store.categoriesOf(client.id).length });
-    drawCats();
-    toast('Category added');
+    openCategoryModal(null, btn);
   }));
 
   host.querySelector('#item-search').addEventListener('input', debounce((event) => {
@@ -1902,6 +2150,53 @@ function renderTables() {
     return '../menu/index.html?r=' + encodeURIComponent(client.slug) + '&t=' + encodeURIComponent(table.token);
   }
 
+  function openTableEditModal({ title, name, seats, onSave }) {
+    const modal = document.createElement('div');
+    modal.className = 'modal is-open';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.innerHTML =
+      '<div class="modal__dialog category-modal__dialog">' +
+      '<div class="modal__header"><div><p class="modal__title">' + esc(title) + '</p></div>' +
+      '<button class="btn btn--icon" type="button" data-close-modal aria-label="Close"><i data-lucide="x"></i></button></div>' +
+      '<div class="modal__body">' +
+      '<div class="field mb-3"><label class="label" for="tbl-edit-name">Table name</label>' +
+      '<input class="input" id="tbl-edit-name" type="text" value="' + esc(name || '') + '" required></div>' +
+      '<div class="field"><label class="label" for="tbl-edit-seats">Seats</label>' +
+      '<input class="input" id="tbl-edit-seats" type="number" min="1" max="50" value="' + (seats || 2) + '" required></div>' +
+      '</div>' +
+      '<div class="modal__footer">' +
+      '<button class="btn btn--secondary" type="button" data-close-modal>Cancel</button>' +
+      '<button class="btn btn--primary" type="button" id="tbl-modal-save">Save</button>' +
+      '</div></div>';
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+
+    const nameInput = modal.querySelector('#tbl-edit-name');
+    const seatsInput = modal.querySelector('#tbl-edit-seats');
+    const saveBtn = modal.querySelector('#tbl-modal-save');
+    setTimeout(() => nameInput.focus(), 50);
+
+    const close = () => modal.remove();
+    modal.querySelectorAll('[data-close-modal]').forEach((b) => b.addEventListener('click', close));
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+    const submit = () => {
+      const n = nameInput.value.trim();
+      const s = Math.max(1, parseInt(seatsInput.value, 10) || 2);
+      if (!n) return;
+      close();
+      onSave(n, s);
+    };
+
+    saveBtn.addEventListener('click', submit);
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') close();
+      if (e.key === 'Enter') submit();
+    });
+  }
+
   function openQr(table) {
     modalHost.innerHTML =
       '<div class="modal is-open" role="dialog" aria-modal="true" aria-labelledby="qr-title"><div class="modal__dialog">' +
@@ -1992,12 +2287,16 @@ function renderTables() {
 
     if (edit) {
       const table = store.getById('tables', edit.getAttribute('data-edit'));
-      const name = prompt('Table name', table.name);
-      if (name === null) return;
-      const seats = prompt('Seats', table.seats);
-      store.update('tables', table.id, { name: name.trim() || table.name, seats: Number(seats) || table.seats });
-      draw();
-      toast('Table updated');
+      openTableEditModal({
+        title: 'Edit table',
+        name: table.name,
+        seats: table.seats,
+        onSave: (newName, newSeats) => {
+          store.update('tables', table.id, { name: newName, seats: newSeats });
+          draw();
+          toast('Table updated');
+        },
+      });
     }
 
     if (del) {
@@ -2015,18 +2314,23 @@ function renderTables() {
     if (used >= usage.limits.tables) {
       return toast("You've reached your plan limit (" + usage.limits.tables + ' tables). Contact support to upgrade.', 'danger');
     }
-    const name = prompt('Table name', 'Table ' + (used + 1));
-    if (!name || !name.trim()) return;
-    store.insert('tables', {
-      clientId: client.id,
-      name: name.trim(),
+    openTableEditModal({
+      title: 'Add table',
+      name: 'Table ' + (used + 1),
       seats: 2,
-      token: client.slug.slice(0, 3) + '-' + Math.random().toString(36).slice(2, 7),
-      status: 'free',
-      createdAt: new Date().toISOString(),
+      onSave: (newName, newSeats) => {
+        store.insert('tables', {
+          clientId: client.id,
+          name: newName,
+          seats: newSeats,
+          token: client.slug.slice(0, 3) + '-' + Math.random().toString(36).slice(2, 7),
+          status: 'free',
+          createdAt: new Date().toISOString(),
+        });
+        draw();
+        toast('Table added');
+      },
     });
-    draw();
-    toast('Table added');
   });
 
   host.querySelector('[data-print-all]').addEventListener('click', () => {
