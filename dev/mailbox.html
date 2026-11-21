@@ -8,29 +8,63 @@
 <link rel="stylesheet" href="../assets/css/fonts.css">
 <link rel="stylesheet" href="../assets/css/style.css">
 <style>
+.demo-banner {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .mailbox-layout {
   display: grid;
   grid-template-columns: 360px 1fr;
   gap: 16px;
-  height: calc(100vh - 170px);
-  min-height: 540px;
+  height: calc(100vh - 180px);
+  min-height: 560px;
 }
-@media (max-width: 900px) {
-  .mailbox-layout {
-    grid-template-columns: 1fr;
-    height: auto;
-  }
-}
-.mailbox-list {
+.mailbox-list-pane {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.mailbox-list-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mailbox-list-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mailbox-list {
   overflow-y: auto;
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
 .mailbox-item {
-  padding: 14px 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.15s ease;
@@ -39,6 +73,7 @@
   background: transparent;
   border-left: 3px solid transparent;
   width: 100%;
+  box-sizing: border-box;
 }
 .mailbox-item:hover {
   background: var(--neutral-soft);
@@ -64,7 +99,7 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 2px;
+  margin-bottom: 3px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -86,7 +121,7 @@
   overflow: hidden;
 }
 .mailbox-preview-header {
-  padding: 16px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border);
   background: var(--bg);
   display: flex;
@@ -106,18 +141,35 @@
   border: none;
   background: #FAFAF9;
 }
-.demo-banner {
-  background: #FEF3C7;
-  color: #92400E;
-  border: 1px solid #FDE68A;
-  border-radius: var(--radius-md);
-  padding: 10px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.mailbox-back-btn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .demo-banner {
+    white-space: normal;
+  }
+  .mailbox-layout {
+    display: block;
+    height: auto;
+  }
+  .mailbox-layout.is-viewing-preview .mailbox-list-pane {
+    display: none;
+  }
+  .mailbox-layout.is-viewing-preview .mailbox-preview-card {
+    display: flex;
+    min-height: 80vh;
+  }
+  .mailbox-layout:not(.is-viewing-preview) .mailbox-preview-card {
+    display: none;
+  }
+  .mailbox-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    align-self: flex-start;
+  }
 }
 </style>
 </head>
@@ -141,28 +193,38 @@
     </header>
 
     <main class="app-shell__content" id="main">
-      <div class="app-shell__content-inner" style="max-width:1200px; margin:0 auto;">
+      <div class="app-shell__content-inner" style="max-width:1200px; margin:0 auto; padding: 20px 16px;">
         
+        <!-- Yellow Banner: full width at top, one line of text, normal padding -->
         <div class="demo-banner">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <i data-lucide="alert-circle"></i>
-            <span>Demo mailbox — emails are NOT really sent. Click any email to view and test action links.</span>
-          </div>
-          <button class="btn btn--sm btn--secondary" id="btn-clear-mailbox" type="button">
-            <i data-lucide="trash-2"></i> Clear mailbox
-          </button>
+          <i data-lucide="alert-circle" style="width:18px;height:18px;flex-shrink:0;"></i>
+          <span style="overflow:hidden;text-overflow:ellipsis;">Demo mailbox — emails are NOT really sent. Click any email to view and test action links.</span>
         </div>
 
-        <div class="mailbox-layout">
-          <!-- Left: List -->
-          <div class="mailbox-list" id="mailbox-list">
-            <div style="padding:20px; text-align:center; color:var(--muted);">No emails received yet.</div>
+        <div class="mailbox-layout" id="mailbox-layout">
+          <!-- Left Column (360px on desktop): List Pane with Clear mailbox top-right -->
+          <div class="mailbox-list-pane">
+            <div class="mailbox-list-header">
+              <h2 class="mailbox-list-title">
+                <i data-lucide="inbox" style="width:16px;height:16px;"></i> Inbox
+                <span class="badge badge--neutral" id="mailbox-count">0</span>
+              </h2>
+              <button class="btn btn--secondary btn--sm" id="btn-clear-mailbox" type="button">
+                <i data-lucide="trash-2"></i> Clear mailbox
+              </button>
+            </div>
+            <div class="mailbox-list" id="mailbox-list"></div>
           </div>
 
-          <!-- Right: Viewer -->
+          <!-- Right Column: Preview Card -->
           <div class="mailbox-preview-card" id="mailbox-preview-card">
             <div class="mailbox-preview-header" id="preview-header">
-              <span class="muted text-sm">Select an email from the left to read it</span>
+              <button class="btn btn--secondary btn--sm mailbox-back-btn" id="btn-back-to-list" type="button">
+                <i data-lucide="arrow-left"></i> Back to emails
+              </button>
+              <div id="preview-meta">
+                <span class="muted text-sm">Select an email to view it</span>
+              </div>
             </div>
             <div class="mailbox-preview-body" id="preview-body">
               <iframe class="mailbox-iframe" id="email-iframe" title="Email preview"></iframe>
@@ -182,27 +244,38 @@ import { getAll, remove, update, save } from '../assets/js/store.js';
 import { esc, formatDateTime, formatTime, toast, confirmDialog } from '../assets/js/helpers.js';
 
 let selectedId = null;
+const layoutEl = document.getElementById('mailbox-layout');
 
 function render() {
   const listEl = document.getElementById('mailbox-list');
+  const countEl = document.getElementById('mailbox-count');
+  const previewMeta = document.getElementById('preview-meta');
+  const iframe = document.getElementById('email-iframe');
+
   const emails = getAll('outbox').slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  countEl.textContent = String(emails.length);
 
   if (!emails.length) {
-    listEl.innerHTML = '<div style="padding:40px 20px; text-align:center; color:var(--muted);"><i data-lucide="inbox" style="width:36px;height:36px;margin-bottom:8px;opacity:0.5;"></i><p>Mailbox is empty.</p></div>';
-    document.getElementById('preview-header').innerHTML = '<span class="muted text-sm">Mailbox is empty</span>';
-    const iframe = document.getElementById('email-iframe');
-    iframe.srcdoc = '<body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:80vh;color:#888;">Select an email</body>';
+    selectedId = null;
+    layoutEl.classList.remove('is-viewing-preview');
+    listEl.innerHTML = '<div style="padding:48px 20px; text-align:center; color:var(--muted);"><i data-lucide="inbox" style="width:36px;height:36px;margin:0 auto 10px;opacity:0.4;display:block;"></i><p style="font-weight:500;">No emails yet</p></div>';
+    previewMeta.innerHTML = '<span class="muted text-sm">Select an email to view it</span>';
+    iframe.srcdoc = '<body style="font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:80vh;color:#888;margin:0;">Select an email to view it</body>';
     if (window.lucide) window.lucide.createIcons();
     return;
   }
 
+  // If on desktop (>768px) and nothing is selected, select the first email
+  const isDesktop = window.innerWidth > 768;
   if (!selectedId || !emails.find(e => e.id === selectedId)) {
-    selectedId = emails[0].id;
+    if (isDesktop) {
+      selectedId = emails[0].id;
+    }
   }
 
   listEl.innerHTML = emails.map(email => {
     const isSelected = email.id === selectedId;
-    const timeStr = formatDateTime(email.createdAt);
+    const timeStr = formatTime(email.createdAt);
     const badgeType = email.type ? `<span class="badge badge--neutral" style="font-size:10px;text-transform:uppercase;">${esc(email.type)}</span>` : '';
     const unreadDot = !email.read ? '<span class="mailbox-item__dot" title="Unread"></span>' : '';
 
@@ -210,12 +283,12 @@ function render() {
       <div class="mailbox-item ${isSelected ? 'is-active' : ''}" data-id="${email.id}">
         <div class="mailbox-item__to">
           <span>${unreadDot}${esc(email.to)}</span>
-          <span class="mailbox-item__time">${formatTime(email.createdAt)}</span>
+          <span class="mailbox-item__time">${timeStr}</span>
         </div>
         <div class="mailbox-item__subject">${esc(email.subject || '(No subject)')}</div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
           ${badgeType}
-          <span style="font-size:11px; color:var(--muted);">${timeStr}</span>
+          <span style="font-size:11px; color:var(--muted);">${formatDateTime(email.createdAt)}</span>
         </div>
       </div>
     `;
@@ -227,29 +300,51 @@ function render() {
     if (!activeEmail.read) {
       update('outbox', activeEmail.id, { read: true });
     }
-    document.getElementById('preview-header').innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
+    previewMeta.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <h2 style="font-size:16px; font-weight:600; margin:0;">${esc(activeEmail.subject)}</h2>
         <span class="badge badge--neutral">${esc(activeEmail.type || 'email')}</span>
       </div>
-      <div style="font-size:13px; color:var(--muted);">
+      <div style="font-size:13px; color:var(--muted); margin-top:4px;">
         <strong>To:</strong> ${esc(activeEmail.to)} &nbsp;·&nbsp; <strong>Date:</strong> ${formatDateTime(activeEmail.createdAt)}
       </div>
     `;
-    const iframe = document.getElementById('email-iframe');
-    iframe.srcdoc = activeEmail.html;
+
+    // Inject <base target="_parent"> so action links inside the email open in the same tab
+    let htmlContent = activeEmail.html;
+    if (htmlContent.includes('<head>')) {
+      htmlContent = htmlContent.replace('<head>', '<head><base target="_parent">');
+    } else {
+      htmlContent = '<base target="_parent">' + htmlContent;
+    }
+    iframe.srcdoc = htmlContent;
+  } else {
+    previewMeta.innerHTML = '<span class="muted text-sm">Select an email to view it</span>';
+    iframe.srcdoc = '<body style="font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:80vh;color:#888;margin:0;">Select an email to view it</body>';
   }
 
   if (window.lucide) window.lucide.createIcons();
 }
 
+// Select email
 document.getElementById('mailbox-list').addEventListener('click', (e) => {
   const item = e.target.closest('.mailbox-item');
   if (!item) return;
   selectedId = item.getAttribute('data-id');
+  layoutEl.classList.add('is-viewing-preview');
   render();
 });
 
+// Back button on mobile
+document.getElementById('btn-back-to-list').addEventListener('click', () => {
+  layoutEl.classList.remove('is-viewing-preview');
+  if (window.innerWidth <= 768) {
+    selectedId = null;
+  }
+  render();
+});
+
+// Clear mailbox
 document.getElementById('btn-clear-mailbox').addEventListener('click', async () => {
   const ok = await confirmDialog('Are you sure you want to clear all emails in the demo mailbox?', {
     title: 'Clear mailbox',
@@ -260,12 +355,19 @@ document.getElementById('btn-clear-mailbox').addEventListener('click', async () 
   const emails = getAll('outbox');
   emails.forEach(e => remove('outbox', e.id));
   selectedId = null;
+  layoutEl.classList.remove('is-viewing-preview');
   toast('Mailbox cleared');
   render();
 });
 
 window.addEventListener('storage', (e) => {
   if (e.key === 'tqr_db') render();
+});
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 768) {
+    layoutEl.classList.remove('is-viewing-preview');
+  }
 });
 
 render();
