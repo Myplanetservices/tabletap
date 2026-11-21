@@ -277,8 +277,11 @@ if (btn86) {
 on('menu:update', () => update86ButtonBadge());
 
 /* ------------------------------------------------------------- tickets ---- */
-function elapsedMinutes(order) {
-  return Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60000));
+function formatElapsedTime(order) {
+  const diffSec = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000));
+  const m = Math.floor(diffSec / 60);
+  const s = diffSec % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
 }
 
 function timerClass(minutes) {
@@ -301,7 +304,9 @@ function itemsHtml(order) {
 }
 
 function ticketHtml(order, column) {
-  const minutes = elapsedMinutes(order);
+  const diffSec = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000));
+  const minutes = Math.floor(diffSec / 60);
+  const timeStr = formatElapsedTime(order);
   let action = column === 'new' ? 'Start' : column === 'preparing' ? 'Mark ready' : 'Served';
   if (window.TableTapI18n) {
     if (column === 'new') action = window.TableTapI18n.t('kitchen.action_start', 'Start');
@@ -330,7 +335,7 @@ function ticketHtml(order, column) {
   return '<article class="k-ticket' + (order.__flash ? ' k-ticket--flash' : '') + '" data-order="' + order.id + '">' +
     '<div class="k-ticket__head"><div><p class="k-ticket__table">' + esc(order.tableName) + '</p>' +
     '<p class="k-ticket__meta">Order #' + order.number + ' · ' + payBadge + '</p></div>' +
-    '<span class="k-timer' + timerClass(minutes) + '" data-timer="' + order.id + '"><i data-lucide="timer"></i> ' + minutes + ' min</span></div>' +
+    '<span class="k-timer' + timerClass(minutes) + '" data-timer="' + order.id + '"><i data-lucide="timer"></i> <span class="k-timer__text">' + timeStr + '</span></span></div>' +
     vacantAlertHtml +
     '<div class="k-items">' + itemsHtml(order) + '</div>' +
     (order.note ? '<p class="k-note">' + esc(order.note) + '</p>' : '') +
@@ -513,11 +518,18 @@ setInterval(() => {
   document.querySelectorAll('[data-timer]').forEach((el) => {
     const order = store.getById('orders', el.getAttribute('data-timer'));
     if (!order) return;
-    const minutes = elapsedMinutes(order);
+    const diffSec = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000));
+    const minutes = Math.floor(diffSec / 60);
+    const timeStr = formatElapsedTime(order);
     el.className = 'k-timer' + timerClass(minutes);
-    el.innerHTML = '<i data-lucide="timer"></i> ' + minutes + ' min';
+    const textEl = el.querySelector('.k-timer__text');
+    if (textEl) {
+      textEl.textContent = timeStr;
+    } else {
+      el.innerHTML = '<i data-lucide="timer"></i> <span class="k-timer__text">' + timeStr + '</span>';
+      if (window.lucide) window.lucide.createIcons();
+    }
   });
-  if (window.lucide) window.lucide.createIcons();
 }, 1000);
 
 /* New order arrival */

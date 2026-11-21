@@ -7,7 +7,7 @@
 import { computeBill } from './billing.js';
 
 const KEY = 'tqr_db';
-const VERSION = 7;
+const VERSION = 8;
 
 let cache = null;
 

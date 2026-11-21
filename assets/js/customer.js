@@ -1190,6 +1190,16 @@ function nextNumber(clientId) {
 }
 
 /* -------------------------------------------------------------- status ---- */
+function formatOrderTimer(order) {
+  const diffSec = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000));
+  const m = Math.floor(diffSec / 60);
+  const s = diffSec % 60;
+  const timeStr = m + ':' + (s < 10 ? '0' : '') + s;
+  const etaMinutes = 15;
+  const remMinutes = Math.max(1, etaMinutes - m);
+  return 'In the kitchen · ' + timeStr + ' elapsed (Est. ~' + remMinutes + ' min remaining)';
+}
+
 function initStatus(ctx) {
   const { client, table } = ctx;
   const settings = client.settings;
@@ -1248,11 +1258,11 @@ function initStatus(ctx) {
       '<div class="status-item" style="border-top:1px solid var(--line); margin-top:6px; padding-top:10px; font-weight:600;">' +
       '<span>Total</span><span class="status-item__price">' + money(order.total) + '</span></div>' +
       '</div>' +
-      '<div class="status-eta"><i data-lucide="timer"></i><span>' +
+      '<div class="status-eta"><i data-lucide="timer"></i><span id="order-eta-text">' +
       (order.status === 'served' ? 'Served — enjoy your meal.' :
         order.status === 'ready' ? 'Ready — your server is bringing it over.' :
           order.status === 'pending_approval' ? 'Waiting for the restaurant to accept your order.' :
-            'Estimated time: about 18 minutes.') + '</span></div></div>' +
+            formatOrderTimer(order)) + '</span></div></div>' +
       '<div class="status-actions">' +
       '<a class="btn btn--secondary" href="index.html?r=' + encodeURIComponent(client.slug) + '&t=' + encodeURIComponent(table.token) + '">Order more</a>' +
       '<button class="btn btn--primary" type="button" data-call="waiter"><i data-lucide="bell"></i> Call waiter</button></div>';
@@ -1276,7 +1286,18 @@ function initStatus(ctx) {
   on('order:update', (payload) => {
     if (!payload || payload.orderId === order.id) render();
   });
-  setInterval(render, 30000);
+  setInterval(() => {
+    const freshOrder = getById('orders', order.id);
+    if (!freshOrder) return;
+    if (freshOrder.status !== order.status) {
+      render();
+      return;
+    }
+    const etaSpan = document.getElementById('order-eta-text');
+    if (etaSpan && (freshOrder.status === 'new' || freshOrder.status === 'preparing')) {
+      etaSpan.textContent = formatOrderTimer(freshOrder);
+    }
+  }, 1000);
 }
 
 /* --------------------------------------------------------------- bill ----- */

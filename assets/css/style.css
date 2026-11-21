@@ -3095,7 +3095,9 @@ img.avatar { font-size:0; object-fit:cover; }
   border-radius:4px;
   font-family:var(--font-mono);
   font-size:0.75rem;
-  font-weight:500;
+  font-weight:600;
+  white-space:nowrap;
+  flex-shrink:0;
   border:1px solid var(--success);
   background:var(--success-wash);
   color:var(--success);
