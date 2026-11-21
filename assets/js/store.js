@@ -314,6 +314,7 @@ function seed() {
     ],
     admins: [
       { id: 'adm_1', name: 'Vivek Kumar', email: 'admin@tabletap.demo', password: 'admin123', role: 'super', phone: '+91 80 4718 2200' },
+      { id: 'adm_1b', name: 'Vivek Kumar', email: 'vivek@tabletap.demo', password: 'admin1234', role: 'super', phone: '+91 80 4718 2200' },
       { id: 'adm_2', name: 'Neha Iyer', email: 'neha@myplanetservices.com', password: 'support123', role: 'support', phone: '+91 80 4718 2211' },
     ],
     clients: [],

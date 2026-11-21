@@ -308,10 +308,15 @@
 <script src="assets/js/ui.js"></script>
 <script type="module">
 import { resetDemo } from "./assets/js/store.js";
+import { confirmDialog } from "./assets/js/helpers.js";
 const link = document.getElementById("reset-demo");
-if (link) link.addEventListener("click", (event) => {
+if (link) link.addEventListener("click", async (event) => {
   event.preventDefault();
-  if (!window.confirm("Reset all demo data? Every order, menu change and invite goes back to the seeded state.")) return;
+  const ok = await confirmDialog("Reset all demo data? Every order, menu change and invite goes back to the seeded state.", {
+    title: "Reset demo data",
+    confirmLabel: "Reset all data"
+  });
+  if (!ok) return;
   resetDemo();
   link.textContent = "Demo data reset — reload to see it";
 });

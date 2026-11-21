@@ -205,10 +205,14 @@ if (inviteCard) {
   } else if (invite.status === 'expired' || expired(invite)) {
     renderInvalid('Invite expired', 'This invite is older than 7 days, so it can no longer be used.');
   } else {
-    document.getElementById('invite-restaurant').textContent = invite.clientName;
-    document.getElementById('invite-owner').textContent = invite.ownerName;
-    document.getElementById('invite-sent').textContent = formatDateTime(invite.createdAt);
-    document.getElementById('invite-email-field').value = invite.email;
+    const restEl = document.getElementById('invite-restaurant');
+    if (restEl) restEl.textContent = invite.clientName;
+    const ownerEl = document.getElementById('invite-owner');
+    if (ownerEl) ownerEl.textContent = invite.ownerName;
+    const sentEl = document.getElementById('invite-sent');
+    if (sentEl) sentEl.textContent = formatDateTime(invite.createdAt);
+    const emailField = document.getElementById('invite-email-field') || document.getElementById('invite-email');
+    if (emailField) emailField.value = invite.email;
 
     const form = inviteCard.querySelector('form');
     form.addEventListener('submit', (event) => {
