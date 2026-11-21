@@ -3248,6 +3248,7 @@ img.avatar { font-size:0; object-fit:cover; }
 .k-timer {
   display:inline-flex;
   align-items:center;
+  justify-content:center;
   gap:5px;
   height:26px;
   padding:0 8px;
@@ -3255,6 +3256,7 @@ img.avatar { font-size:0; object-fit:cover; }
   font-family:var(--font-mono);
   font-size:0.75rem;
   font-weight:600;
+  line-height:1;
   white-space:nowrap;
   flex-shrink:0;
   border:1px solid var(--success);

@@ -22,7 +22,25 @@ function read() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.__version === VERSION) {
+        // Freshen timestamps of active demo orders if older than 3 hours
+        // so demo kitchen pass always shows realistic rush times (2m, 9m, 21m) instead of stale days
+        let modified = false;
+        if (parsed.orders && Array.isArray(parsed.orders)) {
+          const now = Date.now();
+          parsed.orders.forEach((o) => {
+            if (['new', 'preparing', 'ready'].includes(o.status)) {
+              const ageMin = (now - new Date(o.createdAt).getTime()) / 60000;
+              if (ageMin > 180) {
+                const freshMin = o.number === 1046 ? 2 : o.number === 1045 ? 5 : o.number === 1040 ? 21 : o.number === 1041 ? 9 : 10;
+                o.createdAt = new Date(now - freshMin * 60000).toISOString();
+                o.updatedAt = new Date(now - Math.max(0, freshMin - 2) * 60000).toISOString();
+                modified = true;
+              }
+            }
+          });
+        }
         cache = parsed;
+        if (modified) write(cache);
         return cache;
       }
     }

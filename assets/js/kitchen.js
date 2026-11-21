@@ -280,6 +280,11 @@ function formatElapsedTime(order) {
   const diffSec = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000));
   const m = Math.floor(diffSec / 60);
   const s = diffSec % 60;
+  if (m >= 60) {
+    const h = Math.floor(m / 60);
+    const remM = m % 60;
+    return `${h}h ${remM}m`;
+  }
   return m + ':' + (s < 10 ? '0' : '') + s;
 }
 

@@ -891,6 +891,53 @@ function initMenu(ctx) {
       toast(type === 'bill' ? 'Waiter has been notified — bill on the way' : 'Waiter has been notified · ' + table.name);
     });
   });
+
+  /* ------------------------------------------- active order banner & timer -- */
+  const bannerHost = document.getElementById('menu-active-order-banner');
+  function updateActiveOrderBanner() {
+    if (!bannerHost) return;
+    const session = sessionForTable(client.id, table.id);
+    let myOrderIds = [];
+    try {
+      myOrderIds = JSON.parse(localStorage.getItem('tqr_my_orders') || '[]');
+    } catch (e) {}
+
+    const activeOrders = query('orders', (o) => {
+      const isForTable = o.tableId === table.id || (session && (session.orderIds || []).includes(o.id)) || myOrderIds.includes(o.id);
+      return isForTable && ['new', 'pending_approval', 'preparing', 'ready'].includes(o.status);
+    }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const latest = activeOrders[0];
+    if (!latest) {
+      bannerHost.innerHTML = '';
+      return;
+    }
+
+    const diffSec = Math.max(0, Math.floor((Date.now() - new Date(latest.createdAt).getTime()) / 1000));
+    const m = Math.floor(diffSec / 60);
+    const s = diffSec % 60;
+    const timeStr = m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : (m + ':' + (s < 10 ? '0' : '') + s);
+    const statusLabel = latest.status === 'ready' ? 'Ready for pickup' : latest.status === 'preparing' ? 'Preparing' : 'In kitchen';
+    const isReady = latest.status === 'ready';
+
+    bannerHost.innerHTML = `
+      <a href="order-status.html?id=${latest.id}&r=${encodeURIComponent(client.slug)}&t=${encodeURIComponent(table.token)}${visitParams}" style="display:flex;align-items:center;justify-content:space-between;background:${isReady ? '#ECFDF5' : '#FEF3C7'};color:${isReady ? '#065F46' : '#92400E'};border:1px solid ${isReady ? '#A7F3D0' : '#FCD34D'};border-radius:8px;padding:10px 14px;margin:12px 16px 0;text-decoration:none;font-weight:600;font-size:0.875rem;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <i data-lucide="${isReady ? 'check-circle' : 'timer'}" style="width:16px;height:16px;"></i>
+          <span>Order #${latest.number} · <strong>${statusLabel}</strong> (⏱ ${timeStr})</span>
+        </div>
+        <span style="font-size:0.8rem;text-decoration:underline;">Track order &rarr;</span>
+      </a>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  updateActiveOrderBanner();
+  setInterval(updateActiveOrderBanner, 1000);
+  on('order:new', () => updateActiveOrderBanner());
+  on('order:update', () => updateActiveOrderBanner());
+  on('order:picked_up', () => updateActiveOrderBanner());
+  on('order:served', () => updateActiveOrderBanner());
 }
 
 /* ---------------------------------------------------------------- cart ---- */
@@ -1179,6 +1226,13 @@ function initCart(ctx) {
 
       localStorage.setItem(DEVICE_ORDER_KEY, String(Date.now()));
       addOrderToSession(session.id, order.id);
+      try {
+        const myOrders = JSON.parse(localStorage.getItem('tqr_my_orders') || '[]');
+        if (!myOrders.includes(order.id)) {
+          myOrders.push(order.id);
+          localStorage.setItem('tqr_my_orders', JSON.stringify(myOrders));
+        }
+      } catch (e) {}
       emit('order:new', { orderId: order.id, clientId: client.id });
       pushOrderToMongo(order).catch(() => {});
       logActivity({
@@ -1212,7 +1266,7 @@ function formatOrderTimer(order) {
   const diffSec = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000));
   const m = Math.floor(diffSec / 60);
   const s = diffSec % 60;
-  const timeStr = m + ':' + (s < 10 ? '0' : '') + s;
+  const timeStr = m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : (m + ':' + (s < 10 ? '0' : '') + s);
   const etaMinutes = 15;
   const remMinutes = Math.max(1, etaMinutes - m);
   return 'In the kitchen · ' + timeStr + ' elapsed (Est. ~' + remMinutes + ' min remaining)';
