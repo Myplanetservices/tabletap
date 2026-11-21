@@ -5,7 +5,7 @@
 
 import * as store from './store.js';
 import {
-  requireRole, getSession, startImpersonation, logout, platformSettings,
+  requireRole, getAdminSession, startImpersonation, adminLogout, platformSettings,
 } from './auth.js';
 import { emit } from './realtime.js';
 import {
@@ -64,7 +64,7 @@ function refreshChrome() {
   const avatar = document.querySelector('.app-shell__sidebar-footer .avatar');
   if (avatar) avatar.textContent = initials(session.name);
   const logoutBtn = document.querySelector('.app-shell__sidebar-footer a[aria-label="Log out"]');
-  if (logoutBtn) logoutBtn.addEventListener('click', (event) => { event.preventDefault(); logout(); });
+  if (logoutBtn) logoutBtn.addEventListener('click', (event) => { event.preventDefault(); adminLogout(); });
 }
 
 /* ------------------------------------------------------------ dashboard -- */

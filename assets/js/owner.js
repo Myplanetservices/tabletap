@@ -728,6 +728,13 @@ function openTakePaymentModal(sessionId, onDone) {
   draw();
 }
 
+function formatNextChange(nextChangeAt, schedule) {
+  if (schedule === 'permanent' || !nextChangeAt) return 'Never changes';
+  const d = new Date(nextChangeAt);
+  if (isNaN(d.getTime())) return 'Never changes';
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' at ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
 /* ------------------------------------------------------------ dashboard -- */
 function renderDashboard() {
   const orders = ordersOf();
@@ -778,10 +785,29 @@ function renderDashboard() {
     revDelta = '+' + money(revenue);
   }
 
+  const rot = client.settings?.kitchenRotation || { schedule: 'permanent', time: '04:00' };
+  let schedText = 'Never changes';
+  if (rot.schedule === 'daily') {
+    schedText = 'Changes daily at ' + (rot.time || '04:00');
+  } else if (rot.schedule?.startsWith('days:')) {
+    schedText = 'Changes every ' + rot.schedule.split(':')[1] + ' days at ' + (rot.time || '04:00');
+  } else if (rot.schedule?.startsWith('months:')) {
+    schedText = 'Changes every ' + rot.schedule.split(':')[1] + ' months at ' + (rot.time || '04:00');
+  }
+
   paint(head(greeting + ', ' + session.name.split(' ')[0],
     'Here is how ' + client.name + ' is doing today, ' + new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + '.',
     '<a class="btn btn--secondary btn--sm" href="reports.html"><i data-lucide="trending-up"></i> Reports</a>' +
     '<a class="btn btn--primary btn--sm" href="orders.html"><i data-lucide="receipt"></i> View live orders</a>') +
+    '<div class="card mb-4" style="background:var(--surface-2, #F8F6F1); border:1px solid var(--border, rgba(0,0,0,0.08)); padding:0.75rem 1.25rem;">' +
+    '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">' +
+    '<div style="display:flex; align-items:center; gap:10px;">' +
+    '<span style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; background:rgba(140,58,39,0.1); color:var(--primary, #8C3A27);">' +
+    '<i data-lucide="chef-hat" style="width:18px; height:18px;"></i></span>' +
+    '<div><span style="font-size:0.875rem; font-weight:600;">Kitchen code: <span class="mono strong" style="letter-spacing:0.08em; font-size:1.05rem;" id="dash-kitchen-code">' + esc(client.kitchenCode) + '</span></span>' +
+    '<span class="muted text-xs" style="margin-left:8px;">· ' + esc(schedText) + '</span></div></div>' +
+    '<button class="btn btn--secondary btn--sm" type="button" id="dash-copy-kcode"><i data-lucide="copy"></i> Copy</button>' +
+    '</div></div>' +
     '<div class="stat-grid">' +
     statCard("Today's orders", String(today.length), 'vs yesterday', ordersDelta, ordersDir) +
     statCard("Today's revenue", money(revenue), 'vs yesterday', revDelta, revDir) +
@@ -820,6 +846,18 @@ function renderDashboard() {
     '<span class="muted text-xs">' + today.length + ' orders today</span></div><div class="card__body">' +
     chart(hours.map((h, i) => [h > 12 ? (h - 12) + 'p' : h + 'p', Math.round((counts[i] / maxCount) * 100), counts[i]])) +
     '</div></div></div>');
+
+  const dashCopyBtn = host.querySelector('#dash-copy-kcode');
+  if (dashCopyBtn) {
+    dashCopyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(client.kitchenCode);
+        toast('Kitchen code copied: ' + client.kitchenCode);
+      } catch (e) {
+        toast('Code: ' + client.kitchenCode);
+      }
+    });
+  }
 
   host.querySelectorAll('[data-done-call]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -2301,6 +2339,13 @@ function renderSettings() {
     '<div class="field"><label class="label" for="rest-phone">Phone</label><input class="input" id="rest-phone" type="tel" value="' + esc(settings.phone) + '"></div>' +
     '<div class="field field--full"><label class="label" for="rest-address">Address</label><input class="input" id="rest-address" type="text" value="' + esc(settings.address) + '"></div>' +
     '<div class="field field--full"><label class="label" for="rest-tagline">Welcome line</label><input class="input" id="rest-tagline" type="text" value="' + esc(settings.tagline) + '"></div>' +
+    '<div class="field field--full"><label class="label" for="rest-timezone">Time zone</label>' +
+    '<select class="input" id="rest-timezone">' +
+    ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Asia/Kolkata', 'Asia/Dubai', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney', 'Africa/Johannesburg'].map((tz) => {
+      const selected = (settings.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone) === tz;
+      return '<option value="' + tz + '"' + (selected ? ' selected' : '') + '>' + tz + '</option>';
+    }).join('') +
+    '</select><p class="hint">Used for scheduled kitchen login code rotation and daily pass resets.</p></div>' +
     '<div class="field"><span class="label">Logo</span><div class="row">' +
     '<img class="avatar avatar--lg" src="' + esc(settings.logo) + '" alt="Current logo">' +
     '<button class="btn btn--secondary btn--sm" type="button" data-pick="logo"><i data-lucide="upload"></i> Replace</button></div></div>' +
@@ -2311,6 +2356,45 @@ function renderSettings() {
     '</div></div></div>' +
 
     '<div class="tab-panel" data-panel="security" hidden><div class="card"><div class="card__body">' +
+    '<h3 class="card__title mb-4" style="font-size:1.05rem;">Kitchen Login Code</h3>' +
+    '<div style="background:var(--surface-2, #F8F6F1); border-radius:12px; padding:1.25rem; border:1px solid var(--border, rgba(0,0,0,0.08)); margin-bottom:1.5rem;">' +
+    '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:0.75rem;">' +
+    '<div><span class="muted text-xs" style="text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">Current Kitchen Code</span>' +
+    '<div class="mono strong" style="font-size:2rem; letter-spacing:0.12em; color:var(--primary, #8C3A27); line-height:1.2;" id="display-kitchen-code">' + esc(client.kitchenCode) + '</div></div>' +
+    '<div style="display:flex; gap:8px;">' +
+    '<button class="btn btn--secondary btn--sm" type="button" id="btn-copy-kcode"><i data-lucide="copy"></i> Copy code</button>' +
+    '<button class="btn btn--secondary btn--sm" type="button" id="btn-rotate-kcode-now"><i data-lucide="refresh-cw"></i> Generate new code now</button>' +
+    '</div></div>' +
+    '<p class="muted text-xs" id="text-next-change" style="margin:0;">Next change: ' +
+    (client.settings?.kitchenRotation?.schedule === 'permanent' || !client.settings?.kitchenRotation?.nextChangeAt
+      ? 'Never changes'
+      : formatNextChange(client.settings?.kitchenRotation?.nextChangeAt, client.settings?.kitchenRotation?.schedule)) +
+    '</p></div>' +
+
+    '<h4 class="text-sm font-bold mb-3">How often should it change?</h4>' +
+    '<div class="form-grid form-grid--2 mb-4" style="gap:10px;">' +
+    '<label style="display:flex; align-items:center; gap:8px; border:1px solid var(--border, rgba(0,0,0,0.1)); padding:10px 14px; border-radius:8px; cursor:pointer; background:#fff;">' +
+    '<input type="radio" name="kcode-schedule" value="permanent"' + ((client.settings?.kitchenRotation?.schedule || 'permanent') === 'permanent' ? ' checked' : '') + '> Permanent</label>' +
+    '<label style="display:flex; align-items:center; gap:8px; border:1px solid var(--border, rgba(0,0,0,0.1)); padding:10px 14px; border-radius:8px; cursor:pointer; background:#fff;">' +
+    '<input type="radio" name="kcode-schedule" value="daily"' + (client.settings?.kitchenRotation?.schedule === 'daily' ? ' checked' : '') + '> Daily</label>' +
+    '<label style="display:flex; align-items:center; gap:8px; border:1px solid var(--border, rgba(0,0,0,0.1)); padding:10px 14px; border-radius:8px; cursor:pointer; background:#fff;">' +
+    '<input type="radio" name="kcode-schedule" value="days"' + (client.settings?.kitchenRotation?.schedule?.startsWith('days:') ? ' checked' : '') + '> Every ' +
+    '<input class="input" style="width:60px; padding:2px 6px; display:inline-block; margin:0 4px;" type="number" min="1" max="90" id="kcode-days-n" value="' + (client.settings?.kitchenRotation?.schedule?.startsWith('days:') ? client.settings.kitchenRotation.schedule.split(':')[1] : '7') + '"> days</label>' +
+    '<label style="display:flex; align-items:center; gap:8px; border:1px solid var(--border, rgba(0,0,0,0.1)); padding:10px 14px; border-radius:8px; cursor:pointer; background:#fff;">' +
+    '<input type="radio" name="kcode-schedule" value="months"' + (client.settings?.kitchenRotation?.schedule?.startsWith('months:') ? ' checked' : '') + '> Every ' +
+    '<input class="input" style="width:60px; padding:2px 6px; display:inline-block; margin:0 4px;" type="number" min="1" max="12" id="kcode-months-n" value="' + (client.settings?.kitchenRotation?.schedule?.startsWith('months:') ? client.settings.kitchenRotation.schedule.split(':')[1] : '1') + '"> months</label>' +
+    '</div>' +
+
+    '<div class="form-grid form-grid--2 mb-4">' +
+    '<div class="field"><label class="label" for="kcode-time">Change at</label><input class="input" id="kcode-time" type="time" value="' + (client.settings?.kitchenRotation?.time || '04:00') + '"></div>' +
+    '<div class="field" id="wrap-custom-kcode"' + ((client.settings?.kitchenRotation?.schedule || 'permanent') !== 'permanent' ? ' style="display:none;"' : '') + '><label class="label" for="kcode-custom">Custom code (Permanent only, optional)</label><input class="input mono" id="kcode-custom" type="text" maxlength="10" placeholder="e.g. OLIVE7" value="' + esc(client.kitchenCode || '') + '"></div>' +
+    '</div>' +
+
+    '<div class="list-row mb-4"><div class="list-row__main"><p class="list-row__title">Log out kitchen and floor tablets when the code changes</p>' +
+    '<p class="list-row__meta">When enabled, any connected kitchen displays or staff devices must enter the new code to re-authenticate.</p></div>' +
+    '<label class="switch"><input type="checkbox" id="kcode-autologout"' + (client.settings?.kitchenRotation?.autoLogout ? ' checked' : '') + '><span class="switch__track"></span></label></div>' +
+
+    '<hr class="my-6" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">' +
     '<h3 class="card__title mb-4" style="font-size:1.05rem;">Anti-Spam & Payment Security</h3>' +
     '<div class="list-row"><div class="list-row__main"><p class="list-row__title">GPS Geofence Protection</p>' +
     '<p class="list-row__meta">Restricts table orders to customers physically inside your restaurant radius. Stops remote photo pranksters.</p></div>' +
@@ -2742,6 +2826,7 @@ function renderSettings() {
         next.phone = host.querySelector('#rest-phone').value;
         next.address = host.querySelector('#rest-address').value;
         next.tagline = host.querySelector('#rest-tagline').value;
+        next.timezone = host.querySelector('#rest-timezone') ? host.querySelector('#rest-timezone').value : (next.timezone || 'UTC');
         store.update('clients', client.id, { name: host.querySelector('#rest-name').value, settings: next });
         toast('Profile saved');
       }
@@ -2792,6 +2877,49 @@ function renderSettings() {
         toast('Notifications saved');
       }
       if (which === 'security') {
+        const schedChoice = host.querySelector('input[name="kcode-schedule"]:checked')?.value || 'permanent';
+        let sched = schedChoice;
+        if (schedChoice === 'days') {
+          const daysN = Math.max(1, Math.min(90, parseInt(host.querySelector('#kcode-days-n')?.value, 10) || 7));
+          sched = 'days:' + daysN;
+        } else if (schedChoice === 'months') {
+          const monthsN = Math.max(1, Math.min(12, parseInt(host.querySelector('#kcode-months-n')?.value, 10) || 1));
+          sched = 'months:' + monthsN;
+        }
+
+        const changeTime = host.querySelector('#kcode-time')?.value || '04:00';
+        const autoLogout = host.querySelector('#kcode-autologout')?.checked || false;
+        const customCodeInput = host.querySelector('#kcode-custom')?.value.trim().toUpperCase() || '';
+
+        let finalCode = client.kitchenCode;
+        if (sched === 'permanent' && customCodeInput && customCodeInput !== client.kitchenCode) {
+          if (!/^[A-Za-z0-9]{6,10}$/.test(customCodeInput)) {
+            return toast('Custom code must be 6-10 letters or numbers.', 'warning');
+          }
+          const conflict = store.query('clients', (c) => c.id !== client.id && String(c.kitchenCode).toUpperCase() === customCodeInput)[0];
+          if (conflict) {
+            return toast('That code is already in use by another restaurant. Choose another.', 'warning');
+          }
+          finalCode = customCodeInput;
+        }
+
+        const nextChangeAt = store.computeNextChangeAt(sched, changeTime, next.timezone);
+        next.kitchenRotation = {
+          schedule: sched,
+          time: changeTime,
+          autoLogout,
+          nextChangeAt,
+        };
+
+        const clientPatch = { settings: next };
+        if (finalCode !== client.kitchenCode) {
+          clientPatch.kitchenCode = finalCode;
+          clientPatch.previousKitchenCode = client.kitchenCode;
+          const oldList = Array.isArray(client.oldKitchenCodes) ? [...client.oldKitchenCodes] : [];
+          if (!oldList.includes(client.kitchenCode)) oldList.push(client.kitchenCode);
+          clientPatch.oldKitchenCodes = oldList;
+        }
+
         next.printVisitSlip = host.querySelector('#set-print-slip') ? host.querySelector('#set-print-slip').checked : false;
         next.geofence = {
           enabled: host.querySelector('#set-geofence') ? host.querySelector('#set-geofence').checked : true,
@@ -2807,9 +2935,16 @@ function renderSettings() {
         next.seatedCheck = {
           enabled: host.querySelector('#set-seated-check') ? host.querySelector('#set-seated-check').checked : true,
         };
-        store.update('clients', client.id, { settings: next });
+        store.update('clients', client.id, clientPatch);
         emit('settings:update', { clientId: client.id });
-        toast('Security & anti-spam settings saved');
+
+        // Update UI displays
+        const codeDisplay = host.querySelector('#display-kitchen-code');
+        if (codeDisplay) codeDisplay.textContent = finalCode;
+        const nextText = host.querySelector('#text-next-change');
+        if (nextText) nextText.textContent = 'Next change: ' + formatNextChange(nextChangeAt, sched);
+
+        toast('Security & kitchen code settings saved');
       }
       if (which === 'payments') {
         const policyVal = host.querySelector('input[name="set-pay-policy"]:checked')?.value || host.querySelector('input[name="payment-policy"]:checked')?.value || 'pay_at_order';
@@ -2879,6 +3014,51 @@ function renderSettings() {
         toast('Payment Gateways & Methods saved');
       }
       store.logActivity({ actor: session.name, clientId: client.id, type: 'Settings', details: 'Settings saved (' + which + ')' });
+    });
+  });
+
+  // Kitchen code rotation controls
+  const copyKcodeBtn = host.querySelector('#btn-copy-kcode');
+  if (copyKcodeBtn) {
+    copyKcodeBtn.addEventListener('click', async () => {
+      const currentC = host.querySelector('#display-kitchen-code')?.textContent || client.kitchenCode;
+      try {
+        await navigator.clipboard.writeText(currentC);
+        toast('Kitchen code copied: ' + currentC);
+      } catch (e) {
+        toast('Code: ' + currentC);
+      }
+    });
+  }
+
+  const rotateNowBtn = host.querySelector('#btn-rotate-kcode-now');
+  if (rotateNowBtn) {
+    rotateNowBtn.addEventListener('click', () => {
+      confirmDialog({
+        title: 'Generate new kitchen code?',
+        text: 'The current code will stop working immediately. Kitchen staff will need the new code to log in.',
+        confirmLabel: 'Generate new code',
+        danger: true,
+      }).then((ok) => {
+        if (!ok) return;
+        const newCode = store.rotateKitchenCodeForClient(client.id);
+        const codeDisplay = host.querySelector('#display-kitchen-code');
+        if (codeDisplay) codeDisplay.textContent = newCode;
+        const updated = store.getById('clients', client.id);
+        const nextText = host.querySelector('#text-next-change');
+        if (nextText && updated) {
+          nextText.textContent = 'Next change: ' + formatNextChange(updated.settings?.kitchenRotation?.nextChangeAt, updated.settings?.kitchenRotation?.schedule);
+        }
+        toast('New kitchen code generated: ' + newCode);
+      });
+    });
+  }
+
+  const scheduleRadios = host.querySelectorAll('input[name="kcode-schedule"]');
+  scheduleRadios.forEach((radio) => {
+    radio.addEventListener('change', () => {
+      const wrapCustom = host.querySelector('#wrap-custom-kcode');
+      if (wrapCustom) wrapCustom.style.display = radio.value === 'permanent' ? 'block' : 'none';
     });
   });
 

@@ -6,29 +6,44 @@
 import { getAll, query, getById, insert, update, logActivity } from './store.js';
 
 export const ROOT = new URL('../../', import.meta.url).href;
-export const SESSION_KEY = 'tqr_session';
+export const OWNER_SESSION_KEY = 'tqr_session';
+export const ADMIN_SESSION_KEY = 'tqr_admin_session';
+export const SESSION_KEY = OWNER_SESSION_KEY;
 
-export function getSession() {
+export function getSession(key = OWNER_SESSION_KEY) {
   try {
-    const raw = localStorage.getItem(SESSION_KEY);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : null;
   } catch (err) {
     return null;
   }
 }
 
-export function setSession(session) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+export function setSession(session, key = OWNER_SESSION_KEY) {
+  localStorage.setItem(key, JSON.stringify(session));
   return session;
 }
 
+export function getAdminSession() {
+  return getSession(ADMIN_SESSION_KEY);
+}
+
+export function setAdminSession(session) {
+  return setSession(session, ADMIN_SESSION_KEY);
+}
+
 export function logout() {
-  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(OWNER_SESSION_KEY);
   location.href = ROOT + 'auth/login.html';
 }
 
+export function adminLogout() {
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+  location.href = ROOT + 'admin/login.html';
+}
+
 export function logoutTo(where) {
-  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(OWNER_SESSION_KEY);
   location.href = ROOT + where;
 }
 
@@ -37,25 +52,13 @@ export function platformSettings() {
 }
 
 /* ----------------------------------------------------------------- login -- */
-export function login(email, password) {
+export function ownerLogin(email, password) {
   const mail = String(email || '').trim().toLowerCase();
   const pass = String(password || '');
 
-  const admin = query('admins', (a) => a.email.toLowerCase() === mail && a.password === pass)[0];
-  if (admin) {
-    logActivity({ actor: admin.name, type: 'Login', details: 'Admin logged in' });
-    return setSession({
-      role: 'admin',
-      id: admin.id,
-      name: admin.name,
-      email: admin.email,
-      adminRole: admin.role,
-    });
-  }
-
   const owner = query('owners', (o) => o.email.toLowerCase() === mail && o.password === pass)[0];
   if (!owner) {
-    throw new Error('That email and password do not match. Please check your credentials and try again.');
+    throw new Error('Email or password is incorrect.');
   }
 
   const client = getById('clients', owner.clientId);
@@ -80,12 +83,42 @@ export function login(email, password) {
     clientId: client.id,
     name: owner.name,
     email: owner.email,
+  }, OWNER_SESSION_KEY);
+}
+
+export function adminLogin(email, password) {
+  const mail = String(email || '').trim().toLowerCase();
+  const pass = String(password || '');
+
+  const admin = query('admins', (a) => a.email.toLowerCase() === mail && a.password === pass)[0];
+  if (!admin) {
+    throw new Error('Email or password is incorrect.');
+  }
+
+  logActivity({ actor: admin.name, type: 'Login', details: 'Admin logged in' });
+  return setAdminSession({
+    role: 'admin',
+    id: admin.id,
+    name: admin.name,
+    email: admin.email,
+    adminRole: admin.role,
   });
 }
 
+export function login(email, password) {
+  return ownerLogin(email, password);
+}
+
 export function kitchenLogin(code, pin) {
-  const client = query('clients', (c) => String(c.kitchenCode).toLowerCase() === String(code || '').trim().toLowerCase())[0];
-  if (!client) throw new Error('That restaurant code was not found. Ask your manager to check it.');
+  const inputCode = String(code || '').trim().toLowerCase();
+  const client = query('clients', (c) => String(c.kitchenCode).toLowerCase() === inputCode)[0];
+  if (!client) {
+    const wasOldCode = query('clients', (c) => (c.previousKitchenCode && String(c.previousKitchenCode).toLowerCase() === inputCode) || (Array.isArray(c.oldKitchenCodes) && c.oldKitchenCodes.some((oc) => String(oc).toLowerCase() === inputCode)))[0];
+    if (wasOldCode) {
+      throw new Error("This kitchen code has changed. Ask your manager for today's code.");
+    }
+    throw new Error('That restaurant code was not found. Ask your manager to check it.');
+  }
 
   if (client.status === 'suspended') throw new Error('This restaurant account is suspended. Contact support.');
   if (!client.restrictions.kitchen) throw new Error('Kitchen panel access is turned off for this restaurant.');
@@ -103,17 +136,24 @@ export function kitchenLogin(code, pin) {
     clientId: client.id,
     name: staff.name,
     email: client.kitchenCode,
-  });
+  }, OWNER_SESSION_KEY);
 }
 
 /* ----------------------------------------------------------------- guards -- */
 export function requireRole(role) {
-  const session = getSession();
+  if (role === 'admin') {
+    const adminSession = getAdminSession();
+    if (!adminSession || adminSession.role !== 'admin') {
+      location.replace(ROOT + 'admin/login.html');
+      throw new Error('Redirecting to admin login');
+    }
+    return adminSession;
+  }
+
+  const session = getSession(OWNER_SESSION_KEY);
 
   if (!session || session.role !== role) {
-    const target = role === 'kitchen' ? 'auth/kitchen-login.html'
-      : role === 'admin' ? 'auth/login.html?role=admin'
-        : 'auth/login.html';
+    const target = role === 'kitchen' ? 'auth/kitchen-login.html' : 'auth/login.html';
     location.replace(ROOT + target);
     throw new Error('Redirecting to login');
   }
@@ -121,7 +161,7 @@ export function requireRole(role) {
   if (role === 'owner') {
     const client = getById('clients', session.clientId);
     if (!client || client.status === 'suspended') {
-      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(OWNER_SESSION_KEY);
       location.replace(ROOT + 'auth/login.html');
       throw new Error('Redirecting to login');
     }
@@ -131,19 +171,19 @@ export function requireRole(role) {
 }
 
 export function currentClient() {
-  const session = getSession();
+  const session = getSession(OWNER_SESSION_KEY);
   if (!session || !session.clientId) return null;
   return getById('clients', session.clientId);
 }
 
 /* -------------------------------------------------------- impersonation -- */
 export function startImpersonation(clientId) {
-  const admin = getSession();
+  const admin = getAdminSession();
   if (!admin || admin.role !== 'admin') throw new Error('Only admins can view as an owner.');
   const client = getById('clients', clientId);
   const owner = query('owners', (o) => o.clientId === clientId)[0];
   logActivity({ actor: admin.name, clientId, type: 'Impersonation', details: 'Admin started viewing as owner' });
-  return setSession({
+  setSession({
     role: 'owner',
     id: owner ? owner.id : 'impersonated',
     clientId,
@@ -153,20 +193,13 @@ export function startImpersonation(clientId) {
     adminId: admin.id,
     adminName: admin.name,
     restaurant: client ? client.name : '',
-  });
+  }, OWNER_SESSION_KEY);
+  location.href = ROOT + 'owner/dashboard.html';
 }
 
 export function stopImpersonation() {
-  const session = getSession();
-  if (!session || !session.impersonating) return logout();
-  const admin = getById('admins', session.adminId);
-  setSession({
-    role: 'admin',
-    id: session.adminId,
-    name: admin ? admin.name : session.adminName,
-    email: admin ? admin.email : '',
-    adminRole: admin ? admin.role : 'super',
-  });
+  const session = getSession(OWNER_SESSION_KEY);
+  localStorage.removeItem(OWNER_SESSION_KEY);
   location.href = ROOT + 'admin/clients.html';
 }
 
@@ -251,7 +284,7 @@ export function createOwnerFromInvite(invite, password) {
     clientId: client.id,
     name: owner.name,
     email: owner.email,
-  });
+  }, OWNER_SESSION_KEY);
 
   return client;
 }

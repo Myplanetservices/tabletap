@@ -3,7 +3,7 @@
    Login, kitchen PIN login and accepting an invite.
    ========================================================================== */
 
-import { login, kitchenLogin, createOwnerFromInvite, ROOT } from './auth.js';
+import { login, ownerLogin, adminLogin, kitchenLogin, createOwnerFromInvite, ROOT } from './auth.js';
 import { getAll, query } from './store.js';
 import { qs, esc, formatDateTime, toast } from './helpers.js';
 
@@ -15,20 +15,113 @@ function showError(id, message) {
 }
 
 /* ------------------------------------------------------------------ login -- */
+const isAdminPage = location.pathname.includes('/admin/');
+const ADMIN_LOCK_KEY = 'tqr_admin_lock';
+
+function checkAdminLock() {
+  try {
+    const raw = localStorage.getItem(ADMIN_LOCK_KEY);
+    if (!raw) return null;
+    const lock = JSON.parse(raw);
+    const now = Date.now();
+    if (lock.until && lock.until > now) {
+      return Math.ceil((lock.until - now) / 1000);
+    } else {
+      localStorage.removeItem(ADMIN_LOCK_KEY);
+      return null;
+    }
+  } catch (e) {
+    return null;
+  }
+}
+
+function recordAdminFailedAttempt() {
+  try {
+    const raw = localStorage.getItem(ADMIN_LOCK_KEY);
+    let lock = raw ? JSON.parse(raw) : { attempts: 0, until: 0 };
+    lock.attempts = (lock.attempts || 0) + 1;
+    if (lock.attempts >= 5) {
+      lock.until = Date.now() + 15 * 60 * 1000; // 15 minutes lockout
+    }
+    localStorage.setItem(ADMIN_LOCK_KEY, JSON.stringify(lock));
+    return lock;
+  } catch (e) {
+    return { attempts: 1 };
+  }
+}
+
+function clearAdminLock() {
+  localStorage.removeItem(ADMIN_LOCK_KEY);
+}
+
 const loginForm = document.querySelector('.auth-card__form');
 if (loginForm && document.getElementById('login-error')) {
+  let lockTimer = null;
+  function updateLockUI() {
+    const remainingSec = checkAdminLock();
+    const button = loginForm.querySelector('button[type="submit"]');
+    if (remainingSec && remainingSec > 0) {
+      const min = Math.floor(remainingSec / 60);
+      const sec = remainingSec % 60;
+      showError('login-error', 'Too many failed attempts. Please wait ' + min + 'm ' + (sec < 10 ? '0' : '') + sec + 's before trying again.');
+      if (button) button.disabled = true;
+      if (!lockTimer) {
+        lockTimer = setInterval(updateLockUI, 1000);
+      }
+    } else {
+      if (lockTimer) {
+        clearInterval(lockTimer);
+        lockTimer = null;
+      }
+      if (button && button.textContent === 'Log in') button.disabled = false;
+      const currentErr = document.getElementById('login-error')?.textContent;
+      if (currentErr && currentErr.includes('Too many failed attempts')) {
+        showError('login-error', '');
+      }
+    }
+  }
+
+  if (isAdminPage) {
+    updateLockUI();
+  }
+
   loginForm.addEventListener('submit', (event) => {
     event.preventDefault();
     showError('login-error', '');
+
+    if (isAdminPage) {
+      const rem = checkAdminLock();
+      if (rem && rem > 0) {
+        updateLockUI();
+        return;
+      }
+    }
+
     const email = loginForm.querySelector('#email').value;
     const password = loginForm.querySelector('#password').value;
     const button = loginForm.querySelector('button[type="submit"]');
     button.disabled = true;
     button.textContent = 'Signing in…';
+
     try {
-      const session = login(email, password);
-      location.href = session.role === 'admin' ? '../admin/dashboard.html' : '../owner/dashboard.html';
+      if (isAdminPage) {
+        adminLogin(email, password);
+        clearAdminLock();
+        location.href = 'dashboard.html';
+      } else {
+        ownerLogin(email, password);
+        location.href = '../owner/dashboard.html';
+      }
     } catch (err) {
+      if (isAdminPage) {
+        const lock = recordAdminFailedAttempt();
+        if (lock.attempts >= 5) {
+          updateLockUI();
+          button.disabled = true;
+          button.textContent = 'Log in';
+          return;
+        }
+      }
       showError('login-error', err.message);
       button.disabled = false;
       button.textContent = 'Log in';

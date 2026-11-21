@@ -109,6 +109,123 @@ export function logActivity({ actor = 'System', clientId = null, type = 'Other',
   });
 }
 
+/* ------------------------------------------------ kitchen code rotation -- */
+const ROTATION_CHARS = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+
+export function generateRandomKitchenCode() {
+  let res = '';
+  for (let i = 0; i < 6; i++) {
+    res += ROTATION_CHARS.charAt(Math.floor(Math.random() * ROTATION_CHARS.length));
+  }
+  return res;
+}
+
+export function computeNextChangeAt(schedule, timeStr, timeZone) {
+  if (schedule === 'permanent') return null;
+  const [hh, mm] = (timeStr || '04:00').split(':').map((n) => parseInt(n, 10) || 0);
+
+  // Calculate next target time in UTC based on restaurant time zone or local
+  const now = new Date();
+  let candidate = new Date();
+  candidate.setHours(hh, mm, 0, 0);
+
+  if (candidate <= now) {
+    if (schedule === 'daily') {
+      candidate.setDate(candidate.getDate() + 1);
+    } else if (schedule.startsWith('days:')) {
+      const days = parseInt(schedule.split(':')[1], 10) || 1;
+      candidate.setDate(candidate.getDate() + days);
+    } else if (schedule.startsWith('months:')) {
+      const months = parseInt(schedule.split(':')[1], 10) || 1;
+      candidate.setMonth(candidate.getMonth() + months);
+    } else {
+      candidate.setDate(candidate.getDate() + 1);
+    }
+  }
+  return candidate.toISOString();
+}
+
+export function rotateKitchenCodeForClient(clientId, forcedNewCode = null) {
+  const client = getById('clients', clientId);
+  if (!client) return null;
+
+  const currentCode = client.kitchenCode;
+  const rot = (client.settings && client.settings.kitchenRotation) || {
+    schedule: 'permanent',
+    time: '04:00',
+    autoLogout: false,
+    nextChangeAt: null,
+  };
+
+  const newCode = forcedNewCode || generateRandomKitchenCode();
+  const oldCodes = Array.isArray(client.oldKitchenCodes) ? [...client.oldKitchenCodes] : [];
+  if (currentCode && !oldCodes.includes(currentCode)) {
+    oldCodes.push(currentCode);
+  }
+
+  const nextChangeAt = computeNextChangeAt(rot.schedule, rot.time, client.settings?.timezone);
+  const updatedRotation = {
+    ...rot,
+    nextChangeAt,
+  };
+
+  const updatedSettings = {
+    ...(client.settings || {}),
+    kitchenRotation: updatedRotation,
+  };
+
+  update('clients', client.id, {
+    kitchenCode: newCode,
+    previousKitchenCode: currentCode,
+    oldKitchenCodes: oldCodes,
+    settings: updatedSettings,
+  });
+
+  logActivity({
+    actor: 'System',
+    clientId: client.id,
+    type: 'Security',
+    details: 'Kitchen code changed to ' + newCode,
+  });
+
+  // If autoLogout is on, terminate kitchen sessions of this restaurant
+  if (rot.autoLogout) {
+    try {
+      const curSession = JSON.parse(localStorage.getItem('tqr_session') || 'null');
+      if (curSession && curSession.role === 'kitchen' && curSession.clientId === client.id) {
+        localStorage.removeItem('tqr_session');
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const bus = new BroadcastChannel('tqr');
+    bus.postMessage({ event: 'kitchen:code_changed', data: { clientId: client.id, code: newCode, autoLogout: rot.autoLogout } });
+    bus.close();
+  } catch (e) {}
+
+  return newCode;
+}
+
+export function checkKitchenCodeRotations() {
+  const allClients = getAll('clients');
+  const now = Date.now();
+  allClients.forEach((client) => {
+    const rot = client.settings && client.settings.kitchenRotation;
+    if (rot && rot.schedule !== 'permanent' && rot.nextChangeAt) {
+      if (now >= new Date(rot.nextChangeAt).getTime()) {
+        rotateKitchenCodeForClient(client.id);
+      }
+    }
+  });
+}
+
+// Run check on load and every 60 seconds
+try {
+  checkKitchenCodeRotations();
+  setInterval(checkKitchenCodeRotations, 60000);
+} catch (e) {}
+
 /* --------------------------------------------------------------- seed ---- */
 const IMG = (id) => 'https://images.unsplash.com/photo-' + id + '?auto=format&fit=crop&w=240&q=70';
 
