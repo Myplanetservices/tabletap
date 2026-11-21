@@ -438,6 +438,7 @@ function seed() {
         seatedCheck: {
           enabled: true,
         },
+        useWaiterApp: true,
         paymentNote: 'Instant Apple Pay, UPI, or Card at table. Waiter can also collect at table.',
         rounding: 'none',
         accent: '#7A2E2B',
@@ -507,13 +508,13 @@ function seed() {
     });
   });
 
-  // Kitchen staff
+  // Kitchen & floor staff
   [
-    ['Ravi Kumar', '1234', true, mins(2)],
-    ['Meera Joshi', '4821', true, mins(18)],
-    ['Sanjay Patil', '7712', false, days(3)],
-  ].forEach(([name, pin, active, lastActive], i) => {
-    data.staff.push({ id: 'stf_' + i, clientId: 'cli_olive-table', name, role: 'kitchen', pin, active, lastActive });
+    ['Ravi Kumar', '1234', 'floor', true, mins(2)],
+    ['Meera Joshi', '4821', 'kitchen', true, mins(18)],
+    ['Sanjay Patil', '7712', 'kitchen', false, days(3)],
+  ].forEach(([name, pin, role, active, lastActive], i) => {
+    data.staff.push({ id: 'stf_' + i, clientId: 'cli_olive-table', name, role: role || 'kitchen', pin, active, lastActive });
   });
 
   // Orders

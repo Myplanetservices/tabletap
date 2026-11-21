@@ -8,6 +8,8 @@ import { getAll, query, getById, insert, update, logActivity } from './store.js'
 export const ROOT = new URL('../../', import.meta.url).href;
 export const OWNER_SESSION_KEY = 'tqr_session';
 export const ADMIN_SESSION_KEY = 'tqr_admin_session';
+export const KITCHEN_SESSION_KEY = 'tqr_kitchen_session';
+export const FLOOR_SESSION_KEY = 'tqr_floor_session';
 export const SESSION_KEY = OWNER_SESSION_KEY;
 
 export function getSession(key = OWNER_SESSION_KEY) {
@@ -34,12 +36,24 @@ export function setAdminSession(session) {
 
 export function logout() {
   localStorage.removeItem(OWNER_SESSION_KEY);
+  localStorage.removeItem(KITCHEN_SESSION_KEY);
+  localStorage.removeItem(FLOOR_SESSION_KEY);
   location.href = ROOT + 'auth/login.html';
 }
 
 export function adminLogout() {
   localStorage.removeItem(ADMIN_SESSION_KEY);
   location.href = ROOT + 'admin/login.html';
+}
+
+export function kitchenLogout() {
+  localStorage.removeItem(KITCHEN_SESSION_KEY);
+  location.href = ROOT + 'auth/kitchen-login.html';
+}
+
+export function floorLogout() {
+  localStorage.removeItem(FLOOR_SESSION_KEY);
+  location.href = ROOT + 'auth/kitchen-login.html';
 }
 
 export function logoutTo(where) {
@@ -128,15 +142,23 @@ export function kitchenLogin(code, pin) {
 
   update('staff', staff.id, { lastActive: new Date().toISOString() });
   update('clients', client.id, { lastActive: new Date().toISOString() });
-  logActivity({ actor: staff.name, clientId: client.id, type: 'Login', details: 'Kitchen logged in' });
+  logActivity({ actor: staff.name, clientId: client.id, type: 'Login', details: (staff.role === 'floor' ? 'Floor' : 'Kitchen') + ' logged in' });
 
-  return setSession({
-    role: 'kitchen',
+  const sessionObj = {
+    role: staff.role === 'floor' ? 'floor' : 'kitchen',
     id: staff.id,
     clientId: client.id,
     name: staff.name,
     email: client.kitchenCode,
-  }, OWNER_SESSION_KEY);
+  };
+
+  if (staff.role === 'floor') {
+    setSession(sessionObj, FLOOR_SESSION_KEY);
+  } else {
+    setSession(sessionObj, KITCHEN_SESSION_KEY);
+  }
+
+  return sessionObj;
 }
 
 /* ----------------------------------------------------------------- guards -- */
@@ -150,11 +172,29 @@ export function requireRole(role) {
     return adminSession;
   }
 
+  if (role === 'kitchen') {
+    const kitchenSession = getSession(KITCHEN_SESSION_KEY) || getSession(OWNER_SESSION_KEY);
+    if (!kitchenSession || (kitchenSession.role !== 'kitchen' && kitchenSession.role !== 'owner')) {
+      location.replace(ROOT + 'auth/kitchen-login.html');
+      throw new Error('Redirecting to kitchen login');
+    }
+    return kitchenSession;
+  }
+
+  if (role === 'floor') {
+    // Floor app can be opened by floor staff or owner
+    const floorSession = getSession(FLOOR_SESSION_KEY) || getSession(OWNER_SESSION_KEY);
+    if (!floorSession || (floorSession.role !== 'floor' && floorSession.role !== 'owner')) {
+      location.replace(ROOT + 'auth/kitchen-login.html');
+      throw new Error('Redirecting to staff login');
+    }
+    return floorSession;
+  }
+
   const session = getSession(OWNER_SESSION_KEY);
 
   if (!session || session.role !== role) {
-    const target = role === 'kitchen' ? 'auth/kitchen-login.html' : 'auth/login.html';
-    location.replace(ROOT + target);
+    location.replace(ROOT + 'auth/login.html');
     throw new Error('Redirecting to login');
   }
 
@@ -171,7 +211,7 @@ export function requireRole(role) {
 }
 
 export function currentClient() {
-  const session = getSession(OWNER_SESSION_KEY);
+  const session = getSession(OWNER_SESSION_KEY) || getSession(KITCHEN_SESSION_KEY) || getSession(FLOOR_SESSION_KEY);
   if (!session || !session.clientId) return null;
   return getById('clients', session.clientId);
 }

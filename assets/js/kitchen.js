@@ -7,6 +7,7 @@ import * as store from './store.js';
 import { requireRole, currentClient, logout } from './auth.js';
 import { emit, on } from './realtime.js';
 import { esc, timeAgo, toast, confirmDialog, initials, formatMoney, renderPaginationHtml } from './helpers.js';
+import { playSound, showNotification, showShiftOverlay } from './alerts.js';
 
 const session = requireRole('kitchen');
 const client = currentClient();
@@ -47,21 +48,19 @@ function paintSound() {
 
 function beep() {
   if (!soundOn) return;
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.setValueAtTime(1180, ctx.currentTime + 0.12);
-    gain.gain.setValueAtTime(0.16, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.5);
-  } catch (err) { /* audio blocked until first tap — fine */ }
+  playSound('newOrder');
+}
+
+// Start Shift Overlay (Kitchen)
+if (page === 'kitchen') {
+  showShiftOverlay({
+    restaurantName: client.name,
+    staffName: session.name || 'Kitchen Staff',
+    onStarted: () => {
+      soundOn = true;
+      paintSound();
+    },
+  });
 }
 
 const soundBtn = document.getElementById('k-sound');
@@ -307,10 +306,11 @@ function ticketHtml(order, column) {
   const diffSec = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000));
   const minutes = Math.floor(diffSec / 60);
   const timeStr = formatElapsedTime(order);
-  let action = column === 'new' ? 'Start' : column === 'preparing' ? 'Mark ready' : 'Served';
+  const useWaiter = client.settings?.useWaiterApp !== false;
+  let action = column === 'new' ? 'Start' : column === 'preparing' ? (useWaiter ? 'Mark ready' : 'Served') : 'Served';
   if (window.TableTapI18n) {
     if (column === 'new') action = window.TableTapI18n.t('kitchen.action_start', 'Start');
-    else if (column === 'preparing') action = window.TableTapI18n.t('kitchen.action_ready', 'Mark ready');
+    else if (column === 'preparing') action = useWaiter ? window.TableTapI18n.t('kitchen.action_ready', 'Mark ready') : window.TableTapI18n.t('kitchen.action_served', 'Served');
     else action = window.TableTapI18n.t('kitchen.action_served', 'Served');
   }
 
@@ -332,16 +332,23 @@ function ticketHtml(order, column) {
     ? '<span style="background: rgba(16,185,129,0.15); color: #059669; border: 1px solid rgba(16,185,129,0.3); padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="shield-check" style="width:12px;height:12px;"></i> PAID (' + esc((order.paymentMethod || 'apple_pay').replace('_', ' ').toUpperCase()) + ')</span>'
     : '<span style="background: rgba(245,158,11,0.15); color: #D97706; border: 1px solid rgba(245,158,11,0.3); padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="clock" style="width:12px;height:12px;"></i> PAY SERVER</span>';
 
-  return '<article class="k-ticket' + (order.__flash ? ' k-ticket--flash' : '') + '" data-order="' + order.id + '">' +
-    '<div class="k-ticket__head"><div><p class="k-ticket__table">' + esc(order.tableName) + '</p>' +
+  const readyBadge = column === 'ready' && useWaiter
+    ? '<div style="margin:6px 0;padding:4px 8px;background:rgba(16,185,129,0.15);color:#059669;border-radius:6px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;"><i data-lucide="user-check" style="width:14px;height:14px;"></i> Waiting for waiter</div>'
+    : '';
+
+  const newBadge = unacknowledgedOrderIds.has(order.id) ? '<span class="badge badge--danger" style="animation:pulse 1.5s infinite;margin-left:6px;font-size:11px;">NEW</span>' : '';
+
+  return '<article class="k-ticket' + (order.__flash || unacknowledgedOrderIds.has(order.id) ? ' k-ticket--flash' : '') + '" data-order="' + order.id + '">' +
+    '<div class="k-ticket__head"><div><p class="k-ticket__table">' + esc(order.tableName) + newBadge + '</p>' +
     '<p class="k-ticket__meta">Order #' + order.number + ' · ' + payBadge + '</p></div>' +
     '<span class="k-timer' + timerClass(minutes) + '" data-timer="' + order.id + '"><i data-lucide="timer"></i> <span class="k-timer__text">' + timeStr + '</span></span></div>' +
     vacantAlertHtml +
+    readyBadge +
     '<div class="k-items">' + itemsHtml(order) + '</div>' +
     (order.note ? '<p class="k-note">' + esc(order.note) + '</p>' : '') +
     (order.guestName ? '<p class="k-guest">Guest: ' + esc(order.guestName) + '</p>' : '') +
     '<button class="btn btn--primary" type="button" data-action="' + order.id + '" data-next="' +
-    (column === 'new' ? 'preparing' : column === 'preparing' ? 'ready' : 'served') + '">' + action + '</button>' +
+    (column === 'new' ? 'preparing' : column === 'preparing' ? (useWaiter ? 'ready' : 'served') : 'served') + '">' + action + '</button>' +
     '</article>';
 }
 
@@ -492,6 +499,9 @@ if (columnsHost) {
       const next = action.getAttribute('data-next');
       const order = store.update('orders', id, { status: next, updatedAt: new Date().toISOString() });
       emit('order:update', { orderId: id, clientId: client.id });
+      if (next === 'ready') {
+        emit('order:ready', { orderId: id, clientId: client.id, tableName: order.tableName, number: order.number });
+      }
       store.logActivity({
         actor: session.name,
         clientId: client.id,
@@ -532,20 +542,64 @@ setInterval(() => {
   });
 }, 1000);
 
-/* New order arrival */
+/* New order arrival loop & unacknowledged order tracking */
+const unacknowledgedOrderIds = new Set();
+let chimeInterval = null;
+
+function updateTabTitle() {
+  const newCount = ordersFor('new').length;
+  if (newCount > 0) {
+    document.title = `(${newCount}) New orders — TableTap Kitchen`;
+  } else {
+    document.title = 'Kitchen — TableTap';
+  }
+}
+
+function startChimeLoop() {
+  if (chimeInterval) return;
+  chimeInterval = setInterval(() => {
+    if (unacknowledgedOrderIds.size > 0 && soundOn) {
+      playSound('newOrder');
+    } else if (unacknowledgedOrderIds.size === 0) {
+      clearInterval(chimeInterval);
+      chimeInterval = null;
+    }
+  }, 20000); // chime every 20 seconds
+}
+
 function announce(order) {
-  beep();
+  unacknowledgedOrderIds.add(order.id);
+  playSound('newOrder');
+  showNotification(`New order — ${order.tableName} (${order.items.length} items)`, `Order #${order.number}`);
+  startChimeLoop();
+  updateTabTitle();
+
   if (bannerHost) {
-    bannerHost.innerHTML = '<div class="k-banner"><i data-lucide="bell"></i> New order — ' + esc(order.tableName) + '</div>';
+    bannerHost.innerHTML = '<div class="k-banner" style="background:#10B981;color:#fff;font-weight:700;padding:10px 16px;display:flex;align-items:center;gap:8px;border-radius:8px;margin-bottom:12px;box-shadow:0 4px 12px rgba(16,185,129,0.3);"><i data-lucide="bell"></i> New order — ' + esc(order.tableName) + '</div>';
     if (window.lucide) window.lucide.createIcons();
-    setTimeout(() => { bannerHost.innerHTML = ''; }, 5000);
+    setTimeout(() => { bannerHost.innerHTML = ''; }, 8000);
   }
   draw();
   const card = document.querySelector('[data-order="' + order.id + '"]');
   if (card) {
     card.classList.add('k-ticket--flash');
-    setTimeout(() => card.classList.remove('k-ticket--flash'), 4000);
+    setTimeout(() => card.classList.remove('k-ticket--flash'), 6000);
   }
+}
+
+// Acknowledge order on tap
+if (columnsHost) {
+  columnsHost.addEventListener('click', (event) => {
+    const ticket = event.target.closest('[data-order]');
+    if (ticket) {
+      const orderId = ticket.getAttribute('data-order');
+      if (unacknowledgedOrderIds.has(orderId)) {
+        unacknowledgedOrderIds.delete(orderId);
+        ticket.classList.remove('k-ticket--flash');
+        updateTabTitle();
+      }
+    }
+  });
 }
 
 on('order:new', (payload) => {
@@ -591,12 +645,13 @@ if (page === 'kitchen-completed') {
         : '0 orders';
     }
 
-    rowsHost.innerHTML = slice.length ? slice.map((order) =>
-      '<div class="k-row"><div><p class="k-row__table">' + esc(order.tableName) + '</p>' +
-      '<p class="k-row__meta">Order #' + order.number + ' · ' + new Date(order.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + '</p></div>' +
+    rowsHost.innerHTML = slice.length ? slice.map((order) => {
+      const pickedUpInfo = order.pickedUpBy ? ' · <span style="color:#059669;font-weight:600;"><i data-lucide="user-check" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Picked up by ' + esc(order.pickedUpBy) + '</span>' : '';
+      return '<div class="k-row"><div><p class="k-row__table">' + esc(order.tableName) + '</p>' +
+      '<p class="k-row__meta">Order #' + order.number + ' · ' + new Date(order.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + pickedUpInfo + '</p></div>' +
       '<p class="k-row__items">' + order.items.map((i) => i.qty + '× ' + esc(i.name)).join(' · ') + '</p>' +
-      '<button class="btn btn--secondary" type="button" data-recall="' + order.id + '"><i data-lucide="rotate-ccw"></i> Recall to Ready</button></div>'
-    ).join('') : '<div class="empty"><span class="empty__icon"><i data-lucide="check"></i></span>' +
+      '<button class="btn btn--secondary" type="button" data-recall="' + order.id + '"><i data-lucide="rotate-ccw"></i> Recall to Ready</button></div>';
+    }).join('') : '<div class="empty"><span class="empty__icon"><i data-lucide="check"></i></span>' +
       '<p class="empty__title">Nothing served yet today</p><p class="empty__text">Orders appear here as soon as they are marked served.</p></div>';
 
     if (pagesHost) {

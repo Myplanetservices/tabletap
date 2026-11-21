@@ -6,6 +6,7 @@
 import { login, ownerLogin, adminLogin, kitchenLogin, createOwnerFromInvite, ROOT } from './auth.js';
 import { getAll, query } from './store.js';
 import { qs, esc, formatDateTime, toast } from './helpers.js';
+import { sendEmail, renderEmailTemplate } from './mailer.js';
 
 function showError(id, message) {
   const box = document.getElementById(id);
@@ -160,8 +161,12 @@ if (kitchenForm) {
     const button = kitchenForm.querySelector('button[type="submit"]');
     button.disabled = true;
     try {
-      kitchenLogin(code, pin);
-      location.href = '../kitchen/index.html';
+      const sess = kitchenLogin(code, pin);
+      if (sess && sess.role === 'floor') {
+        location.href = '../owner/floor.html';
+      } else {
+        location.href = '../kitchen/index.html';
+      }
     } catch (err) {
       showError('kitchen-error', err.message);
       button.disabled = false;
@@ -218,6 +223,30 @@ if (inviteCard) {
 
       try {
         createOwnerFromInvite(invite, password);
+
+        // Send welcome email to new owner
+        const welcomeHtml = renderEmailTemplate({
+          title: 'Welcome to TableTap',
+          heading: `Welcome to TableTap, ${invite.ownerName}!`,
+          preheader: `Your account for ${invite.clientName} is now ready.`,
+          bodyHtml: `
+            <p style="margin:0 0 16px;">Hi ${esc(invite.ownerName)},</p>
+            <p style="margin:0 0 16px;">Congratulations! Your TableTap account for <strong>${esc(invite.clientName)}</strong> is now active.</p>
+            <p style="margin:0 0 16px;">You can now log in to set up your restaurant menu, customize pricing & taxes, print table QR codes, and pair your kitchen display.</p>
+            <p style="margin:0 0 16px;">If you ever need any assistance or tips getting started, our team is always here to help.</p>
+          `,
+          actionText: 'Go to Owner Dashboard',
+          actionUrl: new URL('../owner/dashboard.html', window.location.href).href,
+          footnote: 'Keep this email for your records. Log in anytime at tabletap.demo/auth/login.html.',
+        });
+
+        sendEmail({
+          to: invite.email,
+          subject: `Welcome to TableTap — ${invite.clientName}`,
+          html: welcomeHtml,
+          type: 'welcome',
+        });
+
         toast('Welcome to TableTap — your account is ready.');
         setTimeout(() => { location.href = '../owner/dashboard.html'; }, 700);
       } catch (err) {

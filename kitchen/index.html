@@ -7,6 +7,8 @@
 <meta name="description" content="TableTap kitchen screen for The Olive Table.">
 <link rel="stylesheet" href="../assets/css/fonts.css?v=20261112b">
 <link rel="stylesheet" href="../assets/css/style.css?v=20261112b">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#1F4D3A">
 </head>
 <body class="theme-dark" data-page="kitchen">
 <div class="kitchen-app">
@@ -63,5 +65,10 @@
 <script src="../assets/js/i18n.js?v=20261112b"></script>
 <script src="../assets/js/ui.js"></script>
 <script type="module" src="../assets/js/kitchen.js?v=20261112d"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('../sw.js').catch(() => {});
+}
+</script>
 </body>
 </html>

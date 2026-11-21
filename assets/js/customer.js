@@ -18,6 +18,24 @@ import { pushOrderToMongo } from './mongo-sync.js';
 const params = new URLSearchParams(location.search);
 const CART_KEY = 'tqr_cart';
 
+// Device testing helper (?device=<name>)
+const testDevice = qs('device');
+const DEVICE_ORDER_KEY = testDevice ? `tqr_device_${testDevice}_last_order` : 'tqr_device_last_order';
+
+if (testDevice) {
+  window.addEventListener('DOMContentLoaded', () => {
+    const topbar = document.querySelector('.menu-topbar') || document.querySelector('.menu-header');
+    if (topbar && !document.getElementById('device-test-badge')) {
+      const badge = document.createElement('span');
+      badge.id = 'device-test-badge';
+      badge.className = 'badge badge--neutral';
+      badge.style.cssText = 'font-size:11px;font-weight:700;margin-left:auto;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;';
+      badge.textContent = `Test device: ${testDevice}`;
+      topbar.appendChild(badge);
+    }
+  });
+}
+
 /* ------------------------------------------------------------- resolve ---- */
 function resolveContext() {
   const slug = qs('r');
@@ -1093,7 +1111,7 @@ function initCart(ctx) {
     const totals = cartTotals(cart, settings);
 
     // Per-device limit
-    const lastDeviceOrder = Number(localStorage.getItem('tqr_device_last_order') || 0);
+    const lastDeviceOrder = Number(localStorage.getItem(DEVICE_ORDER_KEY) || 0);
     if (Date.now() - lastDeviceOrder < 5000) {
       toast('Please wait a moment before ordering again.', 'warning');
       return;
@@ -1159,7 +1177,7 @@ function initCart(ctx) {
         updatedAt: new Date().toISOString(),
       });
 
-      localStorage.setItem('tqr_device_last_order', String(Date.now()));
+      localStorage.setItem(DEVICE_ORDER_KEY, String(Date.now()));
       addOrderToSession(session.id, order.id);
       emit('order:new', { orderId: order.id, clientId: client.id });
       pushOrderToMongo(order).catch(() => {});
@@ -1219,8 +1237,15 @@ function initStatus(ctx) {
 
   function render() {
     order = getById('orders', order.id) || order;
-    const steps = ['Received', 'Preparing', 'Ready', 'Served'];
-    const index = { new: 0, pending_approval: 0, preparing: 1, ready: 2, served: 3 }[order.status] ?? 0;
+    const steps = ['Received', 'Preparing', 'Ready', 'On its way', 'Served'];
+    const isPickedUp = order.pickedUp || order.status === 'picked_up';
+    let index = 0;
+    if (order.status === 'new' || order.status === 'pending_approval') index = 0;
+    else if (order.status === 'preparing') index = 1;
+    else if (order.status === 'ready' && !isPickedUp) index = 2;
+    else if (order.status === 'ready' && isPickedUp) index = 3;
+    else if (order.status === 'served') index = 4;
+
     const isRejected = order.status === 'rejected';
     const isVoided = order.status === 'voided';
 
@@ -1228,23 +1253,36 @@ function initStatus(ctx) {
       ? '<div style="display:inline-flex;align-items:center;gap:4px;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;padding:3px 10px;border-radius:6px;font-size:0.75rem;font-weight:700;margin-top:6px;"><i data-lucide="shield-check" style="width:14px;height:14px;"></i> Paid with ' + esc((order.paymentMethod || 'apple_pay').toUpperCase()) + ' · Ref #' + esc(order.paymentTxnId || 'VERIFIED') + '</div>'
       : '<div style="display:inline-flex;align-items:center;gap:4px;background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;padding:3px 10px;border-radius:6px;font-size:0.75rem;font-weight:600;margin-top:6px;"><i data-lucide="clock" style="width:14px;height:14px;"></i> Pay Waiter at Table</div>';
 
+    // Check if there is an active call for this table with on_my_way
+    const activeCalls = query('waiterCalls', (c) => c.clientId === client.id && c.tableName === order.tableName && c.status === 'on_my_way');
+    const waiterNotice = activeCalls.length
+      ? '<div style="margin:12px 0;padding:10px 14px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;border-radius:8px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;"><i data-lucide="user-check" style="width:18px;height:18px;"></i> A waiter is coming to your table</div>'
+      : '';
+
+    const progressPercent = index === 0 ? 0 : index === 1 ? 25 : index === 2 ? 50 : index === 3 ? 75 : 100;
+
     host.innerHTML =
       '<div class="status-hero">' +
-      (isRejected || isVoided
+      (isVoided
         ? '<span class="status-tick" style="background:#FDECEC;color:#B91C1C"><i data-lucide="x"></i></span>' +
           '<h1 class="status-title">' + (isVoided ? 'Ghost Order Rejected' : 'Order not accepted') + '</h1>' +
+          '<p class="status-meta">Order #' + order.number + ' · ' + esc(order.tableName) + '</p>'
+        : isRejected
+        ? '<span class="status-tick" style="background:#FDECEC;color:#B91C1C"><i data-lucide="x"></i></span>' +
+          '<h1 class="status-title">Order not accepted</h1>' +
           '<p class="status-meta">Order #' + order.number + ' · ' + esc(order.tableName) + '</p>'
         : '<span class="status-tick"><i data-lucide="check"></i></span>' +
           '<h1 class="status-title">Order placed</h1>' +
           '<p class="status-meta">Order #' + order.number + ' · ' + esc(order.tableName) + ' · ' + formatTime(order.createdAt) + '</p>' +
           payStatusBadge) +
+      waiterNotice +
       '</div>' +
       (isVoided
         ? '<div class="status-card" style="border:1px solid #EF4444;background:#FEF2F2;"><p class="text-sm font-semibold" style="color:#B91C1C;">Ghost Order Rejected by Kitchen</p><p class="text-xs" style="color:#7F1D1D;margin-top:4px;">This order was voided by restaurant staff because Table ' + esc(order.tableName) + ' was not seated on the Floor Plan.</p></div>'
         : isRejected
         ? '<div class="status-card"><p class="text-sm">The kitchen could not take this order — an item sold out. Nothing was charged. Please order again or call a waiter.</p></div>'
         : '<div class="progress"><div class="progress__track"><div class="progress__fill" style="width:' +
-            (index === 0 ? 0 : index === 1 ? 37 : index === 2 ? 62 : 100) + '%"></div></div>' +
+            progressPercent + '%"></div></div>' +
           '<div class="progress__steps">' + steps.map((label, i) =>
             '<div class="progress__step' + (i < index ? ' progress__step--done' : i === index ? ' progress__step--active' : '') + '">' +
             '<span class="progress__dot">' + (i < index ? '<i data-lucide="check"></i>' : '<i data-lucide="dot"></i>') + '</span>' +
@@ -1260,7 +1298,8 @@ function initStatus(ctx) {
       '</div>' +
       '<div class="status-eta"><i data-lucide="timer"></i><span id="order-eta-text">' +
       (order.status === 'served' ? 'Served — enjoy your meal.' :
-        order.status === 'ready' ? 'Ready — your server is bringing it over.' :
+        isPickedUp ? 'On its way — a waiter is bringing your order.' :
+        order.status === 'ready' ? 'Ready — waiting for waiter pickup.' :
           order.status === 'pending_approval' ? 'Waiting for the restaurant to accept your order.' :
             formatOrderTimer(order)) + '</span></div></div>' +
       '<div class="status-actions">' +
@@ -1286,6 +1325,15 @@ function initStatus(ctx) {
   on('order:update', (payload) => {
     if (!payload || payload.orderId === order.id) render();
   });
+  on('order:picked_up', (payload) => {
+    if (!payload || payload.orderId === order.id) render();
+  });
+  on('order:served', (payload) => {
+    if (!payload || payload.orderId === order.id) render();
+  });
+  on('call:on_my_way', () => render());
+  on('call:done', () => render());
+  on('call:update', () => render());
   setInterval(() => {
     const freshOrder = getById('orders', order.id);
     if (!freshOrder) return;

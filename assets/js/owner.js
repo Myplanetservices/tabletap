@@ -16,12 +16,13 @@ import {
   exportCSV, debounce, esc, qs, initials, statusBadge, isToday, openDrawer, closeDrawer,
   renderPaginationHtml,
 } from './helpers.js';
+import { playSound, showNotification, vibratePhone, showShiftOverlay } from './alerts.js';
 
-const session = requireRole('owner');
-const client = currentClient();
-const settings = client.settings;
-const money = (value) => formatMoney(value, settings.currency);
 const page = document.body.getAttribute('data-page');
+const session = requireRole(page === 'floor' ? 'floor' : 'owner');
+const client = currentClient();
+const settings = client ? client.settings : {};
+const money = (value) => formatMoney(value, settings.currency);
 const host = document.querySelector('.app-shell__content-inner');
 const readOnly = !!client.restrictions.readOnly;
 
@@ -334,6 +335,15 @@ function openBillModal(sessionId, onDone) {
     rows.push('<div class="summary__row summary__row--total"><span>Total</span><span>' + money(bill.total) + '</span></div>');
     bill.includedTaxes.forEach((t) => rows.push('<p class="summary__note">Includes ' + esc(t.name) + ' ' + t.rate + '%: ' + money(t.amount) + '</p>'));
 
+    const isOwnerRole = session.role === 'owner';
+    const discountSection = isOwnerRole ? (
+      '<div class="bill-discount mt-6"><p class="label">Add discount</p>' +
+      '<div class="row row--wrap"><select class="select" id="discount-type" style="width:110px"><option value="percent">%</option><option value="amount">Amount</option></select>' +
+      '<input class="input" id="discount-value" type="number" min="0" step="0.5" placeholder="0" style="width:110px" value="' + (session.discount && session.discount.value ? session.discount.value : '') + '">' +
+      '<input class="input" id="discount-reason" type="text" placeholder="Reason (e.g. staff meal)" value="' + esc((session.discount && session.discount.reason) || '') + '">' +
+      '<button class="btn btn--secondary" type="button" data-apply-discount>Apply</button></div></div>'
+    ) : '';
+
     hostEl.innerHTML =
       '<div class="modal is-open" role="dialog" aria-modal="true" aria-labelledby="bill-title"><div class="modal__dialog">' +
       '<div class="modal__header"><div><p class="modal__title" id="bill-title">Bill · ' + esc(session.tableName) + '</p>' +
@@ -342,11 +352,7 @@ function openBillModal(sessionId, onDone) {
       '<div class="modal__body">' +
       '<div class="status-items">' + (orderRows || '<p class="muted text-sm">No orders on this table yet.</p>') + '</div>' +
       '<div class="summary mt-4">' + rows.join('') + '</div>' +
-      '<div class="bill-discount mt-6"><p class="label">Add discount</p>' +
-      '<div class="row row--wrap"><select class="select" id="discount-type" style="width:110px"><option value="percent">%</option><option value="amount">Amount</option></select>' +
-      '<input class="input" id="discount-value" type="number" min="0" step="0.5" placeholder="0" style="width:110px" value="' + (session.discount && session.discount.value ? session.discount.value : '') + '">' +
-      '<input class="input" id="discount-reason" type="text" placeholder="Reason (e.g. staff meal)" value="' + esc((session.discount && session.discount.reason) || '') + '">' +
-      '<button class="btn btn--secondary" type="button" data-apply-discount>Apply</button></div></div>' +
+      discountSection +
       '<div class="mt-5">' +
       '<button class="btn btn--primary btn--block btn--lg" id="btn-open-terminal" type="button" style="background:#059669; border-color:#059669; font-weight:700; height:48px; display:flex; align-items:center; justify-content:center; gap:8px;">' +
       '<i data-lucide="credit-card"></i> Take Payment / Collect Now (' + money(bill.total) + ')</button>' +
@@ -364,7 +370,8 @@ function openBillModal(sessionId, onDone) {
 
     hostEl.querySelector('[data-close]').addEventListener('click', close);
     hostEl.querySelector('.modal').addEventListener('click', (event) => { if (event.target.classList.contains('modal')) close(); });
-    hostEl.querySelector('#discount-type').value = (session.discount && session.discount.type) || 'percent';
+    const discountTypeEl = hostEl.querySelector('#discount-type');
+    if (discountTypeEl) discountTypeEl.value = (session.discount && session.discount.type) || 'percent';
 
     const openTerminalBtn = hostEl.querySelector('#btn-open-terminal');
     if (openTerminalBtn) {
@@ -374,15 +381,18 @@ function openBillModal(sessionId, onDone) {
       });
     }
 
-    hostEl.querySelector('[data-apply-discount]').addEventListener('click', () => {
-      const type = hostEl.querySelector('#discount-type').value;
-      const value = Number(hostEl.querySelector('#discount-value').value) || 0;
-      const reason = hostEl.querySelector('#discount-reason').value.trim();
-      store.update('sessions', sessionId, { discount: { type, value, reason } });
-      store.logActivity({ actor: session.name || 'Owner', clientId: client.id, type: 'Discount', details: 'Discount ' + (type === 'percent' ? value + '%' : money(value)) + ' on ' + session.tableName });
-      toast('Discount applied');
-      draw();
-    });
+    const applyDiscountBtn = hostEl.querySelector('[data-apply-discount]');
+    if (applyDiscountBtn) {
+      applyDiscountBtn.addEventListener('click', () => {
+        const type = hostEl.querySelector('#discount-type').value;
+        const value = Number(hostEl.querySelector('#discount-value').value) || 0;
+        const reason = hostEl.querySelector('#discount-reason').value.trim();
+        store.update('sessions', sessionId, { discount: { type, value, reason } });
+        store.logActivity({ actor: session.name || 'Owner', clientId: client.id, type: 'Discount', details: 'Discount ' + (type === 'percent' ? value + '%' : money(value)) + ' on ' + session.tableName });
+        toast('Discount applied');
+        draw();
+      });
+    }
 
     hostEl.querySelectorAll('[data-pay]').forEach((btn) => btn.addEventListener('click', () => {
       const method = btn.getAttribute('data-pay');
@@ -1977,40 +1987,373 @@ function printVisitSlip(table, session) {
   }, 250);
 }
 
-/* ---------------------------------------------------------------- floor ---- */
+/* ---------------------------------------------------------------- floor (waiter app) ---- */
 function renderFloor() {
-  paint(head('Floor Plan', 'Live dining tables, guest seating, and visit QR codes.') +
-    '<div class="table-grid" id="floor-grid"></div><div id="modal-host"></div>');
+  let activeTab = 'ready'; // 'ready', 'requests', 'tables', 'bills'
 
-  const grid = host.querySelector('#floor-grid');
+  // Shift overlay for floor staff / waiter screen
+  showShiftOverlay({
+    restaurantName: client.name,
+    staffName: session.name || 'Floor Staff',
+    onStarted: () => {
+      draw();
+    },
+  });
+
+  function getReadyOrders() {
+    return store.ordersOf(client.id)
+      .filter((o) => o.status === 'ready')
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  }
+
+  function getOpenRequests() {
+    return store.query('waiterCalls', (c) => c.clientId === client.id && c.status !== 'done')
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
+  function getOpenBills() {
+    const tables = store.tablesOf(client.id);
+    const active = [];
+    tables.forEach((t) => {
+      const s = sessionForTable(client.id, t.id);
+      if (s && s.status === 'open') {
+        active.push({ table: t, session: s });
+      }
+    });
+    return active;
+  }
 
   function draw() {
+    const readyOrders = getReadyOrders();
+    const requests = getOpenRequests();
     const tables = store.tablesOf(client.id);
-    grid.innerHTML = tables.map((table) => {
-      const session = sessionForTable(client.id, table.id);
-      const isOccupied = table.status === 'occupied' || (session && session.status === 'open');
+    const openBills = getOpenBills();
 
-      return '<div class="card table-card"><div class="table-card__head"><div>' +
-        '<p class="table-card__num">' + esc(table.name) + '</p>' +
-        '<p class="table-card__seats">' + table.seats + ' seats · ' + (isOccupied ? 'Session active' : 'Ready') + '</p></div>' +
-        '<span class="badge badge--' + (isOccupied ? 'warning' : 'success') + '">' +
-        (isOccupied ? 'Occupied' : 'Free') + '</span></div>' +
-        '<div class="table-card__qr" data-view-qr="' + table.id + '"><i data-lucide="qr-code"></i></div>' +
-        (isOccupied && session && session.tableKey ? '<div class="text-xs muted text-center mt-1">Backup Key: <strong style="font-family:var(--font-mono);letter-spacing:2px;">' + esc(session.tableKey) + '</strong></div>' : '') +
-        '<div class="table-card__actions">' +
-        (isOccupied
-          ? (session ? '<button class="btn btn--sm" style="background:#059669; color:#fff; border-color:#059669;" type="button" data-take-pay="' + session.id + '"><i data-lucide="credit-card"></i> Take Payment</button>' : '') +
-            '<button class="btn btn--secondary btn--sm" type="button" data-show-visit="' + table.id + '"><i data-lucide="qr-code"></i> Visit QR</button>' +
-            (session ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '"><i data-lucide="receipt"></i> Bill</button>' : '') +
-            '<button class="btn btn--danger btn--sm" type="button" data-close-table="' + table.id + '"><i data-lucide="check-circle"></i> Close table</button>'
-          : '<button class="btn btn--primary btn--sm" type="button" data-seat="' + table.id + '"><i data-lucide="user-check"></i> Seat guests</button>') +
-        '</div></div>';
-    }).join('');
+    const isOwnerRole = session.role === 'owner';
+
+    // App header & tab bar HTML
+    const navTabsHtml = `
+      <div class="floor-tab-bar" style="display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;gap:4px;padding:6px 12px;overflow-x:auto;">
+        <button class="tab ${activeTab === 'ready' ? 'tab--active' : ''}" type="button" data-floor-tab="ready" style="flex:1;min-width:110px;text-align:center;padding:10px 8px;border-radius:8px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <i data-lucide="utensils" style="width:16px;height:16px;"></i> Ready
+          ${readyOrders.length ? `<span class="badge badge--success" style="font-size:11px;padding:1px 6px;">${readyOrders.length}</span>` : ''}
+        </button>
+        <button class="tab ${activeTab === 'requests' ? 'tab--active' : ''}" type="button" data-floor-tab="requests" style="flex:1;min-width:110px;text-align:center;padding:10px 8px;border-radius:8px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <i data-lucide="bell" style="width:16px;height:16px;"></i> Requests
+          ${requests.length ? `<span class="badge badge--warning" style="font-size:11px;padding:1px 6px;">${requests.length}</span>` : ''}
+        </button>
+        <button class="tab ${activeTab === 'tables' ? 'tab--active' : ''}" type="button" data-floor-tab="tables" style="flex:1;min-width:110px;text-align:center;padding:10px 8px;border-radius:8px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <i data-lucide="layout-grid" style="width:16px;height:16px;"></i> Tables
+        </button>
+        <button class="tab ${activeTab === 'bills' ? 'tab--active' : ''}" type="button" data-floor-tab="bills" style="flex:1;min-width:110px;text-align:center;padding:10px 8px;border-radius:8px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <i data-lucide="receipt" style="width:16px;height:16px;"></i> Bills
+          ${openBills.length ? `<span class="badge badge--neutral" style="font-size:11px;padding:1px 6px;">${openBills.length}</span>` : ''}
+        </button>
+      </div>
+    `;
+
+    let contentHtml = '';
+
+    // 1. Ready to serve tab
+    if (activeTab === 'ready') {
+      contentHtml = `
+        <div style="padding:16px 0;">
+          ${readyOrders.length === 0 ? `
+            <div class="empty" style="padding:48px 16px;text-align:center;">
+              <span class="empty__icon"><i data-lucide="check-circle-2"></i></span>
+              <p class="empty__title">All orders served</p>
+              <p class="empty__text">New dishes marked Ready in the kitchen will show up here immediately.</p>
+            </div>
+          ` : `
+            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:16px;">
+              ${readyOrders.map((order) => {
+                const diffMin = Math.max(0, Math.floor((Date.now() - new Date(order.updatedAt || order.createdAt).getTime()) / 60000));
+                const isClaimedByOther = order.pickedUpBy && order.pickedUpBy !== session.name;
+                const isClaimedByMe = order.pickedUpBy === session.name;
+
+                return `
+                  <div class="card" style="border:2px solid ${order.pickedUp ? 'var(--accent)' : 'var(--border)'};border-radius:12px;overflow:hidden;padding:16px;display:flex;flex-direction:column;gap:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                      <div>
+                        <h2 style="font-size:24px;font-weight:800;margin:0;letter-spacing:-0.02em;">${esc(order.tableName)}</h2>
+                        <span class="muted text-xs">Order #${order.number} · ${formatTime(order.createdAt)}</span>
+                      </div>
+                      <span class="badge ${diffMin > 10 ? 'badge--danger' : 'badge--warning'}" style="font-weight:700;">
+                        <i data-lucide="timer" style="width:13px;height:13px;"></i> ${diffMin}m ready
+                      </span>
+                    </div>
+
+                    ${order.pickedUp ? `
+                      <div style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;">
+                        <i data-lucide="user-check" style="width:16px;height:16px;"></i>
+                        <span>${isClaimedByMe ? 'You are bringing this' : `${esc(order.pickedUpBy)} is bringing this`}</span>
+                      </div>
+                    ` : ''}
+
+                    <div style="background:var(--bg);padding:12px;border-radius:8px;display:flex;flex-direction:column;gap:6px;">
+                      ${order.items.map((i) => `
+                        <div style="display:flex;justify-content:space-between;font-size:14px;">
+                          <span><strong>${i.qty}×</strong> ${esc(i.name)} ${i.size && i.size !== 'Regular' ? `<span class="muted">(${esc(i.size)})</span>` : ''}</span>
+                        </div>
+                      `).join('')}
+                      ${order.note ? `<p style="margin:4px 0 0;font-size:12px;color:var(--danger);font-weight:500;">Note: ${esc(order.note)}</p>` : ''}
+                    </div>
+
+                    <div style="display:flex;gap:8px;margin-top:auto;">
+                      ${!order.pickedUp ? `
+                        <button class="btn btn--secondary btn--block" type="button" data-floor-pickup="${order.id}">
+                          <i data-lucide="hand"></i> Picked up
+                        </button>
+                      ` : `
+                        <button class="btn btn--primary btn--block" type="button" data-floor-serve="${order.id}" style="background:#059669;border-color:#059669;">
+                          <i data-lucide="check"></i> Served
+                        </button>
+                      `}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    // 2. Requests tab
+    else if (activeTab === 'requests') {
+      contentHtml = `
+        <div style="padding:16px 0;">
+          ${requests.length === 0 ? `
+            <div class="empty" style="padding:48px 16px;text-align:center;">
+              <span class="empty__icon"><i data-lucide="smile"></i></span>
+              <p class="empty__title">No open requests</p>
+              <p class="empty__text">Calls for waiter or bill requests from tables will appear here.</p>
+            </div>
+          ` : `
+            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:16px;">
+              ${requests.map((c) => {
+                const isBill = c.type === 'bill';
+                const isOnMyWay = c.status === 'on_my_way';
+
+                return `
+                  <div class="card" style="border:2px solid ${isOnMyWay ? '#3B82F6' : '#F59E0B'};border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                      <div>
+                        <h2 style="font-size:24px;font-weight:800;margin:0;">${esc(c.tableName)}</h2>
+                        <span class="muted text-xs">${timeAgo(c.createdAt)}</span>
+                      </div>
+                      <span class="badge ${isBill ? 'badge--primary' : 'badge--warning'}" style="font-weight:700;">
+                        ${isBill ? '💵 Bill Requested' : '🔔 Call Waiter'}
+                      </span>
+                    </div>
+
+                    <div style="font-size:14px;color:var(--text);line-height:1.5;">
+                      ${isBill ? `
+                        <p style="margin:0;">Guest wants to pay with: <strong>${esc((c.paymentMethod || 'Card').toUpperCase())}</strong></p>
+                      ` : `
+                        <p style="margin:0;">Assistance requested at table.</p>
+                      `}
+                    </div>
+
+                    ${isOnMyWay ? `
+                      <div style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;">
+                        <i data-lucide="clock" style="width:16px;height:16px;"></i>
+                        <span>${c.waiterName ? esc(c.waiterName) : 'A waiter'} is on the way</span>
+                      </div>
+                    ` : ''}
+
+                    <div style="display:flex;gap:8px;margin-top:auto;">
+                      ${!isOnMyWay ? `
+                        <button class="btn btn--secondary btn--block" type="button" data-call-way="${c.id}">
+                          <i data-lucide="navigation"></i> On my way
+                        </button>
+                      ` : ''}
+                      <button class="btn btn--primary btn--block" type="button" data-call-done="${c.id}">
+                        <i data-lucide="check"></i> Done
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    // 3. Tables tab
+    else if (activeTab === 'tables') {
+      contentHtml = `
+        <div style="padding:16px 0;">
+          <div class="table-grid" id="floor-grid">
+            ${tables.map((table) => {
+              const session = sessionForTable(client.id, table.id);
+              const isOccupied = table.status === 'occupied' || (session && session.status === 'open');
+
+              return '<div class="card table-card"><div class="table-card__head"><div>' +
+                '<p class="table-card__num">' + esc(table.name) + '</p>' +
+                '<p class="table-card__seats">' + table.seats + ' seats · ' + (isOccupied ? 'Session active' : 'Ready') + '</p></div>' +
+                '<span class="badge badge--' + (isOccupied ? 'warning' : 'success') + '">' +
+                (isOccupied ? 'Occupied' : 'Free') + '</span></div>' +
+                '<div class="table-card__qr" data-view-qr="' + table.id + '"><i data-lucide="qr-code"></i></div>' +
+                (isOccupied && session && session.tableKey ? '<div class="text-xs muted text-center mt-1">Backup Key: <strong style="font-family:var(--font-mono);letter-spacing:2px;">' + esc(session.tableKey) + '</strong></div>' : '') +
+                '<div class="table-card__actions">' +
+                (isOccupied
+                  ? (session ? '<button class="btn btn--sm" style="background:#059669; color:#fff; border-color:#059669;" type="button" data-take-pay="' + session.id + '"><i data-lucide="credit-card"></i> Take Payment</button>' : '') +
+                    '<button class="btn btn--secondary btn--sm" type="button" data-show-visit="' + table.id + '"><i data-lucide="qr-code"></i> Visit QR</button>' +
+                    (session ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '"><i data-lucide="receipt"></i> Bill</button>' : '') +
+                    '<button class="btn btn--danger btn--sm" type="button" data-close-table="' + table.id + '"><i data-lucide="check-circle"></i> Close table</button>'
+                  : '<button class="btn btn--primary btn--sm" type="button" data-seat="' + table.id + '"><i data-lucide="user-check"></i> Seat guests</button>') +
+                '</div></div>';
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 4. Bills tab
+    else if (activeTab === 'bills') {
+      contentHtml = `
+        <div style="padding:16px 0;">
+          ${openBills.length === 0 ? `
+            <div class="empty" style="padding:48px 16px;text-align:center;">
+              <span class="empty__icon"><i data-lucide="receipt"></i></span>
+              <p class="empty__title">No open bills</p>
+              <p class="empty__text">Active seated tables will appear here with live totals.</p>
+            </div>
+          ` : `
+            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:16px;">
+              ${openBills.map(({ table, session }) => {
+                const bill = computeBill({
+                  lines: sessionLines(session),
+                  settings,
+                  removedChargeIds: session.removedChargeIds,
+                  addedChargeIds: session.addedChargeIds,
+                  discount: session.discount,
+                  tip: session.tip,
+                });
+                const orders = sessionOrders(session);
+
+                return `
+                  <div class="card" style="border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                      <div>
+                        <h2 style="font-size:22px;font-weight:800;margin:0;">${esc(table.name)}</h2>
+                        <span class="muted text-xs">${orders.length} order(s) · opened ${formatTime(session.openedAt)}</span>
+                      </div>
+                      <span class="stat__value" style="font-size:20px;font-weight:800;color:var(--text);">${money(bill.total)}</span>
+                    </div>
+
+                    ${session.discount && session.discount.value ? `
+                      <div style="font-size:12px;color:var(--accent);font-weight:600;">
+                        Discount applied: ${session.discount.type === 'percent' ? session.discount.value + '%' : money(session.discount.value)} ${session.discount.reason ? `(${esc(session.discount.reason)})` : ''}
+                      </div>
+                    ` : ''}
+
+                    <div style="display:flex;gap:8px;margin-top:auto;">
+                      <button class="btn btn--secondary btn--block" type="button" data-bill="${session.id}">
+                        <i data-lucide="receipt"></i> View Bill ${isOwnerRole ? '/ Discount' : ''}
+                      </button>
+                      <button class="btn btn--primary btn--block" type="button" data-take-pay="${session.id}" style="background:#059669;border-color:#059669;">
+                        <i data-lucide="credit-card"></i> Pay
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    paint(
+      head('Floor Plan', 'Live waiter station: ready orders, guest requests, tables & bills.') +
+      navTabsHtml +
+      contentHtml +
+      '<div id="modal-host"></div>'
+    );
 
     if (window.lucide) window.lucide.createIcons();
   }
 
-  grid.addEventListener('click', (event) => {
+  // Event delegation
+  host.addEventListener('click', (event) => {
+    const tabBtn = event.target.closest('[data-floor-tab]');
+    if (tabBtn) {
+      activeTab = tabBtn.getAttribute('data-floor-tab');
+      draw();
+      return;
+    }
+
+    // Picked up action
+    const pickupBtn = event.target.closest('[data-floor-pickup]');
+    if (pickupBtn) {
+      const orderId = pickupBtn.getAttribute('data-floor-pickup');
+      const staffName = session.name || 'Waiter';
+      store.update('orders', orderId, {
+        status: 'ready', // remains ready or picked_up
+        pickedUp: true,
+        pickedUpBy: staffName,
+        pickedUpAt: new Date().toISOString(),
+      });
+      emit('order:picked_up', { orderId, staffName, clientId: client.id });
+      emit('order:update', { orderId, clientId: client.id });
+      store.logActivity({ actor: staffName, clientId: client.id, type: 'Order', details: `Order claimed by ${staffName}` });
+      toast(`Order claimed by ${staffName}`);
+      draw();
+      return;
+    }
+
+    // Served action
+    const serveBtn = event.target.closest('[data-floor-serve]');
+    if (serveBtn) {
+      const orderId = serveBtn.getAttribute('data-floor-serve');
+      const order = store.update('orders', orderId, {
+        status: 'served',
+        servedAt: new Date().toISOString(),
+      });
+      emit('order:served', { orderId, clientId: client.id });
+      emit('order:update', { orderId, clientId: client.id });
+      store.logActivity({ actor: session.name || 'Waiter', clientId: client.id, type: 'Order', details: `Order #${order.number} served` });
+      toast(`Order #${order.number} served`);
+      draw();
+      return;
+    }
+
+    // Request on my way
+    const wayBtn = event.target.closest('[data-call-way]');
+    if (wayBtn) {
+      const callId = wayBtn.getAttribute('data-call-way');
+      const staffName = session.name || 'Waiter';
+      store.update('waiterCalls', callId, {
+        status: 'on_my_way',
+        waiterName: staffName,
+        onWayAt: new Date().toISOString(),
+      });
+      emit('call:on_my_way', { id: callId, waiterName: staffName, clientId: client.id });
+      emit('call:update', { clientId: client.id });
+      toast(`Notified table that ${staffName} is on the way`);
+      draw();
+      return;
+    }
+
+    // Request done
+    const doneBtn = event.target.closest('[data-call-done]');
+    if (doneBtn) {
+      const callId = doneBtn.getAttribute('data-call-done');
+      store.update('waiterCalls', callId, {
+        status: 'done',
+        completedAt: new Date().toISOString(),
+      });
+      emit('call:done', { id: callId, clientId: client.id });
+      emit('call:update', { clientId: client.id });
+      toast('Request resolved');
+      draw();
+      return;
+    }
+
+    // Table actions
     const takePayBtn = event.target.closest('[data-take-pay]');
     if (takePayBtn) {
       openTakePaymentModal(takePayBtn.getAttribute('data-take-pay'), () => draw());
@@ -2025,12 +2368,12 @@ function renderFloor() {
       const tableId = seatBtn.getAttribute('data-seat');
       const table = store.getById('tables', tableId);
       if (!table) return;
-      const session = seatTable(client.id, table);
+      const sess = seatTable(client.id, table);
       emit('table:update', { tableId: table.id, clientId: client.id });
       if (client.settings && client.settings.printVisitSlip) {
-        printVisitSlip(table, session);
+        printVisitSlip(table, sess);
       }
-      showVisitQr(table, session);
+      showVisitQr(table, sess);
       draw();
       toast('Guests seated at ' + table.name);
     }
@@ -2039,19 +2382,19 @@ function renderFloor() {
       const tableId = showVisitBtn.getAttribute('data-show-visit');
       const table = store.getById('tables', tableId);
       if (!table) return;
-      let session = sessionForTable(client.id, table.id);
-      if (!session) session = openSessionForTable(client.id, table);
-      showVisitQr(table, session);
+      let sess = sessionForTable(client.id, table.id);
+      if (!sess) sess = openSessionForTable(client.id, table);
+      showVisitQr(table, sess);
     }
 
     if (closeBtn) {
       const tableId = closeBtn.getAttribute('data-close-table');
       const table = store.getById('tables', tableId);
       if (!table) return;
-      const session = sessionForTable(client.id, table.id);
-      if (session) {
-        closeSession(session.id, { method: 'Cash' }, { total: 0 });
-        emit('session:close', { sessionId: session.id, clientId: client.id, tableId: table.id });
+      const sess = sessionForTable(client.id, table.id);
+      if (sess) {
+        closeSession(sess.id, { method: 'Cash' }, { total: 0 });
+        emit('session:close', { sessionId: sess.id, clientId: client.id, tableId: table.id });
       } else {
         store.update('tables', table.id, { status: 'free', tableKey: null, activeSecret: null });
       }
@@ -2061,22 +2404,39 @@ function renderFloor() {
     }
 
     if (billBtn) {
-      location.href = 'receipt.html?session=' + billBtn.getAttribute('data-bill');
+      openBillModal(billBtn.getAttribute('data-bill'), () => draw());
     }
 
     if (viewQr) {
       const tableId = viewQr.getAttribute('data-view-qr');
       const table = store.getById('tables', tableId);
       if (!table) return;
-      let session = sessionForTable(client.id, table.id);
-      if (!session) session = openSessionForTable(client.id, table);
-      showVisitQr(table, session);
+      let sess = sessionForTable(client.id, table.id);
+      if (!sess) sess = openSessionForTable(client.id, table);
+      showVisitQr(table, sess);
     }
   });
 
   draw();
   on('table:update', () => draw());
-  on('order:new', () => draw());
+  on('order:new', (payload) => {
+    draw();
+  });
+  on('order:update', () => draw());
+  on('order:ready', (payload) => {
+    playSound('orderReady');
+    vibratePhone([300, 150, 300]);
+    showNotification('Order ready for serving', payload ? `Table ${payload.tableName || ''}` : 'Kitchen marked ticket ready');
+    draw();
+  });
+  on('call:new', (payload) => {
+    const isBill = payload && payload.type === 'bill';
+    playSound(isBill ? 'billRequest' : 'callWaiter');
+    vibratePhone([200, 100, 200]);
+    showNotification(isBill ? 'Bill requested' : 'Waiter called', payload ? payload.tableName : '');
+    draw();
+  });
+  on('call:update', () => draw());
 }
 
 /* --------------------------------------------------------------- tables -- */
@@ -2848,6 +3208,9 @@ function renderSettings() {
     '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Accept orders</p>' +
     '<p class="list-row__meta">When off, guests see “Ordering is paused” instead of the menu.</p></div>' +
     '<label class="switch"><input type="checkbox" id="set-accept"' + (settings.acceptOrders ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Accept orders</span></label></div>' +
+    '<div class="list-row"><div class="list-row__main"><p class="list-row__title">We use the waiter app</p>' +
+    '<p class="list-row__meta">When on, ready kitchen tickets show “Waiting for waiter” and floor staff pick up and serve them. When off, tickets show “Served” directly in the kitchen.</p></div>' +
+    '<label class="switch"><input type="checkbox" id="set-waiter-app"' + (settings.useWaiterApp !== false ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">We use the waiter app</span></label></div>' +
     '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Staff must approve orders before the kitchen</p>' +
     '<p class="list-row__meta">New orders wait for approval on the Live orders page.</p></div>' +
     '<label class="switch"><input type="checkbox" id="set-approval"' + (settings.approval ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Require approval</span></label></div>' +
@@ -2934,8 +3297,19 @@ function renderSettings() {
 
     '<div class="tab-panel" data-panel="notify" hidden><div class="card"><div class="card__body">' +
     '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Sound on new orders</p>' +
-    '<p class="list-row__meta">A short chime on the kitchen screen when a ticket arrives.</p></div>' +
+    '<p class="list-row__meta">A short chime on the kitchen screen and owner panel when a ticket arrives.</p></div>' +
     '<label class="switch"><input type="checkbox" id="set-sound"' + (settings.sound ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Sound on new orders</span></label></div>' +
+    '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Sound effects volume</p>' +
+    '<p class="list-row__meta">Master volume for chimes and alert bells across panels.</p></div>' +
+    '<input type="range" id="sound-vol" min="0" max="1" step="0.05" value="0.8" style="width:140px;"></div>' +
+    '<div class="card card--subtle mt-4"><div class="card__body">' +
+    '<h4 class="card__title text-sm mb-3">Sound alerts &amp; testing</h4>' +
+    '<div class="row row--wrap gap-2 mb-3">' +
+    '<button class="btn btn--secondary btn--sm" type="button" data-test-sound="newOrder"><i data-lucide="play"></i> Test: New Order Chime</button>' +
+    '<button class="btn btn--secondary btn--sm" type="button" data-test-sound="orderReady"><i data-lucide="play"></i> Test: Order Ready Bell</button>' +
+    '<button class="btn btn--secondary btn--sm" type="button" data-test-sound="callWaiter"><i data-lucide="play"></i> Test: Call Waiter Beep</button>' +
+    '<button class="btn btn--secondary btn--sm" type="button" data-test-sound="billRequest"><i data-lucide="play"></i> Test: Bill Request Ding</button>' +
+    '</div></div></div>' +
     '<div class="row mt-6" style="justify-content:flex-end"><button class="btn btn--primary" type="button" data-save="notify">Save notifications</button></div>' +
     '</div></div></div></div>');
 
@@ -3136,6 +3510,7 @@ function renderSettings() {
       }
       if (which === 'ordering') {
         next.acceptOrders = host.querySelector('#set-accept').checked;
+        next.useWaiterApp = host.querySelector('#set-waiter-app') ? host.querySelector('#set-waiter-app').checked : true;
         next.approval = host.querySelector('#set-approval').checked;
         next.currency = host.querySelector('#set-currency').value;
         next.pricesIncludeTax = host.querySelector('#set-inclusive').checked;
@@ -3177,8 +3552,15 @@ function renderSettings() {
       }
       if (which === 'notify') {
         next.sound = host.querySelector('#set-sound').checked;
+        const volVal = parseFloat(host.querySelector('#sound-vol')?.value || 0.8);
+        try {
+          const raw = localStorage.getItem('tqr_sound_prefs');
+          const prefs = raw ? JSON.parse(raw) : {};
+          prefs.volume = volVal;
+          localStorage.setItem('tqr_sound_prefs', JSON.stringify(prefs));
+        } catch (e) {}
         store.update('clients', client.id, { settings: next });
-        toast('Notifications saved');
+        toast('Notifications & volume saved');
       }
       if (which === 'security') {
         const schedChoice = host.querySelector('input[name="kcode-schedule"]:checked')?.value || 'permanent';
@@ -3318,6 +3700,24 @@ function renderSettings() {
         toast('Payment Gateways & Methods saved');
       }
       store.logActivity({ actor: session.name, clientId: client.id, type: 'Settings', details: 'Settings saved (' + which + ')' });
+    });
+  });
+
+  // Sound testing buttons in Notifications tab
+  host.querySelectorAll('[data-test-sound]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const soundType = btn.getAttribute('data-test-sound');
+      const volInput = host.querySelector('#sound-vol');
+      if (volInput) {
+        try {
+          const raw = localStorage.getItem('tqr_sound_prefs');
+          const prefs = raw ? JSON.parse(raw) : {};
+          prefs.volume = parseFloat(volInput.value || 0.8);
+          localStorage.setItem('tqr_sound_prefs', JSON.stringify(prefs));
+        } catch (e) {}
+      }
+      playSound(soundType);
+      toast(`Playing sound: ${soundType}`);
     });
   });
 
@@ -3488,6 +3888,24 @@ if (render) {
 }
 
 /* Live updates from other tabs */
-on('order:new', () => { if (['dashboard', 'orders', 'floor'].includes(page)) { refreshChrome(); PAGES[page](); } });
-on('order:update', () => { if (['dashboard', 'orders', 'floor'].includes(page)) { refreshChrome(); PAGES[page](); } });
-on('call:new', () => { if (['dashboard', 'orders', 'floor'].includes(page)) { refreshChrome(); PAGES[page](); } });
+on('order:new', (payload) => {
+  if (['dashboard', 'orders'].includes(page)) {
+    if (settings.sound !== false) {
+      playSound('newOrder');
+    }
+    showNotification('New order arrived', payload ? `Order #${payload.orderId || ''}` : '');
+    refreshChrome();
+    PAGES[page]();
+  }
+});
+on('order:update', () => { if (['dashboard', 'orders'].includes(page)) { refreshChrome(); PAGES[page](); } });
+on('call:new', (payload) => {
+  if (['dashboard', 'orders'].includes(page)) {
+    if (settings.sound !== false) {
+      playSound('callWaiter');
+    }
+    showNotification('New customer request', payload ? payload.tableName : '');
+    refreshChrome();
+    PAGES[page]();
+  }
+});

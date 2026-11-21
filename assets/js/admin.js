@@ -8,6 +8,7 @@ import {
   requireRole, getAdminSession, startImpersonation, adminLogout, platformSettings,
 } from './auth.js';
 import { emit } from './realtime.js';
+import { sendEmail, renderEmailTemplate } from './mailer.js';
 import {
   formatMoney, formatDateTime, timeAgo, toast, confirmDialog, exportCSV,
   debounce, esc, qs, initials, statusBadge, openModal, closeModal,
@@ -487,6 +488,36 @@ function renderClientDetail() {
       restrictions: { ...client.restrictions, ordering: next === 'active' },
     });
     store.logActivity({ actor: session.name, clientId: client.id, type: 'Suspension', details: next === 'suspended' ? 'Account suspended' : 'Account reactivated' });
+    
+    // Send email notice to owner
+    if (owner && owner.email) {
+      const isSuspended = next === 'suspended';
+      const emailHtml = renderEmailTemplate({
+        title: 'Account notice',
+        heading: isSuspended ? 'Your TableTap account has been suspended' : 'Your TableTap account has been reactivated',
+        preheader: isSuspended ? 'Your restaurant account has been temporarily suspended.' : 'Your restaurant account has been reactivated.',
+        bodyHtml: isSuspended ? `
+          <p style="margin:0 0 16px;">Hi ${esc(owner.name)},</p>
+          <p style="margin:0 0 16px;">The account for <strong>${esc(client.name)}</strong> has been suspended by the platform administrator.</p>
+          <p style="margin:0 0 16px;">While suspended, live QR ordering, kitchen tickets, and owner dashboard access are disabled.</p>
+          <p style="margin:0 0 16px;">If you have any questions or believe this is an error, please reach out to support immediately.</p>
+        ` : `
+          <p style="margin:0 0 16px;">Hi ${esc(owner.name)},</p>
+          <p style="margin:0 0 16px;">Great news! The account for <strong>${esc(client.name)}</strong> has been reactivated.</p>
+          <p style="margin:0 0 16px;">Your live QR menus, kitchen screen, and owner dashboard are available again.</p>
+        `,
+        actionText: isSuspended ? '' : 'Open dashboard',
+        actionUrl: isSuspended ? '' : new URL('../auth/login.html', window.location.href).href,
+      });
+
+      sendEmail({
+        to: owner.email,
+        subject: isSuspended ? `Account suspended — ${client.name}` : `Account reactivated — ${client.name}`,
+        html: emailHtml,
+        type: 'notice',
+      });
+    }
+
     toast(client.name + (next === 'suspended' ? ' suspended' : ' reactivated'));
     renderClientDetail();
   });
@@ -523,6 +554,30 @@ function renderClientDetail() {
       sentBy: session.name,
     });
     store.logActivity({ actor: session.name, clientId: client.id, type: 'Invite', details: 'Invite re-sent to ' + (owner ? owner.email : '') });
+
+    if (owner && owner.email) {
+      const inviteUrl = new URL(`../auth/accept-invite.html?token=${invite.token}`, window.location.href).href;
+      const html = renderEmailTemplate({
+        title: 'Your invite',
+        heading: "You're invited to TableTap",
+        preheader: `${client.name} is ready on TableTap. Set your password to open your dashboard.`,
+        bodyHtml: `
+          <p style="margin:0 0 16px;">Hi ${esc(owner.name)},</p>
+          <p style="margin:0 0 16px;">Here is your updated invite to set up <strong>${esc(client.name)}</strong> on TableTap.</p>
+          <p style="margin:0 0 16px;">Set your password to open the owner dashboard. The link expires in 7 days.</p>
+        `,
+        actionText: 'Accept invite',
+        actionUrl: inviteUrl,
+        footnote: 'If you did not expect this invite, please contact hello@tabletap.demo.',
+      });
+      sendEmail({
+        to: owner.email,
+        subject: `You're invited to TableTap — ${client.name}`,
+        html,
+        type: 'invite',
+      });
+    }
+
     toast('New invite link created');
     copyInviteLink(invite);
   });
@@ -597,7 +652,7 @@ function copyInviteLink(invite) {
 
 /* --------------------------------------------------------------- invites -- */
 function renderInvites() {
-  paint(head('Invites', 'Send an invite, copy the link, or revoke one before it is used.') +
+  paint(head('Invites', 'Send an invite, copy the link, or revoke one before it is used.', '<a class="btn btn--secondary btn--sm" href="../dev/mailbox.html"><i data-lucide="inbox"></i> Open demo mailbox</a>') +
     '<div class="split split--even"><div class="card"><div class="card__header"><span class="card__title">Invite a restaurant</span></div>' +
     '<div class="card__body"><div class="form-grid form-grid--2">' +
     '<div class="field"><label class="label" for="inv-rest">Restaurant name</label><input class="input" id="inv-rest" type="text" placeholder="e.g. Tiffin &amp; Chai"></div>' +
@@ -721,6 +776,41 @@ function renderInvites() {
       sentBy: session.name,
     });
     store.logActivity({ actor: session.name, type: 'Invite', details: 'Invite sent to ' + email + ' (' + name + ')' });
+
+    // Send email via mailer.js
+    const inviteUrl = new URL(`../auth/accept-invite.html?token=${invite.token}`, window.location.href).href;
+    const plan = store.getById('plans', invite.planId);
+    const emailHtml = renderEmailTemplate({
+      title: 'Your invite',
+      heading: "You're invited to TableTap",
+      preheader: `${name} is ready on TableTap. Set your password to open your dashboard.`,
+      bodyHtml: `
+        <p style="margin:0 0 16px;">Hi ${esc(ownerName)},</p>
+        <p style="margin:0 0 16px;">
+          ${esc(session.name.split(' ')[0])} from TableTap here. <strong>${esc(name)}</strong> has been set up on the <strong>${esc(plan ? plan.name : 'Pro')}</strong> plan — QR menus for every table, live tickets on the kitchen screen, and reports for you.
+        </p>
+        <p style="margin:0 0 16px;">
+          Set your password to open the owner dashboard. The link is yours alone and expires in ${platformSettings().inviteExpiryDays || 7} days.
+        </p>
+      `,
+      actionText: 'Accept invite',
+      actionUrl: inviteUrl,
+      footnote: `
+        <strong style="color:#1C1917;">What you get</strong><br>
+        · QR menus for every table<br>
+        · Live kitchen & floor screens with real-time sound and timers<br>
+        · Menu editor with allergens, photos and sold-out toggles<br>
+        · Sales reports and analytics
+      `,
+    });
+
+    sendEmail({
+      to: email,
+      subject: `You're invited to TableTap — ${name}`,
+      html: emailHtml,
+      type: 'invite',
+    });
+
     toast('Invite created for ' + name);
     copyInviteLink(invite);
     draw();
@@ -740,6 +830,28 @@ function renderInvites() {
         createdAt: new Date().toISOString(),
         expiresAt: new Date(Date.now() + (platformSettings().inviteExpiryDays || 7) * 86400000).toISOString(),
       });
+
+      const inviteUrl = new URL(`../auth/accept-invite.html?token=${invite.token}`, window.location.href).href;
+      const html = renderEmailTemplate({
+        title: 'Your invite',
+        heading: "You're invited to TableTap",
+        preheader: `${invite.clientName} is ready on TableTap. Set your password to open your dashboard.`,
+        bodyHtml: `
+          <p style="margin:0 0 16px;">Hi ${esc(invite.ownerName)},</p>
+          <p style="margin:0 0 16px;">Here is your resent invite to set up <strong>${esc(invite.clientName)}</strong> on TableTap.</p>
+          <p style="margin:0 0 16px;">Set your password to open the owner dashboard. The link expires in ${platformSettings().inviteExpiryDays || 7} days.</p>
+        `,
+        actionText: 'Accept invite',
+        actionUrl: inviteUrl,
+      });
+
+      sendEmail({
+        to: invite.email,
+        subject: `You're invited to TableTap — ${invite.clientName}`,
+        html,
+        type: 'invite',
+      });
+
       toast('Invite resent');
       draw();
     }

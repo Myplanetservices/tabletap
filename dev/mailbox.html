@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo Mailbox — TableTap</title>
+<meta name="description" content="Local simulated mailbox for TableTap email testing.">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+.mailbox-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 16px;
+  height: calc(100vh - 170px);
+  min-height: 540px;
+}
+@media (max-width: 900px) {
+  .mailbox-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+.mailbox-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.mailbox-item {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  position: relative;
+  text-align: left;
+  background: transparent;
+  border-left: 3px solid transparent;
+  width: 100%;
+}
+.mailbox-item:hover {
+  background: var(--neutral-soft);
+}
+.mailbox-item.is-active {
+  background: var(--neutral-soft);
+  border-left-color: var(--accent);
+}
+.mailbox-item__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+  margin-right: 6px;
+}
+.mailbox-item__time {
+  font-size: 11px;
+  color: var(--muted);
+  float: right;
+}
+.mailbox-item__to {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mailbox-item__subject {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.mailbox-preview-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.mailbox-preview-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mailbox-preview-body {
+  flex: 1;
+  padding: 0;
+  overflow: hidden;
+  background: #FAFAF9;
+  display: flex;
+}
+.mailbox-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #FAFAF9;
+}
+.demo-banner {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+</style>
+</head>
+<body data-page="mailbox">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="app-shell">
+  <div class="app-shell__main" style="margin-left:0; width:100%;">
+    <header class="app-shell__topbar">
+      <div class="app-shell__topbar-left">
+        <a class="brand" href="../index.html" aria-label="TableTap home" style="margin-right:16px;">
+          <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+          <span class="brand__name">TableTap</span>
+        </a>
+        <span class="app-shell__title">Demo Mailbox</span>
+      </div>
+      <div class="app-shell__topbar-right">
+        <a class="btn btn--secondary btn--sm" href="../sitemap.html"><i data-lucide="map"></i> Sitemap</a>
+        <a class="btn btn--secondary btn--sm" href="../admin/invites.html"><i data-lucide="mail"></i> Admin Invites</a>
+      </div>
+    </header>
+
+    <main class="app-shell__content" id="main">
+      <div class="app-shell__content-inner" style="max-width:1200px; margin:0 auto;">
+        
+        <div class="demo-banner">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <i data-lucide="alert-circle"></i>
+            <span>Demo mailbox — emails are NOT really sent. Click any email to view and test action links.</span>
+          </div>
+          <button class="btn btn--sm btn--secondary" id="btn-clear-mailbox" type="button">
+            <i data-lucide="trash-2"></i> Clear mailbox
+          </button>
+        </div>
+
+        <div class="mailbox-layout">
+          <!-- Left: List -->
+          <div class="mailbox-list" id="mailbox-list">
+            <div style="padding:20px; text-align:center; color:var(--muted);">No emails received yet.</div>
+          </div>
+
+          <!-- Right: Viewer -->
+          <div class="mailbox-preview-card" id="mailbox-preview-card">
+            <div class="mailbox-preview-header" id="preview-header">
+              <span class="muted text-sm">Select an email from the left to read it</span>
+            </div>
+            <div class="mailbox-preview-body" id="preview-body">
+              <iframe class="mailbox-iframe" id="email-iframe" title="Email preview"></iframe>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script type="module">
+import { getAll, remove, update, save } from '../assets/js/store.js';
+import { esc, formatDateTime, formatTime, toast, confirmDialog } from '../assets/js/helpers.js';
+
+let selectedId = null;
+
+function render() {
+  const listEl = document.getElementById('mailbox-list');
+  const emails = getAll('outbox').slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  if (!emails.length) {
+    listEl.innerHTML = '<div style="padding:40px 20px; text-align:center; color:var(--muted);"><i data-lucide="inbox" style="width:36px;height:36px;margin-bottom:8px;opacity:0.5;"></i><p>Mailbox is empty.</p></div>';
+    document.getElementById('preview-header').innerHTML = '<span class="muted text-sm">Mailbox is empty</span>';
+    const iframe = document.getElementById('email-iframe');
+    iframe.srcdoc = '<body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:80vh;color:#888;">Select an email</body>';
+    if (window.lucide) window.lucide.createIcons();
+    return;
+  }
+
+  if (!selectedId || !emails.find(e => e.id === selectedId)) {
+    selectedId = emails[0].id;
+  }
+
+  listEl.innerHTML = emails.map(email => {
+    const isSelected = email.id === selectedId;
+    const timeStr = formatDateTime(email.createdAt);
+    const badgeType = email.type ? `<span class="badge badge--neutral" style="font-size:10px;text-transform:uppercase;">${esc(email.type)}</span>` : '';
+    const unreadDot = !email.read ? '<span class="mailbox-item__dot" title="Unread"></span>' : '';
+
+    return `
+      <div class="mailbox-item ${isSelected ? 'is-active' : ''}" data-id="${email.id}">
+        <div class="mailbox-item__to">
+          <span>${unreadDot}${esc(email.to)}</span>
+          <span class="mailbox-item__time">${formatTime(email.createdAt)}</span>
+        </div>
+        <div class="mailbox-item__subject">${esc(email.subject || '(No subject)')}</div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          ${badgeType}
+          <span style="font-size:11px; color:var(--muted);">${timeStr}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Show active email
+  const activeEmail = emails.find(e => e.id === selectedId);
+  if (activeEmail) {
+    if (!activeEmail.read) {
+      update('outbox', activeEmail.id, { read: true });
+    }
+    document.getElementById('preview-header').innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="font-size:16px; font-weight:600; margin:0;">${esc(activeEmail.subject)}</h2>
+        <span class="badge badge--neutral">${esc(activeEmail.type || 'email')}</span>
+      </div>
+      <div style="font-size:13px; color:var(--muted);">
+        <strong>To:</strong> ${esc(activeEmail.to)} &nbsp;·&nbsp; <strong>Date:</strong> ${formatDateTime(activeEmail.createdAt)}
+      </div>
+    `;
+    const iframe = document.getElementById('email-iframe');
+    iframe.srcdoc = activeEmail.html;
+  }
+
+  if (window.lucide) window.lucide.createIcons();
+}
+
+document.getElementById('mailbox-list').addEventListener('click', (e) => {
+  const item = e.target.closest('.mailbox-item');
+  if (!item) return;
+  selectedId = item.getAttribute('data-id');
+  render();
+});
+
+document.getElementById('btn-clear-mailbox').addEventListener('click', async () => {
+  const ok = await confirmDialog('Are you sure you want to clear all emails in the demo mailbox?', {
+    title: 'Clear mailbox',
+    confirmLabel: 'Clear all',
+  });
+  if (!ok) return;
+
+  const emails = getAll('outbox');
+  emails.forEach(e => remove('outbox', e.id));
+  selectedId = null;
+  toast('Mailbox cleared');
+  render();
+});
+
+window.addEventListener('storage', (e) => {
+  if (e.key === 'tqr_db') render();
+});
+
+render();
+</script>
+</body>
+</html>
