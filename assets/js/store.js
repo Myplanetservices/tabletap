@@ -39,6 +39,14 @@ function read() {
             }
           });
         }
+        if (parsed.staff && Array.isArray(parsed.staff)) {
+          parsed.staff.forEach((s) => {
+            if (s.name && s.name.toLowerCase().includes('maya') && s.role !== 'floor') {
+              s.role = 'floor';
+              modified = true;
+            }
+          });
+        }
         cache = parsed;
         if (modified) write(cache);
         return cache;

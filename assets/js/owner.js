@@ -297,8 +297,8 @@ function guestPayLine(call) {
 
 /* ------------------------------------------------------------ bill modal -- */
 function openBillModal(sessionId, onDone) {
-  let session = store.getById('sessions', sessionId);
-  if (!session) return;
+  let visit = store.getById('sessions', sessionId);
+  if (!visit) return;
 
   const hostEl = document.createElement('div');
   hostEl.id = 'bill-modal-host';
@@ -309,15 +309,15 @@ function openBillModal(sessionId, onDone) {
   }
 
   function draw() {
-    session = store.getById('sessions', sessionId) || session;
-    const orders = sessionOrders(session);
+    visit = store.getById('sessions', sessionId) || visit;
+    const orders = sessionOrders(visit);
     const bill = computeBill({
-      lines: sessionLines(session),
+      lines: sessionLines(visit),
       settings,
-      removedChargeIds: session.removedChargeIds,
-      addedChargeIds: session.addedChargeIds,
-      discount: session.discount,
-      tip: session.tip,
+      removedChargeIds: visit.removedChargeIds,
+      addedChargeIds: visit.addedChargeIds,
+      discount: visit.discount,
+      tip: visit.tip,
     });
 
     const orderRows = orders.map((order) =>
@@ -335,19 +335,19 @@ function openBillModal(sessionId, onDone) {
     rows.push('<div class="summary__row summary__row--total"><span>Total</span><span>' + money(bill.total) + '</span></div>');
     bill.includedTaxes.forEach((t) => rows.push('<p class="summary__note">Includes ' + esc(t.name) + ' ' + t.rate + '%: ' + money(t.amount) + '</p>'));
 
-    const isOwnerRole = session.role === 'owner';
+    const isOwnerRole = session && session.role === 'owner';
     const discountSection = isOwnerRole ? (
       '<div class="bill-discount mt-6"><p class="label">Add discount</p>' +
       '<div class="row row--wrap"><select class="select" id="discount-type" style="width:110px"><option value="percent">%</option><option value="amount">Amount</option></select>' +
-      '<input class="input" id="discount-value" type="number" min="0" step="0.5" placeholder="0" style="width:110px" value="' + (session.discount && session.discount.value ? session.discount.value : '') + '">' +
-      '<input class="input" id="discount-reason" type="text" placeholder="Reason (e.g. staff meal)" value="' + esc((session.discount && session.discount.reason) || '') + '">' +
+      '<input class="input" id="discount-value" type="number" min="0" step="0.5" placeholder="0" style="width:110px" value="' + (visit.discount && visit.discount.value ? visit.discount.value : '') + '">' +
+      '<input class="input" id="discount-reason" type="text" placeholder="Reason (e.g. staff meal)" value="' + esc((visit.discount && visit.discount.reason) || '') + '">' +
       '<button class="btn btn--secondary" type="button" data-apply-discount>Apply</button></div></div>'
     ) : '';
 
     hostEl.innerHTML =
       '<div class="modal is-open" role="dialog" aria-modal="true" aria-labelledby="bill-title"><div class="modal__dialog">' +
-      '<div class="modal__header"><div><p class="modal__title" id="bill-title">Bill · ' + esc(session.tableName) + '</p>' +
-      '<p class="muted text-xs">' + orders.length + (orders.length === 1 ? ' order' : ' orders') + ' · opened ' + formatTime(session.openedAt) + '</p></div>' +
+      '<div class="modal__header"><div><p class="modal__title" id="bill-title">Bill · ' + esc(visit.tableName) + '</p>' +
+      '<p class="muted text-xs">' + orders.length + (orders.length === 1 ? ' order' : ' orders') + ' · opened ' + formatTime(visit.openedAt) + '</p></div>' +
       '<button class="btn btn--icon" type="button" data-close aria-label="Close"><i data-lucide="x"></i></button></div>' +
       '<div class="modal__body">' +
       '<div class="status-items">' + (orderRows || '<p class="muted text-sm">No orders on this table yet.</p>') + '</div>' +
@@ -358,12 +358,12 @@ function openBillModal(sessionId, onDone) {
       '<i data-lucide="credit-card"></i> Take Payment / Collect Now (' + money(bill.total) + ')</button>' +
       '</div>' +
       '<p class="label mt-4">Quick Settle</p>' +
-      (session.paymentMethod ? '<div class="notice-banner"><i data-lucide="wallet"></i><span>' + esc(guestPayLine({ sessionId: session.id, paymentMethod: session.paymentMethod })) + '</span></div>' : '') +
+      (visit.paymentMethod ? '<div class="notice-banner"><i data-lucide="wallet"></i><span>' + esc(guestPayLine({ sessionId: visit.id, paymentMethod: visit.paymentMethod })) + '</span></div>' : '') +
       '<div class="row row--wrap mt-2">' +
       (settings.paymentMethods || []).filter((m) => m.enabled).map((m) =>
-        '<button class="btn ' + (m.id === session.paymentMethod ? 'btn--primary' : 'btn--secondary') +
+        '<button class="btn ' + (m.id === visit.paymentMethod ? 'btn--primary' : 'btn--secondary') +
         '" type="button" data-pay="' + m.id + '">' + esc(m.name) + '</button>').join('') +
-      '</div><p class="hint">Paying closes the session and frees ' + esc(session.tableName) + '.</p>' +
+      '</div><p class="hint">Paying closes the session and frees ' + esc(visit.tableName) + '.</p>' +
       '</div></div></div>';
 
     if (window.lucide) window.lucide.createIcons();
@@ -371,7 +371,7 @@ function openBillModal(sessionId, onDone) {
     hostEl.querySelector('[data-close]').addEventListener('click', close);
     hostEl.querySelector('.modal').addEventListener('click', (event) => { if (event.target.classList.contains('modal')) close(); });
     const discountTypeEl = hostEl.querySelector('#discount-type');
-    if (discountTypeEl) discountTypeEl.value = (session.discount && session.discount.type) || 'percent';
+    if (discountTypeEl) discountTypeEl.value = (visit.discount && visit.discount.type) || 'percent';
 
     const openTerminalBtn = hostEl.querySelector('#btn-open-terminal');
     if (openTerminalBtn) {
@@ -388,7 +388,7 @@ function openBillModal(sessionId, onDone) {
         const value = Number(hostEl.querySelector('#discount-value').value) || 0;
         const reason = hostEl.querySelector('#discount-reason').value.trim();
         store.update('sessions', sessionId, { discount: { type, value, reason } });
-        store.logActivity({ actor: session.name || 'Owner', clientId: client.id, type: 'Discount', details: 'Discount ' + (type === 'percent' ? value + '%' : money(value)) + ' on ' + session.tableName });
+        store.logActivity({ actor: (session && session.name) || 'Owner', clientId: client.id, type: 'Discount', details: 'Discount ' + (type === 'percent' ? value + '%' : money(value)) + ' on ' + visit.tableName });
         toast('Discount applied');
         draw();
       });
@@ -397,24 +397,24 @@ function openBillModal(sessionId, onDone) {
     hostEl.querySelectorAll('[data-pay]').forEach((btn) => btn.addEventListener('click', () => {
       const method = btn.getAttribute('data-pay');
       const finalBill = computeBill({
-        lines: sessionLines(session),
+        lines: sessionLines(visit),
         settings,
-        removedChargeIds: session.removedChargeIds,
-        addedChargeIds: session.addedChargeIds,
-        discount: session.discount,
-        tip: session.tip,
+        removedChargeIds: visit.removedChargeIds,
+        addedChargeIds: visit.addedChargeIds,
+        discount: visit.discount,
+        tip: visit.tip,
       });
       closeSession(sessionId, { method, at: new Date().toISOString(), amount: finalBill.total }, finalBill);
       store.logActivity({
-        actor: session.name || 'Owner',
+        actor: (session && session.name) || 'Owner',
         clientId: client.id,
         type: 'Payment',
-        details: session.tableName + ' paid by ' + method + ' · ' + money(finalBill.total),
+        details: visit.tableName + ' paid by ' + method + ' · ' + money(finalBill.total),
       });
       emit('order:update', { clientId: client.id });
       emit('session:paid', { clientId: client.id, sessionId });
-      emit('session:close', { clientId: client.id, sessionId, tableId: session.tableId });
-      toast(session.tableName + ' paid by ' + method + ' · ' + money(finalBill.total));
+      emit('session:close', { clientId: client.id, sessionId, tableId: visit.tableId });
+      toast(visit.tableName + ' paid by ' + method + ' · ' + money(finalBill.total));
       close();
       if (onDone) onDone();
       else if (page === 'orders') renderOrders();
