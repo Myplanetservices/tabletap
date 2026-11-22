@@ -2740,7 +2740,7 @@ function renderStaff() {
     const staff = store.query('staff', (s) => s.clientId === client.id);
     rows.innerHTML = staff.map((member) =>
       '<tr><td data-label="Name" class="table__strong">' + esc(member.name) + '</td>' +
-      '<td data-label="Role">Kitchen</td><td data-label="PIN">••••</td>' +
+      '<td data-label="Role">' + (member.role === 'floor' ? 'Floor' : 'Kitchen') + '</td><td data-label="PIN">••••</td>' +
       '<td data-label="Status"><span class="badge badge--' + (member.active ? 'success' : 'neutral') + '">' +
       (member.active ? 'Active' : 'Deactivated') + '</span></td>' +
       '<td data-label="Last active">' + timeAgo(member.lastActive) + '</td>' +
@@ -2804,11 +2804,13 @@ function renderStaff() {
     }
     const pin = String(Math.floor(1000 + Math.random() * 9000));
     modalHost.innerHTML = '<div class="modal is-open" role="dialog" aria-modal="true"><div class="modal__dialog">' +
-      '<div class="modal__header"><div><p class="modal__title">Add kitchen staff</p>' +
+      '<div class="modal__header"><div><p class="modal__title">Add staff member</p>' +
       '<p class="muted text-xs">They log in with the restaurant code and this PIN.</p></div>' +
       '<button class="btn btn--icon" type="button" data-close aria-label="Close"><i data-lucide="x"></i></button></div>' +
       '<div class="modal__body"><div class="field"><label class="label" for="staff-name">Full name</label>' +
       '<input class="input" id="staff-name" type="text" placeholder="e.g. Ravi Kumar"></div>' +
+      '<div class="field"><label class="label" for="staff-role">Role</label>' +
+      '<select class="select" id="staff-role"><option value="kitchen">Kitchen</option><option value="floor">Floor</option></select></div>' +
       '<div class="field"><span class="label">PIN</span><div class="card card--flat"><div class="card__body row row--between">' +
       '<span class="mono strong" style="font-size:1.25rem;letter-spacing:0.2em">' + pin + '</span>' +
       '<span class="badge badge--neutral">Generated</span></div></div>' +
@@ -2819,8 +2821,9 @@ function renderStaff() {
     modalHost.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => { modalHost.innerHTML = ''; }));
     modalHost.querySelector('[data-save]').addEventListener('click', () => {
       const name = modalHost.querySelector('#staff-name').value.trim();
+      const role = modalHost.querySelector('#staff-role') ? modalHost.querySelector('#staff-role').value : 'kitchen';
       if (!name) return toast('Enter a name first.', 'danger');
-      store.insert('staff', { clientId: client.id, name, role: 'kitchen', pin, active: true, lastActive: null });
+      store.insert('staff', { clientId: client.id, name, role, pin, active: true, lastActive: null });
       modalHost.innerHTML = '';
       draw();
       toast('Staff added');
