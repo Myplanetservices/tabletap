@@ -2,3 +2,4 @@ server.js
 .env
 node_modules
 *.log
+public
