@@ -93,6 +93,8 @@ export async function changesSince(since) {
     : (await sql('SELECT now() AS cursor')).rows[0].cursor.toISOString();
   return {
     cursor,
+    // At the row cap the client cannot trust it has everything; it reloads in full.
+    truncated: rows.length >= 5000,
     changes: rows.map((r) => ({ collection: r.collection, id: r.id, deleted: r.deleted, data: r.deleted ? null : r.data })),
   };
 }

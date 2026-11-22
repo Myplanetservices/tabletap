@@ -311,7 +311,8 @@ export function checkKitchenCodeRotations() {
 // Run check on load and every 60 seconds (browser only; the seed script imports this module in Node)
 if (typeof window !== 'undefined') {
   try {
-    checkKitchenCodeRotations();
+    // Deferred so it runs after the cloud sync at the end of this module has loaded the store.
+    setTimeout(() => { try { checkKitchenCodeRotations(); } catch (e) {} }, 0);
     setInterval(checkKitchenCodeRotations, 60000);
   } catch (e) {}
 }
@@ -1120,11 +1121,17 @@ export function seedData() {
 
 /* ------------------------------------------------------------ cloud sync ---
    Neon Postgres via /api/db. Three moves:
-   1. hydrate: before any page module runs (top-level await below), load every
-      record from the server into the cache.
-   2. flush: after each write, diff the cache against what the server last
-      confirmed (`synced`) and POST only changed and deleted records.
-   3. poll: every few seconds fetch records changed since the last cursor and
+   1. start: on a browser's first visit, load every record from the server
+      before any page module runs (top-level await below). After that, pages
+      start instantly from the localStorage cache and catch up with one
+      "changes since <cursor>" request, so navigating never waits on the
+      network (and never re-downloads the whole database).
+   2. flush: after each write, compare each record's fingerprint with the one
+      the server last confirmed (`synced`) and POST only changed and deleted
+      records. Fingerprints and the cursor persist in localStorage, so an edit
+      that had not reached the server when the previous page closed is still
+      found and sent.
+   3. poll: every few seconds fetch records changed since the cursor and
       merge them. A record with an unsent local edit keeps the local version
       (it is pushed next); otherwise the server's version wins. Merged changes
       are announced as the app's usual realtime events (order:new, call:new…)
@@ -1134,17 +1141,19 @@ export function seedData() {
 const CLOUD_ENABLED = typeof window !== 'undefined' && typeof fetch === 'function' &&
   /^https?:$/.test(window.location.protocol);
 const API_DB = CLOUD_ENABLED ? new URL('../../api/db', import.meta.url).href : '';
+const META_KEY = 'tqr_cloud';
 const SEP = '\u0000';
 const POLL_MS = 4000;
 const BATCH = 500;
 
-const synced = new Map(); // "collection\0id" → stable JSON the server has
+const synced = new Map(); // "collection\0id" → fingerprint of the version the server has
 const cloud = { status: 'off', lastSyncAt: null, error: null };
 let cloudCursor = null;
 let flushTimer = null;
 let flushing = false;
 let flushAgain = false;
 let pollTimer = null;
+let metaTimer = null;
 
 /** { status: 'off' | 'connecting' | 'online' | 'error', lastSyncAt, error } */
 export function cloudStatus() {
@@ -1165,6 +1174,19 @@ function stable(value) {
     .map((k) => JSON.stringify(k) + ':' + stable(value[k])).join(',') + '}';
 }
 
+/** Short fingerprint of a record: length + two independent 32-bit FNV-1a hashes. */
+function fingerprint(record) {
+  const s = stable(record);
+  let a = 0x811c9dc5;
+  let b = 0x01000193;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193);
+    b = Math.imul(b ^ c, 0x0100019d) ^ (b >>> 15);
+  }
+  return s.length.toString(36) + '.' + (a >>> 0).toString(36) + '.' + (b >>> 0).toString(36);
+}
+
 function eachRecord(db, fn) {
   for (const name of Object.keys(db)) {
     const list = db[name];
@@ -1172,6 +1194,27 @@ function eachRecord(db, fn) {
     for (const record of list) {
       if (record && record.id !== undefined && record.id !== null) fn(name, record);
     }
+  }
+}
+
+function saveMeta() {
+  clearTimeout(metaTimer);
+  metaTimer = null;
+  try {
+    localStorage.setItem(META_KEY, JSON.stringify({ cursor: cloudCursor, synced: Object.fromEntries(synced) }));
+  } catch (_) { /* storage full or blocked: next visit does a full load */ }
+}
+
+function saveMetaSoon() {
+  if (!metaTimer) metaTimer = setTimeout(saveMeta, 500);
+}
+
+function loadMeta() {
+  try {
+    const meta = JSON.parse(localStorage.getItem(META_KEY) || 'null');
+    return meta && typeof meta.cursor === 'string' && meta.synced && typeof meta.synced === 'object' ? meta : null;
+  } catch (_) {
+    return null;
   }
 }
 
@@ -1183,8 +1226,8 @@ function pendingChanges() {
   eachRecord(cache, (collection, record) => {
     const key = collection + SEP + String(record.id);
     seen.add(key);
-    const json = stable(record);
-    if (synced.get(key) !== json) upserts.push({ key, json, collection, record });
+    const print = fingerprint(record);
+    if (synced.get(key) !== print) upserts.push({ key, print, collection, record });
   });
   for (const key of synced.keys()) {
     if (seen.has(key)) continue;
@@ -1226,8 +1269,9 @@ export async function flushCloud({ keepalive = false } = {}) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Save failed (HTTP ' + res.status + ')');
       }
-      batch.forEach((b) => (b.kind === 'upsert' ? synced.set(b.key, b.json) : synced.delete(b.key)));
+      batch.forEach((b) => (b.kind === 'upsert' ? synced.set(b.key, b.print) : synced.delete(b.key)));
     }
+    if (keepalive) saveMeta(); else saveMetaSoon();
     setCloud({ status: 'online', lastSyncAt: new Date().toISOString(), error: null });
     return true;
   } catch (err) {
@@ -1280,8 +1324,8 @@ function applyRemote(changes) {
     const list = db[change.collection] || (db[change.collection] = []);
     const index = list.findIndex((r) => r && String(r.id) === String(change.id));
     const local = index === -1 ? null : list[index];
-    const localJson = local ? stable(local) : undefined;
-    if (localJson !== synced.get(key)) continue; // unsent local edit or delete: ours wins, flush sends it
+    const localPrint = local ? fingerprint(local) : undefined;
+    if (localPrint !== synced.get(key)) continue; // unsent local edit or delete: ours wins, flush sends it
 
     if (change.deleted) {
       if (index !== -1) {
@@ -1292,9 +1336,9 @@ function applyRemote(changes) {
       synced.delete(key);
       continue;
     }
-    const json = stable(change.data);
-    synced.set(key, json);
-    if (json === localJson) continue;
+    const print = fingerprint(change.data);
+    synced.set(key, print);
+    if (print === localPrint) continue;
     if (index === -1) list.push(change.data);
     else list[index] = change.data;
     touched = true;
@@ -1313,8 +1357,15 @@ async function pollCloud() {
     const res = await fetch(API_DB + '?since=' + encodeURIComponent(cloudCursor), { cache: 'no-store' });
     if (!res.ok) throw new Error('Refresh failed (HTTP ' + res.status + ')');
     const body = await res.json();
+    if (body.truncated) {
+      // Too much changed since this cache was saved: start over from a full load.
+      localStorage.removeItem(META_KEY);
+      window.location.reload();
+      return;
+    }
     cloudCursor = body.cursor || cloudCursor;
     const events = applyRemote(body.changes || []);
+    saveMetaSoon();
     if (cloud.status !== 'online') setCloud({ status: 'online', error: null });
     events.forEach((detail) => window.dispatchEvent(new CustomEvent('tt:remote', { detail })));
   } catch (err) {
@@ -1323,12 +1374,45 @@ async function pollCloud() {
   schedulePoll();
 }
 
-function schedulePoll() {
+function schedulePoll(delay = POLL_MS) {
   clearTimeout(pollTimer);
-  pollTimer = setTimeout(pollCloud, POLL_MS);
+  pollTimer = setTimeout(pollCloud, delay);
 }
 
-/** Loads the store from Neon. On failure the page keeps its local cache and does not sync. */
+function startSyncLoop() {
+  const onLeave = () => { flushCloud({ keepalive: true }); saveMeta(); };
+  window.addEventListener('pagehide', onLeave);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) onLeave();
+    else schedulePoll(0);
+  });
+}
+
+/**
+ * Start from the cache this browser already synced. Returns false when there is
+ * none (first visit, cleared storage, or data from before cloud sync).
+ */
+function resumeFromCache() {
+  const meta = loadMeta();
+  if (!meta) return false;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (!parsed || parsed.__version !== VERSION) return false;
+    cache = parsed;
+  } catch (_) {
+    return false;
+  }
+  synced.clear();
+  for (const [key, print] of Object.entries(meta.synced)) synced.set(key, print);
+  cloudCursor = meta.cursor;
+  setCloud({ status: 'online', lastSyncAt: null, error: null });
+  startSyncLoop();
+  schedulePoll(0);        // catch up on other devices' changes right away
+  scheduleCloudFlush(0);  // and send anything the previous page left unsent
+  return true;
+}
+
+/** First visit: load the whole store from Neon. On failure the page runs on local data and does not sync. */
 async function hydrateFromCloud() {
   setCloud({ status: 'connecting' });
   try {
@@ -1341,10 +1425,10 @@ async function hydrateFromCloud() {
     const remote = body.db || {};
     const total = Object.values(remote).reduce((n, list) => n + (Array.isArray(list) ? list.length : 0), 0);
     cloudCursor = body.cursor;
+    synced.clear();
 
     if (total === 0) {
       // Empty database (e.g. a fresh Neon branch): seed it from this browser.
-      synced.clear();
       cache = seedData();
       persistToStorage(cache);
       setCloud({ status: 'online', lastSyncAt: null, error: null });
@@ -1352,18 +1436,12 @@ async function hydrateFromCloud() {
     } else {
       cache = { ...remote, __version: VERSION };
       persistToStorage(cache);
-      synced.clear();
-      eachRecord(cache, (collection, record) => synced.set(collection + SEP + String(record.id), stable(record)));
+      eachRecord(cache, (collection, record) => synced.set(collection + SEP + String(record.id), fingerprint(record)));
       setCloud({ status: 'online', lastSyncAt: new Date().toISOString(), error: null });
     }
-
+    saveMeta();
+    startSyncLoop();
     schedulePoll();
-    const flushOnLeave = () => { flushCloud({ keepalive: true }); };
-    window.addEventListener('pagehide', flushOnLeave);
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) flushOnLeave();
-      else { clearTimeout(pollTimer); pollCloud(); }
-    });
   } catch (err) {
     setCloud({ status: 'off', error: 'Cloud database unreachable: ' + err.message });
     if (DEMO_MODE) console.warn('TableTap: running on local data only.', err);
@@ -1371,4 +1449,4 @@ async function hydrateFromCloud() {
 }
 
 cloudReady = true;
-if (CLOUD_ENABLED) await hydrateFromCloud();
+if (CLOUD_ENABLED && !resumeFromCache()) await hydrateFromCloud();
