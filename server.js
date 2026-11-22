@@ -26,17 +26,40 @@ const MIME_TYPES = {
   '.txt': 'text/plain; charset=utf-8'
 };
 
+/* Resolve /api/<route> the way Vercel does: an exact api/<route>.js file, or a
+   catch-all api/<dir>/[...name].js whose segments land in req.query[name].
+   Files and folders starting with "_" are helpers, never routes. */
+function resolveApiRoute(apiPath) {
+  const segments = apiPath.split('/').filter(Boolean);
+  if (!segments.length || segments.some((s) => s.startsWith('_') || s === '..' || s === '.')) return null;
+  const exact = path.join(__dirname, 'api', ...segments) + '.js';
+  if (fs.existsSync(exact)) return { modulePath: `./api/${segments.join('/')}.js`, params: {} };
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const dir = path.join(__dirname, 'api', ...segments.slice(0, i));
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) continue;
+    const catchAll = fs.readdirSync(dir).find((f) => /^\[\.\.\.\w+\]\.js$/.test(f));
+    if (catchAll) {
+      const name = catchAll.slice(4, -4);
+      const modulePath = `./api/${[...segments.slice(0, i), catchAll].join('/')}`;
+      return { modulePath, params: { [name]: segments.slice(i) } };
+    }
+  }
+  return null;
+}
+
 async function handleApiRequest(req, res, apiPath) {
-  const handlerFile = path.join(__dirname, 'api', `${apiPath}.js`);
-  if (!fs.existsSync(handlerFile)) {
+  const route = resolveApiRoute(apiPath);
+  if (!route) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: `API route /api/${apiPath} not found` }));
   }
+  Object.assign(req.query, route.params);
 
   // Parse body if present
   let body = '';
   req.on('data', (chunk) => { body += chunk; });
   req.on('end', async () => {
+    req.rawBody = body;
     try {
       req.body = body ? JSON.parse(body) : {};
     } catch (_) {
@@ -55,7 +78,7 @@ async function handleApiRequest(req, res, apiPath) {
     };
 
     try {
-      const module = await import(`./api/${apiPath}.js?t=${Date.now()}`);
+      const module = await import(`${route.modulePath}?t=${Date.now()}`);
       if (typeof module.default === 'function') {
         await module.default(req, res);
       } else {
@@ -85,6 +108,14 @@ const server = http.createServer((req, res) => {
   }
 
   let filePath = path.join(__dirname, pathname);
+  // Never serve secrets or server-only files (.env, .neon, .git, node_modules, ...).
+  const relative = path.relative(__dirname, filePath);
+  const blocked = relative.startsWith('..') || path.isAbsolute(relative) ||
+    relative.split(path.sep).some((seg) => seg.startsWith('.') || seg === 'node_modules');
+  if (blocked) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    return res.end('Not Found');
+  }
   if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
     filePath = path.join(filePath, 'index.html');
   }
@@ -111,5 +142,6 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`TableTap production server listening on http://localhost:${PORT}`);
-  console.log(`MongoDB URI: ${process.env.MONGODB_URI ? 'Configured' : 'Standby (local mode)'}`);
+  console.log(`Database: ${process.env.DATABASE_URL ? 'Neon Postgres' : 'NOT CONFIGURED (set DATABASE_URL)'}`);
+  console.log(`Email: ${process.env.RESEND_API_KEY && process.env.EMAIL_FROM ? 'Resend' : 'not configured (emails stay in the outbox)'}`);
 });

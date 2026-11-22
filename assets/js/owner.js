@@ -4,11 +4,11 @@
    reports, settings and account. Everything reads and writes store.js.
    ========================================================================== */
 
-import { checkMongoHealth, syncWithMongo, renderMongoSettingsCard, pushOrderToMongo } from './mongo-sync.js';
+import { checkDatabaseHealth, saveNow, renderDatabaseSettingsCard } from './cloud-sync.js';
 import { renderSyncDialog, pushToSheet, updateSyncChip, isSyncReady, uploadFileToDrive } from './google-sync.js';
 import * as store from './store.js';
 import { legacyBreakdown, sessionForTable, sessionOrders, sessionLines, closeSession, openSessionForTable, seatTable } from './store.js';
-import { computeBill } from './billing.js';
+import { computeBill, billFromSession } from './billing.js';
 import { requireRole, currentClient, changePassword, logout, stopImpersonation } from './auth.js';
 import { emit, on } from './realtime.js';
 import {
@@ -335,7 +335,7 @@ function openBillModal(sessionId, onDone) {
     rows.push('<div class="summary__row summary__row--total"><span>Total</span><span>' + money(bill.total) + '</span></div>');
     bill.includedTaxes.forEach((t) => rows.push('<p class="summary__note">Includes ' + esc(t.name) + ' ' + t.rate + '%: ' + money(t.amount) + '</p>'));
 
-    const isOwnerRole = session && session.role === 'owner';
+    const isOwnerRole = !session || session.role === 'owner' || session.role === 'floor';
     const discountSection = isOwnerRole ? (
       '<div class="bill-discount mt-6"><p class="label">Add discount</p>' +
       '<div class="row row--wrap"><select class="select" id="discount-type" style="width:110px"><option value="percent">%</option><option value="amount">Amount</option></select>' +
@@ -451,7 +451,7 @@ function openTakePaymentModal(sessionId, onDone) {
 
     let tipObj = session.tip || { type: 'percent', value: 0, amount: 0 };
     if (tipPercent > 0) {
-      const sub = subtotalLines.reduce((acc, l) => acc + (l.price * l.qty), 0);
+      const sub = subtotalLines.reduce((acc, l) => acc + (Number(l.amount) || 0), 0);
       tipObj = { type: 'percent', value: tipPercent, amount: Math.round(sub * (tipPercent / 100) * 100) / 100 };
     } else if (customTipAmount > 0) {
       tipObj = { type: 'amount', value: customTipAmount, amount: customTipAmount };
@@ -1129,6 +1129,7 @@ function renderHistory() {
     '</select><select class="select" id="f-table" aria-label="Table"><option value="all">All tables</option>' +
     store.tablesOf(client.id).map((t) => '<option value="' + esc(t.name) + '">' + esc(t.name) + '</option>').join('') +
     '</select><input class="input" type="search" id="f-term" placeholder="Search order #" aria-label="Search by order number">' +
+    '<button class="btn btn--secondary btn--sm" type="button" id="clear-filters" style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;height:36px;min-height:36px;"><i data-lucide="rotate-ccw"></i> Clear filters</button>' +
     '<span class="toolbar__spacer"></span><span class="muted text-xs" id="hist-count"></span></div>' +
     '<div class="table-wrap"><table class="table table-stack"><thead><tr>' +
     '<th scope="col">Order #</th><th scope="col">Date / time</th><th scope="col">Table</th><th scope="col">Items</th>' +
@@ -1155,6 +1156,14 @@ function renderHistory() {
   }
 
   function draw() {
+    const isFiltered = !!(filters.from || filters.to || (filters.status && filters.status !== 'all') || (filters.table && filters.table !== 'all') || filters.term);
+    const clearBtn = host.querySelector('#clear-filters');
+    if (clearBtn) {
+      clearBtn.disabled = !isFiltered;
+      clearBtn.style.opacity = isFiltered ? '1' : '0.5';
+      clearBtn.style.cursor = isFiltered ? 'pointer' : 'not-allowed';
+    }
+
     const rows = filtered();
     const pages = Math.max(1, Math.ceil(rows.length / perPage));
     pageNo = Math.min(pageNo, pages);
@@ -1173,8 +1182,11 @@ function renderHistory() {
         '<td data-label="Status">' + statusBadge(order.status) + '</td>' +
         '<td data-label="">' + receipt + '</td></tr>';
     }).join('')
-      : '<tr><td colspan="6"><div class="empty"><span class="empty__icon"><i data-lucide="history"></i></span>' +
-        '<p class="empty__title">No orders match those filters</p></div></td></tr>';
+      : '<tr><td colspan="7"><div class="empty"><span class="empty__icon"><i data-lucide="history"></i></span>' +
+        '<p class="empty__title">' + (isFiltered ? 'No orders match those filters' : 'No orders yet') + '</p>' +
+        (isFiltered ? '<p class="empty__text">Try adjusting or clearing your filters to see more orders.</p>' +
+        '<div class="empty__action"><button class="btn btn--secondary btn--sm mt-2" type="button" data-clear-filters><i data-lucide="rotate-ccw"></i> Clear filters</button></div>' : '') +
+        '</div></td></tr>';
 
     countHost.textContent = rows.length
       ? 'Showing ' + ((pageNo - 1) * perPage + 1) + '–' + Math.min(pageNo * perPage, rows.length) + ' of ' + rows.length
@@ -1184,6 +1196,28 @@ function renderHistory() {
 
     if (window.lucide) window.lucide.createIcons();
   }
+
+  function resetFilters() {
+    filters = { from: '', to: '', status: 'all', table: 'all', term: '' };
+    const fFrom = host.querySelector('#f-from');
+    const fTo = host.querySelector('#f-to');
+    const fStatus = host.querySelector('#f-status');
+    const fTable = host.querySelector('#f-table');
+    const fTerm = host.querySelector('#f-term');
+    if (fFrom) fFrom.value = '';
+    if (fTo) fTo.value = '';
+    if (fStatus) fStatus.value = 'all';
+    if (fTable) fTable.value = 'all';
+    if (fTerm) fTerm.value = '';
+    pageNo = 1;
+    draw();
+  }
+
+  const clearBtn = host.querySelector('#clear-filters');
+  if (clearBtn) clearBtn.addEventListener('click', resetFilters);
+  host.addEventListener('click', (event) => {
+    if (event.target.closest('[data-clear-filters]')) resetFilters();
+  });
 
   pagesHost.addEventListener('click', (event) => {
     const btn = event.target.closest('[data-page]');
@@ -1238,8 +1272,10 @@ function renderMenu() {
     '<button class="btn btn--secondary btn--block mt-4" type="button" data-add-cat><i data-lucide="plus"></i> Add category</button></div></div>' +
     '<div class="card"><div class="card__header"><div class="card__title-row"><span class="card__title" id="cat-title"></span>' +
     '<span class="badge badge--neutral" id="cat-badge"></span></div>' +
+    '<div class="row gap-1" style="align-items:center;">' +
     '<input class="input" type="search" id="item-search" placeholder="Search items" aria-label="Search items" style="height:32px;min-height:32px;width:180px;font-size:0.8125rem">' +
-    '</div><div class="card__body"><div id="item-list"></div>' +
+    '<button class="btn btn--secondary btn--sm" type="button" id="item-search-clear" title="Clear search" aria-label="Clear search" style="display:none;align-items:center;height:32px;min-height:32px;padding:0 8px;font-size:0.75rem;"><i data-lucide="x"></i> Clear</button>' +
+    '</div></div><div class="card__body"><div id="item-list"></div>' +
     '<div class="row row--between mt-3" id="menu-pagination-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:0.75rem;">' +
     '<span class="muted text-xs" id="item-count-text"></span>' +
     '<nav class="pagination" id="item-pages" aria-label="Menu item pages"></nav></div>' +
@@ -1526,6 +1562,10 @@ function renderMenu() {
       return;
     }
     host.querySelector('#cat-title').textContent = selectedCat.name;
+    const clearSearchBtn = host.querySelector('#item-search-clear');
+    if (clearSearchBtn) {
+      clearSearchBtn.style.display = term ? 'inline-flex' : 'none';
+    }
     const items = store.query('items', (i) => i.categoryId === selectedCat.id && (!term || i.name.toLowerCase().includes(term)));
     host.querySelector('#cat-badge').textContent = items.length + ' items';
 
@@ -1555,8 +1595,8 @@ function renderMenu() {
         '<a class="btn btn--icon btn--sm" href="menu-item.html?id=' + item.id + '" aria-label="Edit ' + esc(item.name) + '"><i data-lucide="pencil"></i></a>' +
         '<button class="btn btn--icon btn--sm" type="button" data-del-item="' + item.id + '" aria-label="Delete ' + esc(item.name) + '"><i data-lucide="trash-2"></i></button>' +
         '</div></div>';
-    }).join('') : '<div class="empty"><span class="empty__icon"><i data-lucide="book-open"></i></span><p class="empty__title">No items yet</p>' +
-      '<p class="empty__text">Add your first dish to this category.</p></div>';
+    }).join('') : '<div class="empty"><span class="empty__icon"><i data-lucide="book-open"></i></span><p class="empty__title">' + (term ? 'No items match “' + esc(term) + '”' : 'No items yet') + '</p>' +
+      (term ? '<div class="empty__action"><button class="btn btn--secondary btn--sm mt-2" type="button" data-clear-item-search><i data-lucide="rotate-ccw"></i> Clear search</button></div>' : '<p class="empty__text">Add your first dish to this category.</p>') + '</div>';
 
     if (window.lucide) window.lucide.createIcons();
   }
@@ -1648,6 +1688,14 @@ function renderMenu() {
   });
 
   itemList.addEventListener('click', async (event) => {
+    if (event.target.closest('[data-clear-item-search]')) {
+      term = '';
+      const inp = host.querySelector('#item-search');
+      if (inp) inp.value = '';
+      itemPage = 1;
+      drawItems();
+      return;
+    }
     const del = event.target.closest('[data-del-item]');
     if (!del) return;
     const item = store.getById('items', del.getAttribute('data-del-item'));
@@ -1669,6 +1717,17 @@ function renderMenu() {
     itemPage = 1;
     drawItems();
   }, 200));
+
+  const itemClearBtn = host.querySelector('#item-search-clear');
+  if (itemClearBtn) {
+    itemClearBtn.addEventListener('click', () => {
+      term = '';
+      const inp = host.querySelector('#item-search');
+      if (inp) inp.value = '';
+      itemPage = 1;
+      drawItems();
+    });
+  }
 
   drawCats();
   drawItems();
@@ -2197,6 +2256,7 @@ function renderFloor() {
                 (isOccupied ? 'Occupied' : 'Free') + '</span></div>' +
                 '<div class="table-card__qr" data-view-qr="' + table.id + '"><i data-lucide="qr-code"></i></div>' +
                 (isOccupied && session && session.tableKey ? '<div class="text-xs muted text-center mt-1">Backup Key: <strong style="font-family:var(--font-mono);letter-spacing:2px;">' + esc(session.tableKey) + '</strong></div>' : '') +
+                (table.failedKeyAttempts ? '<div class="text-center mt-1"><span class="badge badge--danger" style="font-size:11px;padding:2px 8px;"><i data-lucide="shield-alert" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px;"></i>' + table.failedKeyAttempts + ' failed key attempt' + (table.failedKeyAttempts === 1 ? '' : 's') + '</span></div>' : '') +
                 '<div class="table-card__actions">' +
                 (isOccupied
                   ? (session ? '<button class="btn btn--sm" style="background:#059669; color:#fff; border-color:#059669;" type="button" data-take-pay="' + session.id + '"><i data-lucide="credit-card"></i> Take Payment</button>' : '') +
@@ -2842,29 +2902,32 @@ function renderReports() {
   const revenue = rows.reduce((sum, o) => sum + o.total, 0);
   const itemsSold = rows.reduce((sum, o) => sum + o.items.reduce((n, i) => n + i.qty, 0), 0);
 
-  let taxCollected = 0;
-  let chargesCollected = 0;
-  let discountsGiven = 0;
-  let tipsCollected = 0;
+  let taxCollectedCents = 0;
+  let chargesCollectedCents = 0;
+  let discountsGivenCents = 0;
+  let tipsCollectedCents = 0;
   const methodNames = new Map((settings.paymentMethods || []).map((m) => [m.id, m.name]));
   const payments = new Map();
 
   store.query('sessions', (x) => x.clientId === client.id && x.status === 'paid' && new Date(x.closedAt) >= since)
     .forEach((session) => {
-      const saved = session.bill || {};
-      discountsGiven += (saved.discount && saved.discount.amount) || 0;
-      tipsCollected += (saved.tip && saved.tip.amount) || 0;
+      const saved = session.bill || billFromSession(session, settings) || {};
+      discountsGivenCents += Math.round(((saved.discount && saved.discount.amount) || 0) * 100);
+      tipsCollectedCents += Math.round(((saved.tip && saved.tip.amount) || 0) * 100);
+      chargesCollectedCents += Math.round((saved.chargeTotal || 0) * 100);
+      const billVat = saved.pricesIncludeTax ? (saved.includedTaxTotal || 0) : (saved.taxTotal || 0);
+      taxCollectedCents += Math.round(billVat * 100);
       const method = (session.payment && session.payment.method) || 'other';
       const bucket = payments.get(method) || { count: 0, amount: 0 };
       bucket.count += 1;
       bucket.amount += (session.payment && session.payment.amount) || saved.total || 0;
       payments.set(method, bucket);
     });
-  rows.forEach((order) => {
-    const b = breakdownOf(order);
-    taxCollected += b.taxTotal || 0;
-    chargesCollected += b.chargeTotal || 0;
-  });
+
+  const taxCollected = taxCollectedCents / 100;
+  const chargesCollected = chargesCollectedCents / 100;
+  const discountsGiven = discountsGivenCents / 100;
+  const tipsCollected = tipsCollectedCents / 100;
 
   const byDay = Array.from({ length: days }, (_, i) => {
     const date = new Date(Date.now() - (days - 1 - i) * 86400000);
@@ -3204,7 +3267,7 @@ function renderSettings() {
     '<button class="btn btn--primary" type="button" id="open-sync-dlg-btn"><i data-lucide="sheet"></i> Configure Google Sync</button>' +
     '<button class="btn btn--secondary" type="button" id="backup-drive-btn"><i data-lucide="cloud"></i> Backup to Google Drive</button>' +
     '</div></div></div>' +
-    renderMongoSettingsCard() +
+    renderDatabaseSettingsCard() +
     '</div>' +
 
     '<div class="tab-panel" data-panel="ordering" hidden><div class="card"><div class="card__body">' +
@@ -3267,7 +3330,16 @@ function renderSettings() {
       .map(([v, label]) => '<option value="' + v + '"' + ((settings.rounding || 'none') === v ? ' selected' : '') + '>' + label + '</option>').join('') +
     '</select></div>' +
     '<div class="field"><label class="label" for="set-currency">Currency</label><select class="select" id="set-currency">' +
-    ['$', '₹', '£', '€'].map((c) => '<option' + (settings.currency === c ? ' selected' : '') + '>' + c + '</option>').join('') +
+    [
+      { code: 'GBP', sym: '£', label: 'GBP (£)' },
+      { code: 'USD', sym: '$', label: 'USD ($)' },
+      { code: 'EUR', sym: '€', label: 'EUR (€)' },
+      { code: 'INR', sym: '₹', label: 'INR (₹)' },
+      { code: '£', sym: '£', label: '£' },
+      { code: '$', sym: '$', label: '$' },
+      { code: '€', sym: '€', label: '€' },
+      { code: '₹', sym: '₹', label: '₹' },
+    ].map((c) => '<option value="' + c.code + '"' + ((settings.currency === c.code || (c.code === 'GBP' && settings.currency === '£') || (c.code === 'USD' && settings.currency === '$')) ? ' selected' : '') + '>' + c.label + '</option>').join('') +
     '</select></div></div>' +
 
     '<div class="tax-preview" id="tax-preview" aria-live="polite"></div>' +
@@ -3495,6 +3567,23 @@ function renderSettings() {
     if (!/^#[0-9a-f]{6}$/i.test(event.target.value)) return;
     host.querySelector('#set-accent').value = event.target.value;
     host.querySelector('.phone-preview').style.setProperty('--preview-accent', event.target.value);
+  });
+
+  // Cloud database card (Neon Postgres; store.js saves automatically).
+  const testDbBtn = host.querySelector('#test-db-btn');
+  if (testDbBtn) testDbBtn.addEventListener('click', async () => {
+    testDbBtn.disabled = true;
+    const health = await checkDatabaseHealth();
+    testDbBtn.disabled = false;
+    const database = health && health.database;
+    if (database && database.connected) toast('Database connected · ' + database.latencyMs + ' ms.', 'success');
+    else toast('Database unreachable: ' + ((database && database.message) || 'no response'), 'warning');
+  });
+  const syncDbBtn = host.querySelector('#sync-db-btn');
+  if (syncDbBtn) syncDbBtn.addEventListener('click', async () => {
+    syncDbBtn.disabled = true;
+    await saveNow();
+    syncDbBtn.disabled = false;
   });
 
   host.querySelectorAll('[data-save]').forEach((btn) => {

@@ -3,9 +3,11 @@
 QR table-ordering for restaurants, bars and cafés. A guest scans the code on the table, the menu
 opens in their browser, they order, and the ticket lands on a screen at the kitchen pass.
 
-This repository is a **fully clickable demo**: plain HTML, CSS and vanilla ES modules, with all
-data seeded into the browser (`localStorage`, key `tqr_db`). There is no backend — "live" means
-`BroadcastChannel` between tabs on the same machine.
+Plain HTML, CSS and vanilla ES modules on the front end, a small Node API (`api/*.js`) behind it,
+and **Neon Postgres** as the database. Every page loads its data from Neon through `/api/db`,
+saves each change back, and polls for changes made on other devices every few seconds, so a guest
+order on a phone reaches the kitchen screen. `localStorage` (`tqr_db`) is only a cache.
+Transactional email (invites, welcome, account notices) goes out through **Resend**.
 
 ## Recent Improvements & Added Features
 1. **Google Sheets Sync (`ensureSheetsExist`)**:
@@ -26,15 +28,35 @@ data seeded into the browser (`localStorage`, key `tqr_db`). There is no backend
 This repository is configured out-of-the-box for **Vercel** (`vercel.json`, `package.json`, serverless `/api` routes):
 1. Import or push this repo to GitHub / GitLab / Bitbucket.
 2. In Vercel, click **New Project** and select this repository.
-3. In **Project Settings → Environment Variables**, add your MongoDB cluster connection string:
-   - `MONGODB_URI` = `mongodb+srv://<username>:<password>@cluster0.mongodb.net/tabletap?retryWrites=true&w=majority`
-   - *(Optional)* `MONGODB_DB` = `tabletap`
-4. Click **Deploy**. Vercel will host all static pages globally on the edge and route all `/api/*` requests to serverless Node functions.
+3. In **Project Settings → Environment Variables**, add (see `.env.example`):
+   - `DATABASE_URL` — Neon **pooled** connection string (`neon connection-string --pooled`)
+   - `RESEND_API_KEY` and `EMAIL_FROM` — Resend key and a sender on a verified domain
+   - *(Optional)* `EMAIL_REPLY_TO`
+4. Click **Deploy**. Vercel runs `npm run build` (syntax and type checks), serves the static pages
+   and routes `/api/*` to serverless Node functions.
 
-### 2. MongoDB Atlas Cluster Backend
-- **Multi-Device Cloud Sync**: Orders placed by customers at physical tables automatically stream into your MongoDB cluster.
-- **Bi-directional Sync**: The Owner Settings page includes a **MongoDB Cluster Backend** card to test the cluster connection and perform on-demand sync between browser storage and the MongoDB Atlas cloud.
-- **Offline / Standby Fallback**: If `MONGODB_URI` is not set, TableTap automatically operates in high-speed local mode without crashing.
+### 2. Neon Postgres database
+- **Schema as code**: `db/migrations/*.sql`, applied with `npm run db:migrate` over the direct
+  (unpooled) connection. One table, `tt_docs`, holds every record as JSON keyed by
+  `(collection, id)`; deletes are tombstones so other devices learn about them.
+- **Seed**: `npm run db:seed` loads the demo data (all restaurants, menus, tables, orders, staff,
+  invites…). `npm run db:seed -- --reset` wipes the data first.
+- **Sync** (`assets/js/store.js`): load on page start, push changed records after each write,
+  poll `/api/db?since=` every 4 s. If the API is unreachable the page runs on its local cache and
+  says so on Settings → Cloud & Sync.
+- **REST** for integrations: `/api/orders`, `/api/menu`, `/api/health`.
+- **Neon project**: `neon.ts` + `.neon` link this folder to the Neon project and branch;
+  `neon env pull` refreshes `DATABASE_URL` in `.env`.
+
+### 3. Email (Resend)
+`assets/js/mailer.js` records every email in the `outbox` collection (visible at
+`dev/mailbox.html`) and posts it to `/api/email`, which sends it with Resend. Until
+`RESEND_API_KEY` and `EMAIL_FROM` are set, emails are logged as `not_configured` and stay in the
+outbox. Every attempt is logged in the `tt_email_log` table, with per-sender and per-recipient
+hourly limits.
+
+> **Security:** by request there is no server-side login yet. `/api/db` and `/api/email` are open
+> to anyone who can reach the deployment. Add authentication before real restaurants use it.
 
 ### 3. Dynamic Real-Time Dashboard & Analytics
 - **Live Calculations**: No static or mock hardcoding — all stats on the Owner Dashboard, Live Orders, Order History, and Reports pages are dynamically calculated in real time from the active restaurant database.
@@ -45,13 +67,18 @@ This repository is configured out-of-the-box for **Vercel** (`vercel.json`, `pac
 
 ## Run Locally
 
-You can run TableTap locally using the included Node.js server with full API & MongoDB support:
+You can run TableTap locally using the included Node.js server and your Neon database:
 
 ```bash
 npm install
-npm start
-# Server listens at http://localhost:8000
+neon env pull          # writes DATABASE_URL into .env (or copy .env.example and fill it in)
+npm run db:migrate     # create / update tables
+npm run db:seed        # load the demo data (first time only)
+npm run build          # checks
+npm start              # http://localhost:8000
 ```
+
+Serve over HTTP, never `file://`: the pages are ES modules and need the API.
 
 ## Demo logins
 

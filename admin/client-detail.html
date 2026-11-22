@@ -7,65 +7,19 @@
 <meta name="description" content="TableTap Super Admin panel for MyPlanetServices.">
 <link rel="stylesheet" href="../assets/css/fonts.css">
 <link rel="stylesheet" href="../assets/css/style.css">
+<script type="module" src="../assets/js/layout.js"></script>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
 </head>
-<body data-page="client-detail">
+<body data-page="client-detail" data-title="Client Details" data-role="admin">
 <a class="skip-link" href="#main">Skip to content</a>
 <div class="app-shell">
 
-  <aside class="app-shell__sidebar" id="admin-sidebar">
-    <div class="app-shell__brand">
-      <span class="brand__mark"><i data-lucide="shield"></i></span>
-      <span class="app-shell__brand-text">
-        <span class="brand__name">TableTap Admin</span>
-        <span class="app-shell__brand-sub">MyPlanetServices</span>
-      </span>
-    </div>
-
-    <nav class="app-shell__nav" aria-label="Admin">
-      <div class="app-shell__nav-group">
-        <p class="app-shell__nav-label">Manage</p>
-        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
-        <a class="nav-link" href="clients.html" aria-current="page"><i data-lucide="users"></i><span class="nav-link__text">Clients</span></a>
-        <a class="nav-link" href="invites.html"><i data-lucide="mail"></i><span class="nav-link__text">Invites</span></a>
-        <a class="nav-link" href="activity.html"><i data-lucide="history"></i><span class="nav-link__text">Activity Log</span></a>
-      </div>
-      <div class="app-shell__nav-group">
-        <p class="app-shell__nav-label">Platform</p>
-        <a class="nav-link" href="plans.html"><i data-lucide="credit-card"></i><span class="nav-link__text">Plans</span></a>
-        <a class="nav-link" href="settings.html"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
-      </div>    </nav>
-
-    <div class="app-shell__sidebar-footer">
-      <div class="row">
-        <span class="avatar">VK</span>
-        <span class="app-shell__brand-text">
-          <span class="owner-name">Vivek Kumar</span>
-          <span class="app-shell__brand-sub">Super admin</span>
-        </span>
-        <a class="btn btn--icon" href="login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
-      </div>
-    </div>
-  </aside>
+  <div id="app-sidebar"></div>
 
   <div class="app-shell__scrim" data-panel-close></div>
 
   <div class="app-shell__main">
-    <header class="app-shell__topbar">
-      <div class="app-shell__topbar-left">
-        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="false" aria-label="Open menu">
-          <i data-lucide="menu"></i>
-        </button>
-        <span class="app-shell__title">Clients / The Olive Table</span>
-      </div>
-      <div class="app-shell__topbar-right">
-        <div class="topbar-search">
-          <i data-lucide="search"></i>
-          <label class="sr-only" for="global-search">Search clients</label>
-          <input class="input" id="global-search" type="search" placeholder="Search clients">
-        </div>
-        <a class="btn btn--primary btn--sm" href="invites.html"><i data-lucide="user-plus"></i> Invite client</a>
-      </div>
-    </header>
+    <div id="app-topbar"></div>
 
     <main class="app-shell__content" id="main">
       <div class="app-shell__content-inner">
@@ -74,7 +28,7 @@
         <div class="detail-head__brand">
           <span class="detail-logo">OT</span>
           <div>
-            <h1 class="detail-head__name">The Olive Table</h1>
+            <h1 class="detail-head__name">Spice Route</h1>
             <p class="detail-head__meta">Ananya Rao · owner@olivetable.demo · India · joined 4 March 2026</p>
             <p class="mt-2"><span class="badge badge--success">Active</span> <span class="badge badge--neutral">Lifetime Pro</span></p>
           </div>
@@ -305,7 +259,7 @@
       <div class="modal" id="suspend-modal" role="dialog" aria-modal="true" aria-labelledby="suspend-title" hidden>
         <div class="modal__dialog">
           <div class="modal__header">
-            <div><p class="modal__title" id="suspend-title">Suspend The Olive Table</p><p class="muted text-xs">Owner and kitchen logins stop working immediately.</p></div>
+            <div><p class="modal__title" id="suspend-title">Suspend Spice Route</p><p class="muted text-xs">Owner and kitchen logins stop working immediately.</p></div>
             <button class="btn btn--icon" type="button" data-modal-close aria-label="Close"><i data-lucide="x"></i></button>
           </div>
           <div class="modal__body">
@@ -337,7 +291,7 @@
       <div class="modal" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-title" hidden>
         <div class="modal__dialog">
           <div class="modal__header">
-            <div><p class="modal__title" id="delete-title">Delete The Olive Table</p><p class="muted text-xs">This cannot be undone.</p></div>
+            <div><p class="modal__title" id="delete-title">Delete Spice Route</p><p class="muted text-xs">This cannot be undone.</p></div>
             <button class="btn btn--icon" type="button" data-modal-close aria-label="Close"><i data-lucide="x"></i></button>
           </div>
           <div class="modal__body">
@@ -346,7 +300,7 @@
               <p class="danger-zone__text">Menu, tables, QR codes, staff, orders and reports for this restaurant are deleted permanently.</p>
             </div>
             <div class="field mt-4">
-              <label class="label" for="confirm-name">Type <strong>The Olive Table</strong> to confirm</label>
+              <label class="label" for="confirm-name">Type <strong>Spice Route</strong> to confirm</label>
               <input class="input" id="confirm-name" type="text" placeholder="Restaurant name">
             </div>
           </div>

@@ -7,65 +7,19 @@
 <meta name="description" content="TableTap Super Admin panel for MyPlanetServices.">
 <link rel="stylesheet" href="../assets/css/fonts.css">
 <link rel="stylesheet" href="../assets/css/style.css">
+<script type="module" src="../assets/js/layout.js"></script>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
 </head>
-<body data-page="settings">
+<body data-page="settings" data-title="Admin Settings" data-role="admin">
 <a class="skip-link" href="#main">Skip to content</a>
 <div class="app-shell">
 
-  <aside class="app-shell__sidebar" id="admin-sidebar">
-    <div class="app-shell__brand">
-      <span class="brand__mark"><i data-lucide="shield"></i></span>
-      <span class="app-shell__brand-text">
-        <span class="brand__name">TableTap Admin</span>
-        <span class="app-shell__brand-sub">MyPlanetServices</span>
-      </span>
-    </div>
-
-    <nav class="app-shell__nav" aria-label="Admin">
-      <div class="app-shell__nav-group">
-        <p class="app-shell__nav-label">Manage</p>
-        <a class="nav-link" href="dashboard.html"><i data-lucide="layout-dashboard"></i><span class="nav-link__text">Dashboard</span></a>
-        <a class="nav-link" href="clients.html"><i data-lucide="users"></i><span class="nav-link__text">Clients</span></a>
-        <a class="nav-link" href="invites.html"><i data-lucide="mail"></i><span class="nav-link__text">Invites</span></a>
-        <a class="nav-link" href="activity.html"><i data-lucide="history"></i><span class="nav-link__text">Activity Log</span></a>
-      </div>
-      <div class="app-shell__nav-group">
-        <p class="app-shell__nav-label">Platform</p>
-        <a class="nav-link" href="plans.html"><i data-lucide="credit-card"></i><span class="nav-link__text">Plans</span></a>
-        <a class="nav-link" href="settings.html" aria-current="page"><i data-lucide="settings"></i><span class="nav-link__text">Settings</span></a>
-      </div>    </nav>
-
-    <div class="app-shell__sidebar-footer">
-      <div class="row">
-        <span class="avatar">VK</span>
-        <span class="app-shell__brand-text">
-          <span class="owner-name">Vivek Kumar</span>
-          <span class="app-shell__brand-sub">Super admin</span>
-        </span>
-        <a class="btn btn--icon" href="login.html" aria-label="Log out"><i data-lucide="log-out"></i></a>
-      </div>
-    </div>
-  </aside>
+  <div id="app-sidebar"></div>
 
   <div class="app-shell__scrim" data-panel-close></div>
 
   <div class="app-shell__main">
-    <header class="app-shell__topbar">
-      <div class="app-shell__topbar-left">
-        <button class="btn btn--icon nav-link--menu-toggle" type="button" data-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="false" aria-label="Open menu">
-          <i data-lucide="menu"></i>
-        </button>
-        <span class="app-shell__title">Settings</span>
-      </div>
-      <div class="app-shell__topbar-right">
-        <div class="topbar-search">
-          <i data-lucide="search"></i>
-          <label class="sr-only" for="global-search">Search clients</label>
-          <input class="input" id="global-search" type="search" placeholder="Search clients">
-        </div>
-        <a class="btn btn--primary btn--sm" href="invites.html"><i data-lucide="user-plus"></i> Invite client</a>
-      </div>
-    </header>
+    <div id="app-topbar"></div>
 
     <main class="app-shell__content" id="main">
       <div class="app-shell__content-inner">

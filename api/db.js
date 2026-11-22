@@ -1,53 +1,41 @@
-import dns from 'dns';
-import { MongoClient } from 'mongodb';
-import dotenv from 'dotenv';
+import { hasPostgres, loadAll, changesSince, applyChanges } from './_lib/pg.js';
+import { cors, preflight, jsonBody } from './_lib/http.js';
 
-import path from 'path';
-import { fileURLToPath } from 'url';
+/* The app's data API. Neon Postgres is the source of truth; every page's
+   store.js talks to it:
+     GET  /api/db                → { db: { <collection>: [records] }, cursor }
+     GET  /api/db?since=<cursor> → { changes: [{ collection, id, deleted, data }], cursor }
+     POST /api/db { upserts: [{ collection, record }], deletes: [{ collection, id }] }
+   NOTE: there is no server-side login (by request), so anyone who can reach
+   this URL can read and change every restaurant's records. */
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+const MAX_BATCH = 2000;
 
-// Ensure DNS SRV records resolve cleanly in all environments (including Windows local machines)
-try {
-  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
-} catch (_) {}
-
-let cachedClient = null;
-let cachedDb = null;
-
-export async function connectToDatabase() {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    return {
-      client: null,
-      db: null,
-      error: 'MONGODB_URI is not set. Add it in Vercel Environment Variables or your .env file.'
-    };
-  }
-
-  if (cachedClient && cachedDb) {
-    return { client: cachedClient, db: cachedDb, error: null };
-  }
+export default async function handler(req, res) {
+  cors(res);
+  if (preflight(req, res)) return;
+  res.setHeader('Cache-Control', 'no-store');
+  if (!hasPostgres()) return res.status(503).json({ error: 'DATABASE_URL is not configured.' });
 
   try {
-    const client = new MongoClient(uri, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000
-    });
+    if (req.method === 'GET') {
+      const since = (req.query || {}).since;
+      return res.status(200).json(since ? await changesSince(since) : await loadAll());
+    }
 
-    await client.connect();
-    const dbName = process.env.MONGODB_DB || 'tabletap';
-    const db = client.db(dbName);
+    if (req.method === 'POST') {
+      const body = jsonBody(req);
+      const upserts = Array.isArray(body.upserts) ? body.upserts : [];
+      const deletes = Array.isArray(body.deletes) ? body.deletes : [];
+      if (upserts.length + deletes.length > MAX_BATCH) {
+        return res.status(413).json({ error: `At most ${MAX_BATCH} changes per request.` });
+      }
+      return res.status(200).json({ success: true, ...(await applyChanges({ upserts, deletes })) });
+    }
 
-    cachedClient = client;
-    cachedDb = db;
-
-    return { client, db, error: null };
+    return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    console.error('MongoDB connection error:', err.message);
-    return { client: null, db: null, error: err.message };
+    console.error('/api/db error:', err);
+    return res.status(err.status || 500).json({ error: err.message });
   }
 }

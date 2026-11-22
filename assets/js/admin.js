@@ -157,7 +157,8 @@ function renderClients() {
     '</select><select class="select" id="c-country" aria-label="Country"><option value="all">All countries</option>' +
     Array.from(new Set(store.getAll('clients').map((c) => c.country))).map((c) => '<option>' + esc(c) + '</option>').join('') +
     '</select><select class="select" id="c-sort" aria-label="Sort"><option value="newest">Newest first</option>' +
-    '<option value="oldest">Oldest first</option><option value="name">Name A–Z</option><option value="active">Last active</option></select></div>' +
+    '<option value="oldest">Oldest first</option><option value="name">Name A–Z</option><option value="active">Last active</option></select>' +
+    '<button class="btn btn--secondary btn--sm" type="button" id="c-clear-filters" style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;height:36px;min-height:36px;"><i data-lucide="rotate-ccw"></i> Clear filters</button></div>' +
     '<div class="row row--between row--wrap mb-4"><span class="muted text-xs" id="c-count"></span>' +
     '<button class="btn btn--secondary btn--sm" type="button" id="c-bulk"><i data-lucide="ban"></i> Suspend selected</button></div>' +
     '<div class="table-wrap"><table class="table table-stack table--wide"><thead><tr>' +
@@ -193,12 +194,20 @@ function renderClients() {
   }
 
   function draw() {
+    const isFiltered = !!(filters.term || (filters.status && filters.status !== 'all') || (filters.plan && filters.plan !== 'all') || (filters.country && filters.country !== 'all') || (filters.sort && filters.sort !== 'newest'));
+    const clearBtn = host.querySelector('#c-clear-filters');
+    if (clearBtn) {
+      clearBtn.disabled = !isFiltered;
+      clearBtn.style.opacity = isFiltered ? '1' : '0.5';
+      clearBtn.style.cursor = isFiltered ? 'pointer' : 'not-allowed';
+    }
+
     const rows = filtered();
     const pages = Math.max(1, Math.ceil(rows.length / perPage));
     pageNo = Math.min(pageNo, pages);
     const slice = rows.slice((pageNo - 1) * perPage, pageNo * perPage);
 
-    rowsHost.innerHTML = slice.map((client) => {
+    rowsHost.innerHTML = slice.length ? slice.map((client) => {
       const owner = store.query('owners', (o) => o.clientId === client.id)[0];
       const usage = usageOf(client.id);
       return '<tr><td data-label=""><input type="checkbox" data-select="' + client.id + '"' + (selected.has(client.id) ? ' checked' : '') + ' aria-label="Select ' + esc(client.name) + '"></td>' +
@@ -218,7 +227,12 @@ function renderClients() {
         '<button class="btn btn--icon btn--sm" type="button" data-suspend="' + client.id + '" aria-label="Suspend"><i data-lucide="ban"></i></button>' +
         (isSupport ? '' : '<button class="btn btn--icon btn--sm" type="button" data-delete="' + client.id + '" aria-label="Delete"><i data-lucide="trash-2"></i></button>') +
         '</div></td></tr>';
-    }).join('');
+    }).join('')
+      : '<tr><td colspan="10"><div class="empty"><span class="empty__icon"><i data-lucide="store"></i></span>' +
+        '<p class="empty__title">' + (isFiltered ? 'No restaurants match those filters' : 'No restaurants yet') + '</p>' +
+        (isFiltered ? '<p class="empty__text">Try adjusting or clearing your filters to see more restaurants.</p>' +
+        '<div class="empty__action"><button class="btn btn--secondary btn--sm mt-2" type="button" data-clear-clients><i data-lucide="rotate-ccw"></i> Clear filters</button></div>' : '') +
+        '</div></td></tr>';
 
     countHost.textContent = rows.length + ' clients · ' + rows.filter((c) => c.status === 'active').length + ' active · ' +
       rows.filter((c) => c.status === 'suspended').length + ' suspended';
@@ -227,6 +241,28 @@ function renderClients() {
 
     if (window.lucide) window.lucide.createIcons();
   }
+
+  function resetClientsFilters() {
+    filters = { term: '', status: 'all', plan: 'all', country: 'all', sort: 'newest' };
+    const cTerm = host.querySelector('#c-term');
+    const cStatus = host.querySelector('#c-status');
+    const cPlan = host.querySelector('#c-plan');
+    const cCountry = host.querySelector('#c-country');
+    const cSort = host.querySelector('#c-sort');
+    if (cTerm) cTerm.value = '';
+    if (cStatus) cStatus.value = 'all';
+    if (cPlan) cPlan.value = 'all';
+    if (cCountry) cCountry.value = 'all';
+    if (cSort) cSort.value = 'newest';
+    pageNo = 1;
+    draw();
+  }
+
+  const clearBtn = host.querySelector('#c-clear-filters');
+  if (clearBtn) clearBtn.addEventListener('click', resetClientsFilters);
+  host.addEventListener('click', (event) => {
+    if (event.target.closest('[data-clear-clients]')) resetClientsFilters();
+  });
 
   host.querySelector('#c-term').addEventListener('input', debounce((event) => {
     filters.term = event.target.value.trim();
@@ -893,6 +929,7 @@ function renderActivity() {
     Array.from(new Set(store.getAll('activity').map((a) => a.type))).map((t) => '<option>' + esc(t) + '</option>').join('') + '</select>' +
     '<select class="select" id="a-actor" aria-label="Actor"><option value="all">All actors</option>' +
     Array.from(new Set(store.getAll('activity').map((a) => a.actor))).map((a) => '<option>' + esc(a) + '</option>').join('') + '</select>' +
+    '<button class="btn btn--secondary btn--sm" type="button" id="a-clear-filters" style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;height:36px;min-height:36px;"><i data-lucide="rotate-ccw"></i> Clear filters</button>' +
     '<span class="toolbar__spacer"></span><span class="muted text-xs" id="a-count"></span></div>' +
     '<div class="table-wrap"><table class="table table-stack"><thead><tr>' +
     '<th scope="col">Time</th><th scope="col">Actor</th><th scope="col">Client</th><th scope="col">Event</th>' +
@@ -912,6 +949,14 @@ function renderActivity() {
   }
 
   function draw() {
+    const isFiltered = !!((filters.client && filters.client !== 'all') || (filters.type && filters.type !== 'all') || (filters.actor && filters.actor !== 'all'));
+    const clearBtn = host.querySelector('#a-clear-filters');
+    if (clearBtn) {
+      clearBtn.disabled = !isFiltered;
+      clearBtn.style.opacity = isFiltered ? '1' : '0.5';
+      clearBtn.style.cursor = isFiltered ? 'pointer' : 'not-allowed';
+    }
+
     const rows = filtered();
     const pages = Math.max(1, Math.ceil(rows.length / perPage));
     pageNo = Math.min(pageNo, pages);
@@ -925,12 +970,35 @@ function renderActivity() {
         '<td data-label="Event"><span class="badge badge--neutral">' + esc(row.type) + '</span></td>' +
         '<td data-label="Details">' + esc(row.details) + '</td>' +
         '<td data-label="Device">' + esc(row.device || 'Server') + '</td></tr>';
-    }).join('') : '<tr><td colspan="6"><p class="muted text-sm">No events match those filters.</p></td></tr>';
+    }).join('')
+      : '<tr><td colspan="6"><div class="empty"><span class="empty__icon"><i data-lucide="activity"></i></span>' +
+        '<p class="empty__title">' + (isFiltered ? 'No events match those filters' : 'No activity yet') + '</p>' +
+        (isFiltered ? '<p class="empty__text">Try adjusting or clearing your filters to see more events.</p>' +
+        '<div class="empty__action"><button class="btn btn--secondary btn--sm mt-2" type="button" data-clear-activity><i data-lucide="rotate-ccw"></i> Clear filters</button></div>' : '') +
+        '</div></td></tr>';
 
     host.querySelector('#a-count').textContent = rows.length + ' events';
     pagesHost.innerHTML = renderPaginationHtml(pageNo, pages);
     if (window.lucide) window.lucide.createIcons();
   }
+
+  function resetActivityFilters() {
+    filters = { client: 'all', type: 'all', actor: 'all' };
+    const aClient = host.querySelector('#a-client');
+    const aType = host.querySelector('#a-type');
+    const aActor = host.querySelector('#a-actor');
+    if (aClient) aClient.value = 'all';
+    if (aType) aType.value = 'all';
+    if (aActor) aActor.value = 'all';
+    pageNo = 1;
+    draw();
+  }
+
+  const clearBtn = host.querySelector('#a-clear-filters');
+  if (clearBtn) clearBtn.addEventListener('click', resetActivityFilters);
+  host.addEventListener('click', (event) => {
+    if (event.target.closest('[data-clear-activity]')) resetActivityFilters();
+  });
 
   ['client', 'type', 'actor'].forEach((key) => {
     host.querySelector('#a-' + key).addEventListener('change', (event) => {

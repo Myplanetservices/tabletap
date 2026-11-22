@@ -1,18 +1,46 @@
 /* ==========================================================================
    TableTap — store.js
-   One localStorage key ("tqr_db") holds the whole demo database.
-   Vanilla ES module. No build step, no backend.
+   The app's database, as one in-memory object of collections. Neon Postgres
+   (through /api/db) is the source of truth: on import this module loads the
+   whole store from the server before any page code runs, pushes every change
+   back, and polls for changes made on other devices (see "cloud sync" at the
+   end). localStorage ("tqr_db") is only a cache, and the fallback when the
+   API is unreachable (then the page runs locally and nothing syncs).
+   Vanilla ES module. No build step.
    ========================================================================== */
 
 import { computeBill } from './billing.js';
+import { DEMO_MODE, logger } from './config.js';
 
 const KEY = 'tqr_db';
 const VERSION = 8;
 
 let cache = null;
+let writeTimer = null;
+// Set once the cloud-sync section at the end of this module has initialised;
+// writes made by top-level code before that (kitchen-code rotation) skip the push.
+let cloudReady = false;
 
 export function uid(prefix = 'id') {
   return prefix + '_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+}
+
+function persistToStorage(db) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(db));
+  } catch (err) {
+    if (DEMO_MODE) console.warn('TableTap: storage full or blocked.', err);
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    if (cache && writeTimer) {
+      clearTimeout(writeTimer);
+      writeTimer = null;
+      persistToStorage(cache);
+    }
+  });
 }
 
 function read() {
@@ -22,10 +50,10 @@ function read() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.__version === VERSION) {
-        // Freshen timestamps of active demo orders if older than 3 hours
-        // so demo kitchen pass always shows realistic rush times (2m, 9m, 21m) instead of stale days
         let modified = false;
-        if (parsed.orders && Array.isArray(parsed.orders)) {
+
+        // Auto-freshen timestamps only in DEMO_MODE
+        if (DEMO_MODE && parsed.orders && Array.isArray(parsed.orders)) {
           const now = Date.now();
           parsed.orders.forEach((o) => {
             if (['new', 'preparing', 'ready'].includes(o.status)) {
@@ -39,6 +67,34 @@ function read() {
             }
           });
         }
+
+        // Part 3, item 3: One-time clean-up on load for orders with closed/paid sessions
+        if (parsed.orders && parsed.sessions) {
+          const closedSessionIds = new Set(
+            parsed.sessions
+              .filter((s) => s.status === 'paid' || s.status === 'closed')
+              .map((s) => s.id)
+          );
+          const activeStatuses = ['new', 'preparing', 'ready', 'picked_up'];
+          parsed.orders.forEach((o) => {
+            if (o.sessionId && closedSessionIds.has(o.sessionId) && activeStatuses.includes(o.status)) {
+              o.status = 'served';
+              o.autoClosed = true;
+              modified = true;
+              if (parsed.activity) {
+                parsed.activity.push({
+                  id: uid('act'),
+                  actor: 'System',
+                  clientId: o.clientId,
+                  type: 'Order',
+                  details: `Auto-closed order #${o.number} after payment`,
+                  at: new Date().toISOString(),
+                });
+              }
+            }
+          });
+        }
+
         if (parsed.staff && Array.isArray(parsed.staff)) {
           parsed.staff.forEach((s) => {
             if (s.name && s.name.toLowerCase().includes('maya') && s.role !== 'floor') {
@@ -48,26 +104,32 @@ function read() {
           });
         }
         cache = parsed;
-        if (modified) write(cache);
+        if (modified) write(cache, true);
         return cache;
       }
     }
   } catch (err) {
-    console.warn('TableTap: could not read demo data, reseeding.', err);
+    if (DEMO_MODE) console.warn('TableTap: could not read demo data, reseeding.', err);
   }
   cache = seed();
-  write(cache);
+  write(cache, true);
   return cache;
 }
 
-function write(db) {
+function write(db, immediate = false) {
   db.__version = VERSION;
   cache = db;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(db));
-  } catch (err) {
-    console.warn('TableTap: storage full or blocked.', err);
+  if (immediate) {
+    if (writeTimer) { clearTimeout(writeTimer); writeTimer = null; }
+    persistToStorage(db);
+  } else {
+    if (writeTimer) clearTimeout(writeTimer);
+    writeTimer = setTimeout(() => {
+      persistToStorage(cache || db);
+      writeTimer = null;
+    }, 200);
   }
+  scheduleCloudFlush();
 }
 
 export function db() {
@@ -246,11 +308,13 @@ export function checkKitchenCodeRotations() {
   });
 }
 
-// Run check on load and every 60 seconds
-try {
-  checkKitchenCodeRotations();
-  setInterval(checkKitchenCodeRotations, 60000);
-} catch (e) {}
+// Run check on load and every 60 seconds (browser only; the seed script imports this module in Node)
+if (typeof window !== 'undefined') {
+  try {
+    checkKitchenCodeRotations();
+    setInterval(checkKitchenCodeRotations, 60000);
+  } catch (e) {}
+}
 
 /* --------------------------------------------------------------- seed ---- */
 const IMG = (id) => 'https://images.unsplash.com/photo-' + id + '?auto=format&fit=crop&w=240&q=70';
@@ -319,7 +383,7 @@ const CLIENTS = [
   ['The Copper Kettle', 'copper-kettle', 'James Whitfield', 'james@copperkettle.co.uk', 'United Kingdom', 'pro', 'active', 24, 'KETTLE3'],
   ['Blue Fig Bistro', 'blue-fig', 'Sarah Mokoena', 'sarah@bluefig.co.za', 'South Africa', 'starter', 'active', 8, 'BLUEFIG'],
   ['Harbor & Rye', 'harbor-rye', 'Daniel Brooks', 'dan@harborrye.com', 'United States', 'pro', 'suspended', 18, 'HARBOR1'],
-  ['Spice Route Kitchen', 'spice-route', 'Priya Nair', 'priya@spiceroute.in', 'India', 'pro', 'active', 30, 'SPICE22'],
+  ['Spice Route', 'spice-route', 'Aisha Khan', 'aisha@spiceroute.demo', 'United Kingdom', 'pro', 'active', 4, 'SPICER1'],
   ['The Daily Grind', 'daily-grind', 'Emily Carter', 'emily@dailygrind.us', 'United States', 'starter', 'restricted', 10, 'GRIND9'],
   ['Casa Verde', 'casa-verde', 'Marco Rossi', 'marco@casaverde.co.uk', 'United Kingdom', 'pro', 'active', 15, 'VERDE44'],
   ['Ndlovu Grill', 'ndlovu-grill', 'Thabo Ndlovu', 'thabo@ndlovugrill.co.za', 'South Africa', 'pro', 'active', 21, 'NDLOVU5'],
@@ -340,7 +404,7 @@ function seed() {
     ],
     admins: [
       { id: 'adm_1', name: 'Vivek Kumar', email: 'admin@tabletap.demo', password: 'admin123', role: 'super', phone: '+91 80 4718 2200' },
-      { id: 'adm_1b', name: 'Vivek Kumar', email: 'vivek@tabletap.demo', password: 'admin1234', role: 'super', phone: '+91 80 4718 2200' },
+      ...(DEMO_MODE ? [{ id: 'adm_1b', name: 'Vivek Kumar', email: 'vivek@tabletap.demo', password: 'admin1234', role: 'super', phone: '+91 80 4718 2200' }] : []),
       { id: 'adm_2', name: 'Neha Iyer', email: 'neha@myplanetservices.com', password: 'support123', role: 'support', phone: '+91 80 4718 2211' },
     ],
     clients: [],
@@ -388,7 +452,46 @@ function seed() {
         kitchen: status !== 'suspended',
         reports: true,
       },
-      settings: {
+      settings: slug === 'spice-route' ? {
+        currency: 'GBP',
+        pricesIncludeTax: true,
+        taxes: [
+          { id: 'tax_vat', name: 'VAT', rate: 20, enabled: true },
+        ],
+        charges: [
+          {
+            id: 'chg_service', name: 'Service charge', type: 'percent', value: 12.5, enabled: true,
+            customerCanRemove: true, addedByDefault: true, applyTax: false,
+          },
+        ],
+        taxNumber: { label: 'VAT', value: 'GB987654321' },
+        tips: { enabled: false, presets: [10, 15, 20], allowCustom: true },
+        paymentMethods: [
+          { id: 'card', name: 'Credit / Debit Card', enabled: true },
+          { id: 'cash', name: 'Cash to Waiter', enabled: true },
+        ],
+        payments: {
+          policy: 'post_pay',
+          inPerson: { cash: true, cardMachine: true },
+        },
+        payAtOrder: {
+          enabled: false,
+        },
+        useWaiterApp: true,
+        rounding: 'none',
+        accent: '#D97706',
+        acceptOrders: true,
+        approval: false,
+        sound: true,
+        address: '14 Brick Lane, London E1 6RF',
+        phone: '+44 20 7946 0192',
+        tagline: 'Modern Indian Dining',
+        hours: {
+          mon: ['08:00', '02:00'], tue: ['08:00', '02:00'], wed: ['08:00', '02:00'],
+          thu: ['08:00', '02:00'], fri: ['08:00', '02:00'], sat: ['08:00', '02:00'],
+          sun: ['08:00', '02:00'],
+        },
+      } : {
         currency: '$',
         pricesIncludeTax: false,
         taxes: [
@@ -492,7 +595,7 @@ function seed() {
       clientId,
       name: ownerName,
       email,
-      password: 'owner123',
+      password: slug === 'spice-route' ? 'NewPassword999' : 'owner123',
       phone: i === 0 ? '+91 98200 41127' : '',
       lastLogin: i === 0 ? mins(2) : mins(180 + i * 60),
     });
@@ -505,7 +608,7 @@ function seed() {
         name: isBar ? 'Bar ' + (t - 10) : 'Table ' + t,
         seats: isBar ? 2 : t % 3 === 0 ? 4 : 2,
         token: `${slug.slice(0, 3)}-${t}k${Math.random().toString(36).slice(2, 5)}`,
-        status: t % 4 === 0 ? 'occupied' : 'free',
+        status: slug === 'spice-route' ? 'free' : (t % 4 === 0 ? 'occupied' : 'free'),
         createdAt: days(200),
       });
     }
@@ -542,6 +645,45 @@ function seed() {
     ['Sanjay Patil', '7712', 'kitchen', false, days(3)],
   ].forEach(([name, pin, role, active, lastActive], i) => {
     data.staff.push({ id: 'stf_' + i, clientId: 'cli_olive-table', name, role: role || 'kitchen', pin, active, lastActive });
+  });
+
+  // Staff for Spice Route
+  data.staff.push(
+    { id: 'stf_sr_ravi', clientId: 'cli_spice-route', name: 'Ravi', role: 'kitchen', pin: '9514', active: true, lastActive: mins(5) },
+    { id: 'stf_sr_maya', clientId: 'cli_spice-route', name: 'Maya', role: 'floor', pin: '7701', active: true, lastActive: mins(5) }
+  );
+
+  // Menu for Spice Route
+  const srCatNames = [['starters', 'Starters'], ['mains', 'Mains'], ['drinks', 'Drinks']];
+  srCatNames.forEach(([key, label], i) => {
+    data.categories.push({ id: 'cat_sr_' + key, clientId: 'cli_spice-route', name: label, position: i });
+  });
+
+  const SR_ITEMS = [
+    ['starters', 'Chicken Tikka', 10, ['gf'], true, 'Tender chicken marinated in yoghurt and aromatic spices.'],
+    ['mains', 'Lamb Biryani', 13, ['gf'], true, 'Fragrant basmati rice layered with spiced lamb and saffron.'],
+    ['drinks', 'Mango Lassi', 3.5, ['veg'], true, 'Creamy churned yoghurt with sweet Alphonso mango pulp.'],
+    ['starters', 'Onion Bhaji', 5, ['vegan'], false, 'Crisp golden spiced onion fritters. Sold out today.'],
+    ['starters', 'Samosa', 4.5, ['veg'], true, 'Crispy pastry parcels stuffed with spiced potatoes and peas.'],
+    ['mains', 'Butter Chicken', 12.5, ['gf'], true, 'Tandoori chicken in a silky, rich tomato and butter sauce.'],
+  ];
+
+  SR_ITEMS.forEach(([cat, name, price, tags, available, desc], i) => {
+    data.items.push({
+      id: 'itm_sr_' + (i + 1),
+      clientId: 'cli_spice-route',
+      categoryId: 'cat_sr_' + cat,
+      name,
+      description: desc,
+      price,
+      tags,
+      available,
+      taxOverride: cat === 'drinks' ? 20 : undefined,
+      image: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=400&q=70',
+      prepTime: 12,
+      sizes: [],
+      addons: [],
+    });
   });
 
   // Orders
@@ -719,6 +861,7 @@ function seed() {
 
   // Invites
   [
+    ['Spice Route', 'Aisha Khan', 'aisha@spiceroute.demo', 'United Kingdom', 'pro', 'accepted', 1, 7],
     ['Tiffin & Chai', 'Rohan Mehta', 'rohan@tiffinchai.in', 'India', 'starter', 'pending', 0, 7],
     ['Curry Leaf Cafe', 'Aditi Sharma', 'aditi@curryleaf.in', 'India', 'starter', 'accepted', 2, 7],
     ['Casa Verde', 'Marco Rossi', 'marco@casaverde.co.uk', 'United Kingdom', 'pro', 'expired', 14, 7],
@@ -884,13 +1027,14 @@ export function seatTable(clientId, table) {
       payment: null,
     });
   }
-  update('tables', table.id, { status: 'occupied', tableKey: key, activeSecret: secret });
+  update('tables', table.id, { status: 'occupied', tableKey: key, activeSecret: secret, failedKeyAttempts: 0 });
   return session;
 }
 
 export function sessionOrders(session) {
-  if (!session) return [];
-  return (session.orderIds || [])
+  const sess = typeof session === 'string' ? getById('sessions', session) : session;
+  if (!sess) return [];
+  return (sess.orderIds || [])
     .map((id) => getById('orders', id))
     .filter((order) => order && order.status !== 'rejected');
 }
@@ -920,7 +1064,7 @@ export function closeSession(sessionId, payment, bill) {
     payment,
     bill,
   });
-  update('tables', session.tableId, { status: 'free', tableKey: null, activeSecret: null });
+  update('tables', session.tableId, { status: 'free', tableKey: null, activeSecret: null, failedKeyAttempts: 0 });
   // Mark all orders belonging to this session as paid
   (session.orderIds || []).forEach((oid) => {
     update('orders', oid, { paid: true, payment });
@@ -966,3 +1110,265 @@ export function usageFor(clientId) {
     limits: client ? client.limits : { tables: 0, items: 0, staff: 0 },
   };
 }
+
+/** The initial data set (used by `npm run db:seed` and to bootstrap an empty database). */
+export function seedData() {
+  const data = seed();
+  data.__version = VERSION;
+  return data;
+}
+
+/* ------------------------------------------------------------ cloud sync ---
+   Neon Postgres via /api/db. Three moves:
+   1. hydrate: before any page module runs (top-level await below), load every
+      record from the server into the cache.
+   2. flush: after each write, diff the cache against what the server last
+      confirmed (`synced`) and POST only changed and deleted records.
+   3. poll: every few seconds fetch records changed since the last cursor and
+      merge them. A record with an unsent local edit keeps the local version
+      (it is pushed next); otherwise the server's version wins. Merged changes
+      are announced as the app's usual realtime events (order:new, call:new…)
+      through a `tt:remote` DOM event that realtime.js forwards.
+   ------------------------------------------------------------------------- */
+
+const CLOUD_ENABLED = typeof window !== 'undefined' && typeof fetch === 'function' &&
+  /^https?:$/.test(window.location.protocol);
+const API_DB = CLOUD_ENABLED ? new URL('../../api/db', import.meta.url).href : '';
+const SEP = '\u0000';
+const POLL_MS = 4000;
+const BATCH = 500;
+
+const synced = new Map(); // "collection\0id" → stable JSON the server has
+const cloud = { status: 'off', lastSyncAt: null, error: null };
+let cloudCursor = null;
+let flushTimer = null;
+let flushing = false;
+let flushAgain = false;
+let pollTimer = null;
+
+/** { status: 'off' | 'connecting' | 'online' | 'error', lastSyncAt, error } */
+export function cloudStatus() {
+  return { ...cloud };
+}
+
+function setCloud(patch) {
+  Object.assign(cloud, patch);
+  try { window.dispatchEvent(new CustomEvent('tt:cloud-status', { detail: cloudStatus() })); } catch (_) { /* no DOM */ }
+}
+
+/** JSON with sorted keys, so Postgres jsonb key order never looks like a change. */
+function stable(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']';
+  return '{' + Object.keys(value).sort()
+    .filter((k) => value[k] !== undefined)
+    .map((k) => JSON.stringify(k) + ':' + stable(value[k])).join(',') + '}';
+}
+
+function eachRecord(db, fn) {
+  for (const name of Object.keys(db)) {
+    const list = db[name];
+    if (!Array.isArray(list)) continue;
+    for (const record of list) {
+      if (record && record.id !== undefined && record.id !== null) fn(name, record);
+    }
+  }
+}
+
+function pendingChanges() {
+  const upserts = [];
+  const deletes = [];
+  if (!cache) return { upserts, deletes };
+  const seen = new Set();
+  eachRecord(cache, (collection, record) => {
+    const key = collection + SEP + String(record.id);
+    seen.add(key);
+    const json = stable(record);
+    if (synced.get(key) !== json) upserts.push({ key, json, collection, record });
+  });
+  for (const key of synced.keys()) {
+    if (seen.has(key)) continue;
+    const at = key.indexOf(SEP);
+    deletes.push({ key, collection: key.slice(0, at), id: key.slice(at + 1) });
+  }
+  return { upserts, deletes };
+}
+
+function scheduleCloudFlush(delay = 300) {
+  if (!cloudReady || !CLOUD_ENABLED || cloud.status === 'off' || cloud.status === 'connecting') return;
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(() => { flushCloud(); }, delay);
+}
+
+/** Pushes local changes now. Resolves true when nothing is left unsent. */
+export async function flushCloud({ keepalive = false } = {}) {
+  if (!CLOUD_ENABLED || cloud.status === 'off' || cloud.status === 'connecting') return false;
+  if (flushing) { flushAgain = true; return false; }
+  const { upserts, deletes } = pendingChanges();
+  if (!upserts.length && !deletes.length) return true;
+
+  flushing = true;
+  const items = [...upserts.map((u) => ({ ...u, kind: 'upsert' })), ...deletes.map((d) => ({ ...d, kind: 'delete' }))];
+  try {
+    for (let i = 0; i < items.length; i += BATCH) {
+      const batch = items.slice(i, i + BATCH);
+      const body = JSON.stringify({
+        upserts: batch.filter((b) => b.kind === 'upsert').map((b) => ({ collection: b.collection, record: b.record })),
+        deletes: batch.filter((b) => b.kind === 'delete').map((b) => ({ collection: b.collection, id: b.id })),
+      });
+      const res = await fetch(API_DB, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: keepalive && body.length < 60000,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Save failed (HTTP ' + res.status + ')');
+      }
+      batch.forEach((b) => (b.kind === 'upsert' ? synced.set(b.key, b.json) : synced.delete(b.key)));
+    }
+    setCloud({ status: 'online', lastSyncAt: new Date().toISOString(), error: null });
+    return true;
+  } catch (err) {
+    setCloud({ status: 'error', error: err.message });
+    scheduleCloudFlush(5000);
+    return false;
+  } finally {
+    flushing = false;
+    if (flushAgain) { flushAgain = false; scheduleCloudFlush(); }
+  }
+}
+
+function remoteEvent(collection, kind, record, previous) {
+  const rec = record || previous || {};
+  const clientId = rec.clientId;
+  switch (collection) {
+    case 'orders':
+      return kind === 'insert'
+        ? { event: 'order:new', data: { orderId: rec.id, clientId } }
+        : { event: 'order:update', data: { orderId: rec.id, clientId } };
+    case 'waiterCalls':
+      return kind === 'insert'
+        ? { event: 'call:new', data: { clientId, type: rec.type, tableId: rec.tableId } }
+        : { event: 'call:update', data: { clientId } };
+    case 'sessions':
+      if (record && previous && record.status !== previous.status) {
+        if (record.status === 'paid') return { event: 'session:paid', data: { clientId, sessionId: rec.id } };
+        if (record.status === 'closed') return { event: 'session:close', data: { clientId, sessionId: rec.id, tableId: rec.tableId } };
+      }
+      return { event: 'table:update', data: { clientId, tableId: rec.tableId } };
+    case 'items':
+    case 'categories':
+      return { event: 'menu:update', data: { clientId, itemId: collection === 'items' ? rec.id : undefined } };
+    case 'tables':
+      return { event: 'table:update', data: { clientId, tableId: rec.id } };
+    case 'clients':
+      return { event: 'settings:update', data: { clientId: rec.id } };
+    default:
+      return { event: 'db:remote', data: { collection, id: rec.id, clientId } };
+  }
+}
+
+function applyRemote(changes) {
+  const db = read();
+  const events = [];
+  let touched = false;
+  for (const change of changes) {
+    if (!change || !change.collection || change.id === undefined) continue;
+    const key = change.collection + SEP + String(change.id);
+    const list = db[change.collection] || (db[change.collection] = []);
+    const index = list.findIndex((r) => r && String(r.id) === String(change.id));
+    const local = index === -1 ? null : list[index];
+    const localJson = local ? stable(local) : undefined;
+    if (localJson !== synced.get(key)) continue; // unsent local edit or delete: ours wins, flush sends it
+
+    if (change.deleted) {
+      if (index !== -1) {
+        list.splice(index, 1);
+        touched = true;
+        events.push(remoteEvent(change.collection, 'delete', null, local));
+      }
+      synced.delete(key);
+      continue;
+    }
+    const json = stable(change.data);
+    synced.set(key, json);
+    if (json === localJson) continue;
+    if (index === -1) list.push(change.data);
+    else list[index] = change.data;
+    touched = true;
+    events.push(remoteEvent(change.collection, index === -1 ? 'insert' : 'update', change.data, local));
+  }
+  if (touched) {
+    db.__version = VERSION;
+    persistToStorage(db); // not write(): these changes came from the server
+  }
+  return events;
+}
+
+async function pollCloud() {
+  if (document.hidden || cloud.status === 'off') { schedulePoll(); return; }
+  try {
+    const res = await fetch(API_DB + '?since=' + encodeURIComponent(cloudCursor), { cache: 'no-store' });
+    if (!res.ok) throw new Error('Refresh failed (HTTP ' + res.status + ')');
+    const body = await res.json();
+    cloudCursor = body.cursor || cloudCursor;
+    const events = applyRemote(body.changes || []);
+    if (cloud.status !== 'online') setCloud({ status: 'online', error: null });
+    events.forEach((detail) => window.dispatchEvent(new CustomEvent('tt:remote', { detail })));
+  } catch (err) {
+    setCloud({ status: 'error', error: err.message });
+  }
+  schedulePoll();
+}
+
+function schedulePoll() {
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(pollCloud, POLL_MS);
+}
+
+/** Loads the store from Neon. On failure the page keeps its local cache and does not sync. */
+async function hydrateFromCloud() {
+  setCloud({ status: 'connecting' });
+  try {
+    const res = await fetch(API_DB, { cache: 'no-store', signal: AbortSignal.timeout(15000) });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'HTTP ' + res.status);
+    }
+    const body = await res.json();
+    const remote = body.db || {};
+    const total = Object.values(remote).reduce((n, list) => n + (Array.isArray(list) ? list.length : 0), 0);
+    cloudCursor = body.cursor;
+
+    if (total === 0) {
+      // Empty database (e.g. a fresh Neon branch): seed it from this browser.
+      synced.clear();
+      cache = seedData();
+      persistToStorage(cache);
+      setCloud({ status: 'online', lastSyncAt: null, error: null });
+      await flushCloud();
+    } else {
+      cache = { ...remote, __version: VERSION };
+      persistToStorage(cache);
+      synced.clear();
+      eachRecord(cache, (collection, record) => synced.set(collection + SEP + String(record.id), stable(record)));
+      setCloud({ status: 'online', lastSyncAt: new Date().toISOString(), error: null });
+    }
+
+    schedulePoll();
+    const flushOnLeave = () => { flushCloud({ keepalive: true }); };
+    window.addEventListener('pagehide', flushOnLeave);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) flushOnLeave();
+      else { clearTimeout(pollTimer); pollCloud(); }
+    });
+  } catch (err) {
+    setCloud({ status: 'off', error: 'Cloud database unreachable: ' + err.message });
+    if (DEMO_MODE) console.warn('TableTap: running on local data only.', err);
+  }
+}
+
+cloudReady = true;
+if (CLOUD_ENABLED) await hydrateFromCloud();

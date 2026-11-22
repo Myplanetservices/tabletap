@@ -3,10 +3,32 @@
    Formatting, toasts, confirm dialogs, overlays and CSV export.
    ========================================================================== */
 
-export function formatMoney(amount, currency = '$') {
+export function formatMoney(amount, currency) {
   const value = Number(amount) || 0;
-  const formatted = value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return currency + formatted;
+  let curr = currency;
+  if (!curr && typeof window !== 'undefined' && window.tabletapCurrentCurrency) {
+    curr = window.tabletapCurrentCurrency;
+  }
+  const symbolToCode = {
+    '$': 'USD',
+    '£': 'GBP',
+    '€': 'EUR',
+    '₹': 'INR',
+  };
+  const code = symbolToCode[curr] || (curr && curr.length === 3 ? curr.toUpperCase() : 'GBP');
+  const locales = {
+    USD: 'en-US',
+    GBP: 'en-GB',
+    EUR: 'en-IE',
+    INR: 'en-IN',
+  };
+  const locale = locales[code] || 'en-GB';
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(value);
+  } catch (e) {
+    const fallbackSym = { USD: '$', GBP: '£', EUR: '€', INR: '₹' }[code] || code;
+    return fallbackSym + value.toFixed(2);
+  }
 }
 
 export function timeAgo(iso) {
@@ -267,3 +289,35 @@ export function renderPaginationHtml(pageNo, totalPages) {
     '<button class="page' + (nextDisabled ? ' page--disabled' : '') + '" type="button" data-page="' + (pageNo + 1) + '" aria-label="Next page"' + (nextDisabled ? ' disabled' : '') + '><i data-lucide="chevron-right"></i></button>'
   );
 }
+
+export function plural(count, singular, pluralForm) {
+  const n = Number(count) || 0;
+  let word = singular;
+  if (n !== 1) {
+    if (pluralForm) {
+      word = pluralForm;
+    } else if (singular.endsWith('y') && !singular.endsWith('ey')) {
+      word = singular.slice(0, -1) + 'ies';
+    } else {
+      word = singular + 's';
+    }
+  }
+  return n + ' ' + word;
+}
+
+const tickListeners = new Set();
+let tickerInterval = null;
+
+export function registerTickListener(fn) {
+  tickListeners.add(fn);
+  if (!tickerInterval && typeof window !== 'undefined') {
+    tickerInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      tickListeners.forEach((listener) => {
+        try { listener(); } catch (e) {}
+      });
+    }, 1000);
+  }
+  return () => tickListeners.delete(fn);
+}
+

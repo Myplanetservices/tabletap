@@ -13,7 +13,6 @@ import {
   formatMoney, formatTime, timeAgo, toast, qs, esc, el, openDrawer, closeDrawer,
   debounce, initials, statusBadge,
 } from './helpers.js';
-import { pushOrderToMongo } from './mongo-sync.js';
 
 const params = new URLSearchParams(location.search);
 const CART_KEY = 'tqr_cart';
@@ -131,17 +130,161 @@ function renderVisitEnded() {
   if (window.lucide) window.lucide.createIcons();
 }
 
-function promptTableKey(ctx, onSuccess) {
+export function isDeviceTrusted(tableId, session) {
+  if (!session || session.status !== 'open') return false;
+  try {
+    const raw = localStorage.getItem('tqr_trusted_' + tableId);
+    if (!raw) return false;
+    const stored = JSON.parse(raw);
+    return !!(stored && stored.sessionId === session.id && stored.joinSecret === session.joinSecret);
+  } catch (e) {
+    return false;
+  }
+}
+
+export function createWaiterCall(clientId, table, type) {
+  const session = sessionForTable(clientId, table.id);
+  if (!session || session.status !== 'open' || !isDeviceTrusted(table.id, session) || session.tableId !== table.id) {
+    toast('Please ask staff to seat you', 'warning');
+    return null;
+  }
+  const key = 'tqr_call_' + type;
+  const last = Number(localStorage.getItem(key) || 0);
+  const waitLeft = Math.ceil((120000 - (Date.now() - last)) / 1000);
+  if (Date.now() - last < 120000) {
+    toast('Please wait ' + waitLeft + 's before calling again.', 'warning');
+    return null;
+  }
+  const call = insert('waiterCalls', {
+    clientId,
+    tableName: table.name,
+    tableId: table.id,
+    sessionId: session.id,
+    type,
+    status: 'open',
+    createdAt: new Date().toISOString(),
+  });
+  localStorage.setItem(key, String(Date.now()));
+  emit('call:new', { clientId, type, tableId: table.id });
+  logActivity({
+    actor: 'Guest · ' + table.name,
+    clientId,
+    type: 'Waiter call',
+    details: type === 'bill' ? 'Bill requested' : 'Waiter called',
+  });
+  toast(type === 'bill' ? 'Waiter has been notified — bill on the way' : 'Waiter has been notified · ' + table.name);
+  return call;
+}
+
+export function createBillRequest(clientId, table, methodId) {
+  const session = sessionForTable(clientId, table.id);
+  if (!session || session.status !== 'open' || !isDeviceTrusted(table.id, session) || session.tableId !== table.id) {
+    toast('Please ask staff to seat you', 'warning');
+    return null;
+  }
+  const method = ((table.settings || {}).paymentMethods || []).find((m) => m.id === methodId) || { name: methodId };
+  const key = 'tqr_call_bill';
+  const last = Number(localStorage.getItem(key) || 0);
+  const cooling = Date.now() - last < 120000;
+  if (!cooling) {
+    const call = insert('waiterCalls', {
+      clientId,
+      tableName: table.name,
+      tableId: table.id,
+      sessionId: session.id,
+      type: 'bill',
+      status: 'open',
+      paymentMethod: methodId,
+      createdAt: new Date().toISOString(),
+    });
+    localStorage.setItem(key, String(Date.now()));
+    emit('call:new', { clientId, type: 'bill', tableId: table.id });
+    logActivity({
+      actor: 'Guest · ' + table.name,
+      clientId,
+      type: 'Bill',
+      details: 'Bill requested · pays by ' + (method.name || methodId),
+    });
+    toast('Your waiter has been told · ' + table.name);
+    return call;
+  } else {
+    toast('Your waiter already knows — ' + (method.name || methodId) + ' noted.', 'warning');
+    return null;
+  }
+}
+
+export function placeOrder({ client, table, cart, payment, note, guestName }) {
+  const isPayFirst = client.settings?.payments?.policy === 'pay_first';
+  const session = sessionForTable(client.id, table.id);
+  if (!isPayFirst) {
+    if (!session || session.status !== 'open' || !isDeviceTrusted(table.id, session) || session.tableId !== table.id) {
+      toast('Please ask staff to seat you', 'warning');
+      return null;
+    }
+  }
+
+  const totals = cartTotals(cart, client.settings);
+  const approval = !!client.settings.approval;
+  const isPaid = payment && payment.method !== 'counter';
+  const activeSessionId = session ? session.id : null;
+
+  const order = insert('orders', {
+    clientId: client.id,
+    number: nextNumber(client.id),
+    tableId: table.id,
+    tableName: table.name,
+    sessionId: activeSessionId,
+    items: cart.items.map((row) => ({
+      name: row.name,
+      qty: row.qty,
+      price: row.price,
+      size: row.size,
+      addons: row.addons,
+      note: row.note,
+      taxOverride: row.taxOverride || 'default',
+      done: false,
+    })),
+    note: (note || '').trim(),
+    guestName: (guestName || '').trim(),
+    subtotal: totals.subtotal,
+    tax: totals.taxTotal,
+    service: totals.chargeTotal,
+    total: totals.total,
+    breakdown: totals,
+    paid: isPaid,
+    paymentMethod: payment ? payment.method : 'apple_pay',
+    paymentTxnId: payment ? payment.txnId : null,
+    paidAt: isPaid ? new Date().toISOString() : null,
+    tableWasVacant: table.status === 'free',
+    staffConfirmed: table.status !== 'free',
+    status: approval ? 'pending_approval' : 'new',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  if (session) {
+    addOrderToSession(session.id, order.id);
+  }
+  return order;
+}
+
+function promptTableKeySheet(ctx, session, onSuccess) {
   const { client, table } = ctx;
   const existing = document.getElementById('table-key-modal');
   if (existing) existing.remove();
 
-  let session = sessionForTable(client.id, table.id);
-  if (!session || session.status !== 'open') {
-    session = openSessionForTable(client.id, table);
-  }
-  const currentKey = (session && session.tableKey) ? String(session.tableKey) : '1234';
   const tableNameDisplay = /^table/i.test(table.name) ? table.name : `Table ${table.name}`;
+  const rateKey = 'tqr_key_rate_' + table.id;
+  function getRate() {
+    try {
+      return JSON.parse(localStorage.getItem(rateKey) || '{}');
+    } catch (e) {
+      return {};
+    }
+  }
+  function saveRate(obj) {
+    localStorage.setItem(rateKey, JSON.stringify(obj));
+  }
 
   const modal = document.createElement('div');
   modal.className = 'modal is-open';
@@ -149,62 +292,168 @@ function promptTableKey(ctx, onSuccess) {
   modal.setAttribute('role', 'dialog');
   modal.setAttribute('aria-modal', 'true');
   modal.innerHTML = `
-    <div class="modal__dialog" style="max-width: 400px; text-align: center; position: relative;">
+    <div class="modal__dialog" style="max-width: 440px; text-align: center; position: relative;">
       <button class="btn btn--icon btn--sm" type="button" id="close-table-key-modal" aria-label="Close" style="position: absolute; top: 14px; right: 14px; border: none; background: transparent; cursor: pointer; font-size: 1.25rem; color: var(--muted);"><i data-lucide="x"></i></button>
       <div class="modal__header" style="justify-content: center; flex-direction: column; gap: 4px; padding-top: 0.5rem;">
         <h2 class="modal__title" style="font-size: 1.25rem;">${esc(tableNameDisplay)}</h2>
-        <p class="muted text-sm" id="key-prompt-label">Enter table key, or browse menu directly</p>
+        <p class="muted text-sm" id="key-prompt-label">Enter the 4-digit key for this table to order</p>
       </div>
       <div class="modal__body" style="padding-top: 1rem;">
-        <div class="field" style="margin-bottom: 0.75rem;">
-          <input class="input" id="table-key-input" type="text" pattern="[0-9]*" inputmode="numeric" maxlength="4" placeholder="••••" style="font-size: 1.75rem; letter-spacing: 8px; text-align: center; font-family: var(--font-mono); height: 56px;" autofocus>
-        </div>
-        <div style="margin-bottom: 1rem; padding: 0.6rem 0.8rem; background: var(--surface-2, #F3F1EC); border-radius: 8px; font-size: 0.82rem; color: var(--text-muted, #666); text-align: center; border: 1px dashed var(--border, rgba(0,0,0,0.12));">
-          <span>Demo PIN: <strong id="demo-key-chip" style="font-family: var(--font-mono); letter-spacing: 2px; color: var(--primary, #8C3A27); cursor: pointer; text-decoration: underline;" title="Click to auto-connect">${currentKey}</strong></span>
-          <span style="opacity: 0.75; font-size: 0.75rem; margin-left: 4px;">(or enter 1234)</span>
-        </div>
-        <p class="hint" id="key-error" style="color: var(--danger); display: none; margin-bottom: 0.75rem;"></p>
-        <button class="btn btn--primary btn--block btn--lg" type="button" id="submit-table-key-btn">Connect to table</button>
-        <button class="btn btn--ghost btn--block" type="button" id="browse-guest-btn" style="margin-top: 8px; font-size: 0.9rem;">Browse Menu Directly</button>
+        <form id="key-sheet-form" onsubmit="return false;">
+          <div class="key-boxes" style="display: flex; justify-content: center; gap: 10px; margin: 16px 0;">
+            <input class="input" type="text" pattern="[0-9]*" inputmode="numeric" maxlength="1" data-pin-idx="0" style="width: 52px; height: 58px; text-align: center; font-size: 24px; font-family: var(--font-mono); font-weight: 700; border-radius: 10px;" autocomplete="off" autofocus>
+            <input class="input" type="text" pattern="[0-9]*" inputmode="numeric" maxlength="1" data-pin-idx="1" style="width: 52px; height: 58px; text-align: center; font-size: 24px; font-family: var(--font-mono); font-weight: 700; border-radius: 10px;" autocomplete="off">
+            <input class="input" type="text" pattern="[0-9]*" inputmode="numeric" maxlength="1" data-pin-idx="2" style="width: 52px; height: 58px; text-align: center; font-size: 24px; font-family: var(--font-mono); font-weight: 700; border-radius: 10px;" autocomplete="off">
+            <input class="input" type="text" pattern="[0-9]*" inputmode="numeric" maxlength="1" data-pin-idx="3" style="width: 52px; height: 58px; text-align: center; font-size: 24px; font-family: var(--font-mono); font-weight: 700; border-radius: 10px;" autocomplete="off">
+          </div>
+          <p class="hint" id="key-error" style="color: var(--danger); display: none; margin-bottom: 0.75rem; font-weight: 500;"></p>
+          <div id="key-countdown" style="display: none; margin-bottom: 0.75rem; color: var(--danger); font-size: 0.875rem; font-weight: 600;"></div>
+          <button class="btn btn--primary btn--block btn--lg" type="submit" id="submit-table-key-btn">Confirm key</button>
+        </form>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
   if (window.lucide) window.lucide.createIcons();
 
-  const input = modal.querySelector('#table-key-input');
-  const error = modal.querySelector('#key-error');
-  const btn = modal.querySelector('#submit-table-key-btn');
-  const guestBtn = modal.querySelector('#browse-guest-btn');
+  const inputs = Array.from(modal.querySelectorAll('[data-pin-idx]'));
+  const errorEl = modal.querySelector('#key-error');
+  const countdownEl = modal.querySelector('#key-countdown');
+  const submitBtn = modal.querySelector('#submit-table-key-btn');
   const closeBtn = modal.querySelector('#close-table-key-modal');
-  const chip = modal.querySelector('#demo-key-chip');
+  let countdownTimer = null;
 
-  function connectDirectly() {
-    if (!session || session.status !== 'open') {
-      session = sessionForTable(client.id, table.id) || openSessionForTable(client.id, table);
+  function showError(msg) {
+    if (errorEl) {
+      errorEl.textContent = msg;
+      errorEl.style.display = 'block';
     }
-    localStorage.setItem('tqr_trusted_' + table.id, JSON.stringify({
-      sessionId: session.id,
-      joinSecret: session.joinSecret,
-    }));
-    modal.remove();
-    toast("You're connected to " + table.name);
-    if (onSuccess) onSuccess(session);
   }
 
-  function attempt() {
-    connectDirectly();
+  function hideError() {
+    if (errorEl) errorEl.style.display = 'none';
   }
 
-  if (chip) chip.addEventListener('click', connectDirectly);
-  btn.addEventListener('click', attempt);
-  if (guestBtn) guestBtn.addEventListener('click', connectDirectly);
-  if (closeBtn) closeBtn.addEventListener('click', connectDirectly);
+  function checkCooldown() {
+    const rate = getRate();
+    const now = Date.now();
+    if (rate.lockUntil && rate.lockUntil > now) {
+      inputs.forEach((i) => { i.disabled = true; });
+      submitBtn.disabled = true;
+      hideError();
+      countdownEl.style.display = 'block';
 
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') attempt();
+      if (countdownTimer) clearInterval(countdownTimer);
+      const updateCd = () => {
+        const left = Math.ceil((rate.lockUntil - Date.now()) / 1000);
+        if (left <= 0) {
+          clearInterval(countdownTimer);
+          countdownEl.style.display = 'none';
+          inputs.forEach((i) => { i.disabled = false; });
+          submitBtn.disabled = false;
+          inputs[0].focus();
+        } else {
+          countdownEl.textContent = 'Too many attempts. Please wait ' + left + 's before trying again.';
+        }
+      };
+      updateCd();
+      countdownTimer = setInterval(updateCd, 1000);
+      return true;
+    }
+    return false;
+  }
+
+  function attemptSubmit() {
+    if (checkCooldown()) return;
+    const pin = inputs.map((i) => i.value).join('');
+    if (pin.length < 4) return;
+
+    const currentSession = sessionForTable(client.id, table.id);
+    if (!currentSession || currentSession.status !== 'open') {
+      if (countdownTimer) clearInterval(countdownTimer);
+      modal.remove();
+      toast('Please ask staff to seat you', 'warning');
+      return;
+    }
+
+    if (pin === String(currentSession.tableKey)) {
+      if (countdownTimer) clearInterval(countdownTimer);
+      localStorage.removeItem(rateKey);
+      localStorage.setItem('tqr_trusted_' + table.id, JSON.stringify({
+        sessionId: currentSession.id,
+        joinSecret: currentSession.joinSecret,
+      }));
+      modal.remove();
+      toast("You're connected to " + table.name);
+      if (onSuccess) onSuccess(currentSession);
+    } else {
+      const currentTable = getById('tables', table.id) || table;
+      const fails = (currentTable.failedKeyAttempts || 0) + 1;
+      update('tables', table.id, { failedKeyAttempts: fails });
+      emit('table:update', { clientId: client.id, tableId: table.id });
+
+      const rate = getRate();
+      rate.fails = (rate.fails || 0) + 1;
+      if (rate.fails >= 3) {
+        const wait = rate.delay || 30;
+        rate.lockUntil = Date.now() + wait * 1000;
+        rate.delay = Math.min(600, wait * 2);
+        saveRate(rate);
+        checkCooldown();
+      } else {
+        saveRate(rate);
+        inputs.forEach((i) => { i.value = ''; });
+        inputs[0].focus();
+        showError('Incorrect table key. Please ask staff.');
+      }
+    }
+  }
+
+  inputs.forEach((inp, idx) => {
+    inp.addEventListener('input', () => {
+      const v = inp.value.replace(/\D/g, '').slice(-1);
+      inp.value = v;
+      if (v && idx < 3) {
+        inputs[idx + 1].focus();
+      }
+      if (inputs.every((i) => i.value.length === 1)) {
+        attemptSubmit();
+      }
+    });
+
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !inp.value && idx > 0) {
+        inputs[idx - 1].focus();
+      }
+    });
+
+    inp.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const clip = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 4);
+      clip.split('').forEach((c, ci) => {
+        if (inputs[ci]) inputs[ci].value = c;
+      });
+      if (clip.length === 4) {
+        attemptSubmit();
+      } else if (inputs[clip.length]) {
+        inputs[clip.length].focus();
+      }
+    });
   });
-  setTimeout(() => input.focus(), 100);
+
+  modal.querySelector('#key-sheet-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    attemptSubmit();
+  });
+
+  closeBtn.addEventListener('click', () => {
+    if (countdownTimer) clearInterval(countdownTimer);
+    modal.remove();
+  });
+
+  if (!checkCooldown()) {
+    setTimeout(() => inputs[0].focus(), 100);
+  }
 }
 
 function showShareQrModal(client, table, session) {
@@ -232,7 +481,6 @@ function showShareQrModal(client, table, session) {
       <div class="modal__body" style="padding: 1rem;">
         <p class="muted text-sm mb-4">Have a friend scan this code to join and order with you:</p>
         <div id="friend-qr-target" style="display: flex; justify-content: center; padding: 12px; background: #fff; border-radius: var(--radius-md); box-shadow: var(--shadow-lift); width: fit-content; margin: 0 auto;"></div>
-        <p class="visit-qr-modal__key mt-4" style="margin-bottom:0;">Table key backup: <span class="visit-qr-modal__key-digits" style="font-size:1.25rem;">${esc(session.tableKey || '----')}</span></p>
       </div>
     </div>
   `;
@@ -527,27 +775,7 @@ function initMenu(ctx) {
     }));
     toast("You're connected to " + table.name);
   } else {
-    const activeSession = sessionForTable(client.id, table.id);
-    let isTrusted = false;
-    try {
-      const stored = JSON.parse(localStorage.getItem('tqr_trusted_' + table.id) || 'null');
-      if (activeSession && stored && stored.sessionId === activeSession.id && stored.joinSecret === activeSession.joinSecret && activeSession.status === 'open') {
-        isTrusted = true;
-      }
-    } catch (e) {}
-
-    if (!isTrusted) {
-      let session = activeSession;
-      if (!session || session.status !== 'open') {
-        session = openSessionForTable(client.id, table);
-      }
-      if (session) {
-        localStorage.setItem('tqr_trusted_' + table.id, JSON.stringify({
-          sessionId: session.id,
-          joinSecret: session.joinSecret,
-        }));
-      }
-    }
+    // When no visit parameters are provided, device trust is retained only if previously authenticated for this open session
   }
 
   on('session:close', (payload) => {
@@ -614,7 +842,8 @@ function initMenu(ctx) {
       sectionsHost.innerHTML =
         '<div class="empty"><span class="empty__icon"><i data-lucide="search"></i></span>' +
         '<p class="empty__title">Nothing matches that</p>' +
-        '<p class="empty__text">Try a different dish, or clear the filters above.</p></div>';
+        '<p class="empty__text">Try a different dish, or clear the filters above.</p>' +
+        '<div class="empty__action"><button class="btn btn--secondary btn--sm mt-2" type="button" data-clear-menu-filters><i data-lucide="rotate-ccw"></i> Clear filters</button></div></div>';
       if (window.lucide) window.lucide.createIcons();
       return;
     }
@@ -671,26 +900,50 @@ function initMenu(ctx) {
   renderChips();
 
   const dietOptions = [['veg', 'Veg'], ['vegan', 'Vegan'], ['gf', 'Gluten-free'], ['spicy', 'Spicy']];
+  function resetMenuFilters() {
+    activeFilters.clear();
+    term = '';
+    if (searchInput) searchInput.value = '';
+    renderDietFilters();
+    render();
+  }
+
   function renderDietFilters() {
-    filterHost.innerHTML = dietOptions.map(([key, label]) =>
+    const chipsHtml = dietOptions.map(([key, label]) =>
       '<button class="chip chip--filter" type="button" data-filter="' + key + '" aria-pressed="' + (activeFilters.has(key) ? 'true' : 'false') + '">' + getTagLabel(key) + '</button>'
     ).join('');
+    const clearBtnHtml = (activeFilters.size > 0 || term)
+      ? '<button class="chip chip--filter" type="button" data-clear-menu-filters style="color:var(--danger);font-weight:600;"><i data-lucide="x" style="width:12px;height:12px;vertical-align:-1px;margin-right:2px;"></i> Clear</button>'
+      : '';
+    filterHost.innerHTML = chipsHtml + clearBtnHtml;
+    if (window.lucide) window.lucide.createIcons();
   }
   renderDietFilters();
 
   filterHost.addEventListener('click', (event) => {
+    if (event.target.closest('[data-clear-menu-filters]')) {
+      resetMenuFilters();
+      return;
+    }
     const button = event.target.closest('[data-filter]');
     if (!button) return;
     const key = button.getAttribute('data-filter');
     if (activeFilters.has(key)) activeFilters.delete(key);
     else activeFilters.add(key);
-    button.setAttribute('aria-pressed', activeFilters.has(key) ? 'true' : 'false');
+    renderDietFilters();
     render();
+  });
+
+  sectionsHost.addEventListener('click', (event) => {
+    if (event.target.closest('[data-clear-menu-filters]')) {
+      resetMenuFilters();
+    }
   });
 
   if (searchInput) {
     searchInput.addEventListener('input', debounce(() => {
       term = searchInput.value.trim().toLowerCase();
+      renderDietFilters();
       render();
     }, 200));
   }
@@ -850,6 +1103,13 @@ function initMenu(ctx) {
   const billLink = document.getElementById('ask-bill-link');
   if (billLink) {
     billLink.setAttribute('href', 'bill.html?r=' + encodeURIComponent(client.slug) + '&t=' + encodeURIComponent(table.token) + visitParams);
+    billLink.addEventListener('click', (e) => {
+      const s = sessionForTable(client.id, table.id);
+      if (!s || s.status !== 'open' || !isDeviceTrusted(table.id, s)) {
+        e.preventDefault();
+        toast('Please ask staff to seat you', 'warning');
+      }
+    });
   }
 
   const menuTablePill = document.getElementById('menu-table');
@@ -866,29 +1126,7 @@ function initMenu(ctx) {
   document.querySelectorAll('[data-call]').forEach((button) => {
     button.addEventListener('click', () => {
       const type = button.getAttribute('data-call');
-      const key = 'tqr_call_' + type;
-      const last = Number(localStorage.getItem(key) || 0);
-      const waitLeft = Math.ceil((120000 - (Date.now() - last)) / 1000);
-      if (Date.now() - last < 120000) {
-        toast('Please wait ' + waitLeft + 's before calling again.', 'warning');
-        return;
-      }
-      insert('waiterCalls', {
-        clientId: client.id,
-        tableName: table.name,
-        type,
-        status: 'open',
-        createdAt: new Date().toISOString(),
-      });
-      localStorage.setItem(key, String(Date.now()));
-      emit('call:new', { clientId: client.id });
-      logActivity({
-        actor: 'Guest · ' + table.name,
-        clientId: client.id,
-        type: 'Waiter call',
-        details: type === 'bill' ? 'Bill requested' : 'Waiter called',
-      });
-      toast(type === 'bill' ? 'Waiter has been notified — bill on the way' : 'Waiter has been notified · ' + table.name);
+      createWaiterCall(client.id, table, type);
     });
   });
 
@@ -1081,43 +1319,52 @@ function initCart(ctx) {
   const inPerson = paymentsConf.inPerson || { cash: true, cardMachine: true };
 
   const methodsList = [];
-  if (stripe.connected !== false && stripe.applePay !== false) {
-    methodsList.push({ id: 'apple_pay', name: 'Apple Pay', icon: '🍏', desc: 'Instant 1-tap checkout via Apple Pay. Order is verified and fired straight to the chef.' });
-  }
-  if (stripe.connected !== false && stripe.googlePay !== false) {
-    methodsList.push({ id: 'google_pay', name: 'Google Pay', icon: '🌐', desc: 'Fast 1-tap Google Pay. Seamless payment using cards saved in your Google Account.' });
-  }
-  if (stripe.connected !== false && stripe.cards !== false) {
-    methodsList.push({ id: 'card', name: 'Credit Card', icon: '💳', desc: 'Secure 256-bit encrypted Visa, Mastercard, or American Express payment.' });
-  }
-  if (paypal.connected !== false && paypal.paypalWallet !== false) {
-    methodsList.push({ id: 'paypal', name: 'PayPal / Venmo', icon: '🅿️', desc: 'Checkout with your PayPal balance, linked bank, or Venmo.' });
-  }
-  if (settings.currency === '₹' || paymentsConf.razorpay?.connected) {
-    methodsList.push({ id: 'upi', name: 'UPI Pay', icon: '📱', desc: 'Instant UPI via GPay, PhonePe, Paytm, or BHIM.' });
-  }
-  if (payPolicy !== 'pay_at_order' && inPerson.cash !== false) {
-    methodsList.push({ id: 'counter', name: 'Pay Server', icon: '💵', desc: 'Pay server in person at your table (cash or portable card reader).' });
-  }
-  if (!methodsList.length) {
-    methodsList.push({ id: 'apple_pay', name: 'Apple Pay', icon: '🍏', desc: 'Instant 1-tap checkout via Apple Pay.' });
-    methodsList.push({ id: 'card', name: 'Credit Card', icon: '💳', desc: 'Secure credit/debit card payment.' });
-    if (payPolicy !== 'pay_at_order') {
-      methodsList.push({ id: 'counter', name: 'Pay Server', icon: '💵', desc: 'Pay server in person at your table.' });
+  if (payPolicy === 'post_pay') {
+    methodsList.push({ id: 'counter', name: 'Pay at end', icon: '🧾', desc: 'Order freely. Settle your bill at the end of your visit.' });
+  } else {
+    if (stripe.connected !== false && stripe.applePay !== false) {
+      methodsList.push({ id: 'apple_pay', name: 'Apple Pay', icon: '🍏', desc: 'Instant 1-tap checkout via Apple Pay. Order is verified and fired straight to the chef.' });
+    }
+    if (stripe.connected !== false && stripe.googlePay !== false) {
+      methodsList.push({ id: 'google_pay', name: 'Google Pay', icon: '🌐', desc: 'Fast 1-tap Google Pay. Seamless payment using cards saved in your Google Account.' });
+    }
+    if (stripe.connected !== false && stripe.cards !== false) {
+      methodsList.push({ id: 'card', name: 'Credit Card', icon: '💳', desc: 'Secure 256-bit encrypted Visa, Mastercard, or American Express payment.' });
+    }
+    if (paypal.connected !== false && paypal.paypalWallet !== false) {
+      methodsList.push({ id: 'paypal', name: 'PayPal / Venmo', icon: '🅿️', desc: 'Checkout with your PayPal balance, linked bank, or Venmo.' });
+    }
+    if (settings.currency === '₹' || paymentsConf.razorpay?.connected) {
+      methodsList.push({ id: 'upi', name: 'UPI Pay', icon: '📱', desc: 'Instant UPI via GPay, PhonePe, Paytm, or BHIM.' });
+    }
+    if (payPolicy !== 'pay_at_order' && inPerson.cash !== false) {
+      methodsList.push({ id: 'counter', name: 'Pay Server', icon: '💵', desc: 'Pay server in person at your table (cash or portable card reader).' });
+    }
+    if (!methodsList.length) {
+      methodsList.push({ id: 'apple_pay', name: 'Apple Pay', icon: '🍏', desc: 'Instant 1-tap checkout via Apple Pay.' });
+      methodsList.push({ id: 'card', name: 'Credit Card', icon: '💳', desc: 'Secure credit/debit card payment.' });
+      if (payPolicy !== 'pay_at_order') {
+        methodsList.push({ id: 'counter', name: 'Pay Server', icon: '💵', desc: 'Pay server in person at your table.' });
+      }
     }
   }
 
   if (payGrid) {
-    payGrid.innerHTML = methodsList.map((m, idx) => `
-      <label class="pay-method-btn ${idx === 0 ? 'is-selected' : ''}" data-method="${m.id}" style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fff; border: ${idx === 0 ? '2px solid var(--primary, #8C3A27)' : '1px solid var(--border, rgba(0,0,0,0.12))'}; border-radius: 10px; cursor: pointer;">
-        <input type="radio" name="pay-method" value="${m.id}" ${idx === 0 ? 'checked' : ''} style="accent-color: var(--primary, #8C3A27);">
-        <span style="font-size: 1.1rem;">${m.icon}</span>
-        <span style="font-size: 0.85rem; font-weight: 700; color: var(--text, #1A1A1A);">${esc(m.name)}</span>
-      </label>
-    `).join('');
+    if (payPolicy === 'post_pay') {
+      payGrid.style.display = 'none';
+      if (payDesc) payDesc.textContent = 'Traditional bill at end: Order freely now, settle your bill at the end of your visit.';
+    } else {
+      payGrid.innerHTML = methodsList.map((m, idx) => `
+        <label class="pay-method-btn ${idx === 0 ? 'is-selected' : ''}" data-method="${m.id}" style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fff; border: ${idx === 0 ? '2px solid var(--primary, #8C3A27)' : '1px solid var(--border, rgba(0,0,0,0.12))'}; border-radius: 10px; cursor: pointer;">
+          <input type="radio" name="pay-method" value="${m.id}" ${idx === 0 ? 'checked' : ''} style="accent-color: var(--primary, #8C3A27);">
+          <span style="font-size: 1.1rem;">${m.icon}</span>
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--text, #1A1A1A);">${esc(m.name)}</span>
+        </label>
+      `).join('');
+    }
   }
 
-  let selectedMethod = methodsList[0]?.id || 'apple_pay';
+  let selectedMethod = methodsList[0]?.id || (payPolicy === 'post_pay' ? 'counter' : 'apple_pay');
   let methodBtns = document.querySelectorAll('.pay-method-btn');
   let payRadios = document.querySelectorAll('input[name="pay-method"]');
 
@@ -1135,7 +1382,9 @@ function initCart(ctx) {
     const totSpan = document.getElementById('place-total');
     const totVal = totSpan ? totSpan.textContent : '';
     if (placeButton) {
-      if (method === 'apple_pay') placeButton.innerHTML = `🍏 Pay with Apple Pay · <span id="place-total">${totVal}</span>`;
+      if (payPolicy === 'post_pay') {
+        placeButton.innerHTML = `Place order · <span id="place-total">${totVal}</span>`;
+      } else if (method === 'apple_pay') placeButton.innerHTML = `🍏 Pay with Apple Pay · <span id="place-total">${totVal}</span>`;
       else if (method === 'google_pay') placeButton.innerHTML = `🌐 Pay with Google Pay · <span id="place-total">${totVal}</span>`;
       else if (method === 'card') placeButton.innerHTML = `💳 Pay with Credit Card · <span id="place-total">${totVal}</span>`;
       else if (method === 'paypal') placeButton.innerHTML = `🅿️ Pay with PayPal · <span id="place-total">${totVal}</span>`;
@@ -1183,75 +1432,71 @@ function initCart(ctx) {
       return;
     }
 
-    function executeOrder(payment) {
-      placeButton.disabled = true;
-      placeButton.textContent = 'Placing order…';
+    const isPayFirst = settings.payments?.policy === 'pay_first';
+    const currentSession = sessionForTable(client.id, table.id);
 
-      const approval = !!settings.approval;
-      const session = openSessionForTable(client.id, table);
-      const isPaid = payment && payment.method !== 'counter';
-      const order = insert('orders', {
-        clientId: client.id,
-        number: nextNumber(client.id),
-        tableId: table.id,
-        tableName: table.name,
-        sessionId: session.id,
-        items: cart.items.map((row) => ({
-          name: row.name,
-          qty: row.qty,
-          price: row.price,
-          size: row.size,
-          addons: row.addons,
-          note: row.note,
-          taxOverride: row.taxOverride || 'default',
-          done: false,
-        })),
-        note: document.getElementById('kitchen-note').value.trim(),
-        guestName: document.getElementById('guest-name').value.trim(),
-        subtotal: totals.subtotal,
-        tax: totals.taxTotal,
-        service: totals.chargeTotal,
-        total: totals.total,
-        breakdown: totals,
-        paid: isPaid,
-        paymentMethod: payment ? payment.method : 'apple_pay',
-        paymentTxnId: payment ? payment.txnId : null,
-        paidAt: isPaid ? new Date().toISOString() : null,
-        tableWasVacant: table.status === 'free',
-        staffConfirmed: table.status !== 'free',
-        status: approval ? 'pending_approval' : 'new',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-
-      localStorage.setItem(DEVICE_ORDER_KEY, String(Date.now()));
-      addOrderToSession(session.id, order.id);
-      try {
-        const myOrders = JSON.parse(localStorage.getItem('tqr_my_orders') || '[]');
-        if (!myOrders.includes(order.id)) {
-          myOrders.push(order.id);
-          localStorage.setItem('tqr_my_orders', JSON.stringify(myOrders));
-        }
-      } catch (e) {}
-      emit('order:new', { orderId: order.id, clientId: client.id });
-      pushOrderToMongo(order).catch(() => {});
-      logActivity({
-        actor: 'Guest · ' + table.name,
-        clientId: client.id,
-        type: 'Order',
-        details: 'Order #' + order.number + ' placed (' + totals.count + ' items' + (isPaid ? ' · Paid via ' + (payment.method || '').toUpperCase() : '') + ')',
-      });
-
-      sessionStorage.removeItem(CART_KEY);
-      location.href = 'order-status.html?id=' + order.id + '&r=' + encodeURIComponent(client.slug) + '&t=' + encodeURIComponent(table.token) + visitParams;
+    if (!isPayFirst) {
+      if (!currentSession || currentSession.status !== 'open') {
+        toast('Please ask staff to seat you', 'warning');
+        return;
+      }
+      if (!isDeviceTrusted(table.id, currentSession)) {
+        promptTableKeySheet(ctx, currentSession, () => {
+          proceedOrder();
+        });
+        return;
+      }
     }
 
-    if (selectedMethod === 'counter') {
-      executeOrder({ method: 'counter', txnId: null });
-    } else {
-      showPaymentModal(selectedMethod, totals, settings, table, (paymentResult) => {
-        executeOrder(paymentResult);
-      });
+    proceedOrder();
+
+    function proceedOrder() {
+      function executeOrder(payment) {
+        placeButton.disabled = true;
+        placeButton.textContent = 'Placing order…';
+
+        const order = placeOrder({
+          client,
+          table,
+          cart,
+          payment,
+          note: document.getElementById('kitchen-note').value.trim(),
+          guestName: document.getElementById('guest-name').value.trim(),
+        });
+
+        if (!order) {
+          placeButton.disabled = false;
+          updatePaymentUi(selectedMethod);
+          return;
+        }
+
+        localStorage.setItem(DEVICE_ORDER_KEY, String(Date.now()));
+        try {
+          const myOrders = JSON.parse(localStorage.getItem('tqr_my_orders') || '[]');
+          if (!myOrders.includes(order.id)) {
+            myOrders.push(order.id);
+            localStorage.setItem('tqr_my_orders', JSON.stringify(myOrders));
+          }
+        } catch (e) {}
+        emit('order:new', { orderId: order.id, clientId: client.id });
+        logActivity({
+          actor: 'Guest · ' + table.name,
+          clientId: client.id,
+          type: 'Order',
+          details: 'Order #' + order.number + ' placed (' + totals.count + ' items' + (order.paid ? ' · Paid via ' + (payment.method || '').toUpperCase() : '') + ')',
+        });
+
+        sessionStorage.removeItem(CART_KEY);
+        location.href = 'order-status.html?id=' + order.id + '&r=' + encodeURIComponent(client.slug) + '&t=' + encodeURIComponent(table.token) + visitParams;
+      }
+
+      if (selectedMethod === 'counter') {
+        executeOrder({ method: 'counter', txnId: null });
+      } else {
+        showPaymentModal(selectedMethod, totals, settings, table, (paymentResult) => {
+          executeOrder(paymentResult);
+        });
+      }
     }
   });
 }
@@ -1434,11 +1679,12 @@ function initBill(ctx) {
   let session = sessionForTable(client.id, table.id);
   const host = document.getElementById('bill-body');
 
-  if (!session) {
+  const isTrusted = isDeviceTrusted(table.id, session);
+  if (!session || session.status !== 'open' || !isTrusted) {
     host.innerHTML =
       '<div class="empty"><span class="empty__icon"><i data-lucide="receipt"></i></span>' +
-      '<p class="empty__title">No open bill for ' + esc(table.name) + '</p>' +
-      '<p class="empty__text">Place an order first and it will show up here.</p>' +
+      '<p class="empty__title">Please ask staff to seat you</p>' +
+      '<p class="empty__text">This table does not have an active session for your device.</p>' +
       '<div class="empty__action"><a class="btn btn--primary" href="index.html?r=' + encodeURIComponent(client.slug) + '&t=' + encodeURIComponent(table.token) + visitParams + '">Back to the menu</a></div></div>';
     if (window.lucide) window.lucide.createIcons();
     return;
@@ -1447,36 +1693,8 @@ function initBill(ctx) {
   let chooserOpen = false;
 
   function requestBill(methodId) {
-    const method = (settings.paymentMethods || []).find((m) => m.id === methodId);
-    if (!method) return;
-
-    const key = 'tqr_call_bill';
-    const last = Number(localStorage.getItem(key) || 0);
-    const cooling = Date.now() - last < 120000;
-
-    if (!cooling) {
-      insert('waiterCalls', {
-        clientId: client.id,
-        tableName: table.name,
-        type: 'bill',
-        status: 'open',
-        sessionId: session.id,
-        paymentMethod: methodId,
-        createdAt: new Date().toISOString(),
-      });
-      localStorage.setItem(key, String(Date.now()));
-      emit('call:new', { clientId: client.id });
-      logActivity({
-        actor: 'Guest · ' + table.name,
-        clientId: client.id,
-        type: 'Bill',
-        details: 'Bill requested · pays by ' + method.name,
-      });
-      toast('Your waiter has been told · ' + table.name);
-    } else {
-      toast('Your waiter already knows — ' + method.name + ' noted.', 'warning');
-    }
-
+    const call = createBillRequest(client.id, table, methodId);
+    if (!call) return;
     chooserOpen = false;
     save({ paymentMethod: methodId });
   }

@@ -43,17 +43,47 @@ export function on(event, handler) {
   };
 }
 
+const batchQueue = new Map();
+let batchTimer = null;
+
+function flushBatch() {
+  batchTimer = null;
+  const current = new Map(batchQueue);
+  batchQueue.clear();
+  current.forEach((data, event) => {
+    dispatch(event, data);
+  });
+}
+
+function queueDispatch(event, data) {
+  // Critical alert events fire immediately; high-frequency sync batches within 150ms
+  if (event.startsWith('call:') || event === 'staff:logout' || event === 'session:paid') {
+    dispatch(event, data);
+    return;
+  }
+  batchQueue.set(event, data);
+  if (!batchTimer) {
+    batchTimer = setTimeout(flushBatch, 150);
+  }
+}
+
 if (channel) {
   channel.onmessage = (message) => {
     const payload = message.data || {};
-    if (payload.event) dispatch(payload.event, payload.data);
+    if (payload.event) queueDispatch(payload.event, payload.data);
   };
 }
+
+// Changes merged from Neon by store.js (made on another device) reach this tab's listeners.
+window.addEventListener('tt:remote', (event) => {
+  const payload = event.detail || {};
+  if (payload.event) queueDispatch(payload.event, payload.data || {});
+});
 
 window.addEventListener('storage', (event) => {
   if (event.key !== STORAGE_KEY || !event.newValue) return;
   try {
     const payload = JSON.parse(event.newValue);
-    if (payload.event) dispatch(payload.event, payload.data);
+    if (payload.event) queueDispatch(payload.event, payload.data);
   } catch (err) { /* ignore */ }
 });

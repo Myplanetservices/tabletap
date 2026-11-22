@@ -59,7 +59,9 @@
   --font-mono:'Spline Sans Mono', ui-monospace, monospace;
 
   /* motion */
-  --ease:cubic-bezier(.2,.7,.2,1);
+  /* --ease carries a duration (for transitions); animation shorthands use --ease-curve,
+     otherwise the 200ms in --ease is read as an animation-delay and the overlay flickers. */
+  --ease-curve:cubic-bezier(.2,.7,.2,1);
   --dur:200ms;
   --ease:200ms cubic-bezier(.2,.7,.2,1);
 
@@ -617,7 +619,7 @@ img.avatar { font-size:0; object-fit:cover; }
   background:rgba(17,19,24,.55);
   backdrop-filter:blur(2px);
 }
-.modal.is-open { display:flex; animation:modal-in 180ms var(--ease); }
+.modal.is-open { display:flex; animation:modal-in 180ms var(--ease-curve); }
 .modal__dialog {
   width:100%;
   max-width:480px;
@@ -713,7 +715,7 @@ img.avatar { font-size:0; object-fit:cover; }
   font-size:0.875rem;
   font-weight:500;
   box-shadow:0 16px 40px -20px rgba(17,19,24,.9);
-  animation:toast-in 220ms var(--ease);
+  animation:toast-in 220ms var(--ease-curve);
 }
 @keyframes toast-in {
   from { opacity:0; transform:translateY(8px); }
@@ -850,6 +852,9 @@ img.avatar { font-size:0; object-fit:cover; }
 .app-shell__sidebar-footer .avatar { background:#2A2F37; color:#D7DBE1; }
 
 .app-shell__main { display:flex; flex-direction:column; min-width:0; }
+/* layout.js mounts the rail and top bar into these wrappers; keep them out of layout so the
+   sidebar is a direct grid item and the top bar's sticky positioning spans the whole column. */
+#app-sidebar, #app-topbar { display:contents; }
 
 .app-shell__topbar {
   position:sticky;
@@ -2703,9 +2708,7 @@ img.avatar { font-size:0; object-fit:cover; }
 .order-card__side { display:flex; align-items:center; gap:var(--s-3); flex:0 0 auto; }
 .order-card__total { font-family:var(--font-mono); font-size:0.8125rem; font-weight:500; }
 
-.table-grid { display:grid; gap:var(--s-4); grid-template-columns:1fr; }
-@media (min-width:480px) { .table-grid { grid-template-columns:repeat(2, 1fr); } }
-@media (min-width:1024px) { .table-grid { grid-template-columns:repeat(3, 1fr); } }
+.table-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px; }
 
 .table-card { padding:var(--s-4); }
 .table-card__head { display:flex; align-items:flex-start; justify-content:space-between; gap:var(--s-2); }
@@ -2723,16 +2726,18 @@ img.avatar { font-size:0; object-fit:cover; }
   align-items:center;
   justify-content:center;
   width:100%;
-  height:96px;
+  min-height:128px;
   margin:var(--s-3) 0;
+  padding:8px;
   border:1px solid var(--line);
   border-radius:8px;
-  background:var(--bg);
+  background:#fff;
   color:var(--muted);
 }
+.table-card__qr img, .table-card__qr canvas { width:120px !important; height:120px !important; display:block; margin:0 auto; }
 .table-card__qr [data-lucide] { width:42px; height:42px; stroke-width:1.25; }
-.table-card__actions { display:flex; gap:var(--s-2); }
-.table-card__actions .btn { flex:1; }
+.table-card__actions { display:flex; flex-wrap:wrap; gap:var(--s-2); }
+.table-card__actions .btn { flex:1 1 auto; }
 .table-card__actions .btn--icon { flex:0 0 auto; }
 
 .qr-preview {
@@ -2751,7 +2756,11 @@ img.avatar { font-size:0; object-fit:cover; }
 
 .menu-editor { display:grid; gap:var(--s-4); }
 @media (min-width:1024px) { .menu-editor { grid-template-columns:320px 1fr; align-items:start; } }
-@media (max-width:1023px) { .menu-editor { grid-template-columns:1fr; } }
+@media (max-width:1023px) {
+  /* minmax(0,…) lets the column shrink to the screen instead of growing to its widest child. */
+  .menu-editor { grid-template-columns:minmax(0, 1fr); }
+  .menu-editor .card__header { flex-wrap:wrap; }
+}
 
 .cat-item {
   display:flex;
@@ -4278,7 +4287,7 @@ img.avatar { font-size:0; object-fit:cover; }
   justify-content: center;
   padding: var(--s-6);
   text-align: center;
-  animation: modal-in 180ms var(--ease);
+  animation: modal-in 180ms var(--ease-curve);
 }
 .visit-qr-modal__title {
   font-size: 2.75rem;

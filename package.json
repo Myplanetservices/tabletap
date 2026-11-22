@@ -3,8 +3,24 @@
   "version": "1.0.0",
   "description": "TableTap - QR Table Ordering & Restaurant Management Platform",
   "type": "module",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "start": "node server.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js"
+  },
   "dependencies": {
+    "@neon/config": "^1.14.6",
+    "@neon/env": "^2.1.9",
+    "@vercel/functions": "^3.11.3",
     "dotenv": "^18.0.10",
-    "mongodb": "^7.8.0"
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

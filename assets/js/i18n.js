@@ -123,7 +123,7 @@
       'f5.title': 'Billing & Split Checks',
       'f5.desc': 'Itemized tax calculations (inclusive/exclusive), configurable tip presets (10%, 15%, 20%), and instant printable customer slips.',
       'f6.title': 'Database & Analytics',
-      'f6.desc': 'Real-time synchronization with MongoDB Atlas, optional Google Sheets auto-export, daily revenue breakdowns, and top seller mix charts.',
+      'f6.desc': 'Real-time sync across devices on Neon Postgres, optional Google Sheets auto-export, daily revenue breakdowns, and top seller mix charts.',
 
       // Customer Menu Page
       'menu.open_now': 'Open now',
@@ -266,7 +266,7 @@
       'f5.title': 'Счета, чаевые и раздельный чек',
       'f5.desc': 'Расчёт налогов, встроенные предустановки чаевых (10%, 15%, 20%) и печать понятных гостевых чеков.',
       'f6.title': 'База данных и аналитика',
-      'f6.desc': 'Синхронизация с облачной MongoDB Atlas, автоэкспорт в Google Таблицы, графики выручки и анализ популярных блюд.',
+      'f6.desc': 'Синхронизация через облачную базу Neon Postgres, автоэкспорт в Google Таблицы, графики выручки и анализ популярных блюд.',
 
       // Customer Menu Page
       'menu.open_now': 'Открыто',
@@ -408,7 +408,7 @@
       'f5.title': 'Рахунки та чайові',
       'f5.desc': 'Розрахунок податків, налаштування чайових (10%, 15%, 20%) та друк чеків для гостей.',
       'f6.title': 'База даних та аналітика',
-      'f6.desc': 'Синхронізація з MongoDB Atlas, експорт у Google Таблиці, графіки виторгу та аналітика популярних страв.',
+      'f6.desc': 'Синхронізація через хмарну базу Neon Postgres, експорт у Google Таблиці, графіки виторгу та аналітика популярних страв.',
 
       // Customer Menu Page
       'menu.open_now': 'Відчинено',

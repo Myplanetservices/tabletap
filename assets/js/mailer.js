@@ -1,20 +1,60 @@
-// TODO: replace with server call to Resend/Postmark when backend is ready.
 /* ==========================================================================
    TableTap — mailer.js
-   Central demo email sender. Saves outgoing emails to store collection "outbox".
+   Central email sender. Every email is recorded in the "outbox" collection
+   (the dev mailbox at dev/mailbox.html) and sent through the server's
+   /api/email endpoint, which delivers it with Resend. The outbox record gets
+   the delivery result: deliveryStatus = sent | not_configured | rate_limited | failed.
    ========================================================================== */
 
-import { insert } from './store.js';
+import { insert, update } from './store.js';
 import { toast } from './helpers.js';
 
+const API_EMAIL = new URL('../../api/email', import.meta.url).href;
+
+const MESSAGES = {
+  sent: ['Email sent to ', 'success'],
+  not_configured: ['Email service is not set up yet. Saved to the outbox for ', 'warning'],
+  rate_limited: ['Too many emails right now. Saved to the outbox for ', 'warning'],
+  failed: ['Email could not be sent. Saved to the outbox for ', 'error'],
+};
+
+function notify(status, to) {
+  const [text, tone] = MESSAGES[status] || MESSAGES.failed;
+  try { toast(text + to + '.', tone); } catch (e) { /* toast DOM unavailable */ }
+}
+
+async function deliver(record) {
+  let status = 'failed';
+  let detail = '';
+  try {
+    const payload = JSON.stringify({ id: record.id, to: record.to, subject: record.subject, html: record.html, type: record.type });
+    const res = await fetch(API_EMAIL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      // Some flows navigate away right after sending; keepalive lets the request finish.
+      keepalive: payload.length < 60000,
+    });
+    const body = await res.json().catch(() => ({}));
+    status = body.status || (res.ok ? 'sent' : 'failed');
+    detail = body.id || body.error || body.message || '';
+  } catch (err) {
+    detail = err.message;
+  }
+  update('outbox', record.id, { deliveryStatus: status, deliveryDetail: detail, deliveredAt: new Date().toISOString() });
+  notify(status, record.to);
+  return status;
+}
+
 /**
- * Send an email in demo mode.
+ * Send an email. Records it in the outbox immediately and delivers it in the
+ * background; the caller does not wait.
  * @param {Object} options
  * @param {string} options.to - Recipient email
  * @param {string} options.subject - Subject line
  * @param {string} options.html - Full HTML email content
- * @param {string} [options.type] - Category / type of email (e.g. 'invite', 'welcome', 'reset', 'notice')
- * @returns {Object} Saved outbox record
+ * @param {string} [options.type] - 'invite' | 'welcome' | 'notice' | 'reset' | 'general'
+ * @returns {Object} Saved outbox record (deliveryStatus starts as 'sending')
  */
 export function sendEmail({ to, subject, html, type = 'general' }) {
   const emailRecord = insert('outbox', {
@@ -23,15 +63,10 @@ export function sendEmail({ to, subject, html, type = 'general' }) {
     html: String(html || ''),
     type: String(type || 'general'),
     read: false,
+    deliveryStatus: 'sending',
     createdAt: new Date().toISOString(),
   });
-
-  try {
-    toast('Email saved to demo mailbox (email service not connected yet)', 'warning');
-  } catch (e) {
-    // In case toast DOM is unavailable
-  }
-
+  deliver(emailRecord);
   return emailRecord;
 }
 

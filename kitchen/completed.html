@@ -24,9 +24,10 @@
     </div>
   </header>
 
-  <div class="k-search">
+  <div class="k-search" style="display:flex;align-items:center;gap:8px;">
     <label class="sr-only" for="k-search">Search by table or order number</label>
-    <input class="input" id="k-search" type="search" placeholder="Search by table or order #">
+    <input class="input" id="k-search" type="search" placeholder="Search by table or order #" style="flex:1;">
+    <button class="btn btn--secondary" type="button" id="k-clear-search" style="display:none;white-space:nowrap;height:40px;"><i data-lucide="rotate-ccw"></i> Clear</button>
   </div>
 
   <div class="k-list">

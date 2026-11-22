@@ -5,15 +5,13 @@
    Order of calculation, always:
      subtotal → discount → charges → tax → tip → rounding → total
    Tips are never taxed. Charges are calculated on the discounted subtotal.
+   All internal calculations are done in integer pennies/cents to prevent rounding errors.
    ========================================================================== */
 
-const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
-
-function applyRounding(value, mode) {
-  const v = Number(value) || 0;
-  if (mode === '0.05') return Math.round(v * 20) / 20;
-  if (mode === '1') return Math.round(v);
-  return round2(v);
+function applyRoundingCents(valueCents, mode) {
+  if (mode === '0.05') return Math.round(valueCents / 5) * 5;
+  if (mode === '1') return Math.round(valueCents / 100) * 100;
+  return valueCents;
 }
 
 /** Which charges apply to this bill, given what the guest added or removed. */
@@ -48,35 +46,47 @@ export function computeBill(input = {}) {
   const taxes = (settings.taxes || []).filter((t) => t.enabled);
   const charges = activeCharges(settings, input.removedChargeIds, input.addedChargeIds);
 
-  /* 1 — subtotal ------------------------------------------------------- */
-  const subtotal = round2(lines.reduce((sum, line) => sum + (Number(line.amount) || 0), 0));
+  /* 1 — subtotal (in cents/pennies) ------------------------------------ */
+  const lineItems = lines.map((l) => ({
+    cents: Math.round((Number(l.amount) || 0) * 100),
+    taxOverride: l.taxOverride || 'default',
+  }));
+  const subtotalCents = lineItems.reduce((sum, l) => sum + l.cents, 0);
 
   /* 2 — discount ------------------------------------------------------- */
   const discountInput = input.discount || {};
   const discountType = discountInput.type === 'amount' ? 'amount' : 'percent';
   const discountValue = Math.max(0, Number(discountInput.value) || 0);
-  let discountAmount = discountType === 'amount' ? discountValue : subtotal * discountValue / 100;
-  discountAmount = round2(Math.min(Math.max(0, discountAmount), subtotal));
-  const discountedSubtotal = round2(subtotal - discountAmount);
-  const lineScale = subtotal > 0 ? discountedSubtotal / subtotal : 0;
+  let discountCents = 0;
+  if (discountType === 'amount') {
+    discountCents = Math.round(discountValue * 100);
+  } else {
+    discountCents = Math.round(subtotalCents * discountValue / 100);
+  }
+  discountCents = Math.min(Math.max(0, discountCents), subtotalCents);
+  const discountedSubtotalCents = subtotalCents - discountCents;
+  const lineScale = subtotalCents > 0 ? discountedSubtotalCents / subtotalCents : 0;
 
-  /* 3 — charges (on the discounted subtotal) --------------------------- */
+  /* 3 — charges (calculated on discounted subtotal) -------------------- */
   const chargeLines = charges.map((c) => {
     const value = Number(c.value) || 0;
-    const amount = c.type === 'fixed' ? value : discountedSubtotal * value / 100;
+    const cents = c.type === 'fixed'
+      ? Math.round(value * 100)
+      : Math.round(discountedSubtotalCents * value / 100);
     return {
       id: c.id,
       name: c.name,
       type: c.type || 'percent',
       value,
-      amount: round2(amount),
-      applyTax: c.applyTax !== false,
+      cents,
+      amount: cents / 100,
+      applyTax: c.applyTax === true,
       customerCanRemove: c.customerCanRemove !== false,
       addedByDefault: c.addedByDefault !== false,
     };
-  }).filter((c) => c.amount > 0);
+  }).filter((c) => c.cents > 0);
 
-  const chargeTotal = round2(chargeLines.reduce((sum, c) => sum + c.amount, 0));
+  const chargeTotalCents = chargeLines.reduce((sum, c) => sum + c.cents, 0);
 
   /* 4 — tax ------------------------------------------------------------ */
   const rateOf = (list) => list.reduce((sum, t) => sum + (Number(t.rate) || 0), 0);
@@ -89,91 +99,108 @@ export function computeBill(input = {}) {
     return taxes;
   };
 
-  const addedPerTax = new Map();     // tax collected on top
-  const includedPerTax = new Map();  // tax already inside the price
-  taxes.forEach((t) => { addedPerTax.set(t.id, 0); includedPerTax.set(t.id, 0); });
+  const addedPerTaxCents = new Map();
+  const includedPerTaxCents = new Map();
+  taxes.forEach((t) => { addedPerTaxCents.set(t.id, 0); includedPerTaxCents.set(t.id, 0); });
 
   // items
-  lines.forEach((line) => {
-    const amount = round2((Number(line.amount) || 0) * lineScale);
-    if (!amount) return;
-    const applicable = applicableFor(line.taxOverride || 'default');
+  lineItems.forEach((l) => {
+    const lineDiscountedCents = Math.round(l.cents * lineScale);
+    if (!lineDiscountedCents) return;
+    const applicable = applicableFor(l.taxOverride);
     if (!applicable.length) return;
 
     if (inclusive) {
       const totalRate = rateOf(applicable);
       if (totalRate <= 0) return;
-      const inside = amount - amount / (1 + totalRate / 100);
+      // Prices include tax formula: tax included = amount * rate / (100 + rate)
+      const insideCents = Math.round(lineDiscountedCents * totalRate / (100 + totalRate));
       applicable.forEach((t) => {
         const share = (Number(t.rate) || 0) / totalRate;
-        includedPerTax.set(t.id, (includedPerTax.get(t.id) || 0) + inside * share);
+        const taxShareCents = Math.round(insideCents * share);
+        includedPerTaxCents.set(t.id, (includedPerTaxCents.get(t.id) || 0) + taxShareCents);
       });
     } else {
       applicable.forEach((t) => {
-        addedPerTax.set(t.id, (addedPerTax.get(t.id) || 0) + amount * (Number(t.rate) || 0) / 100);
+        const addedCents = Math.round(lineDiscountedCents * (Number(t.rate) || 0) / 100);
+        addedPerTaxCents.set(t.id, (addedPerTaxCents.get(t.id) || 0) + addedCents);
       });
     }
   });
 
-  // taxable charges — always charged on top, never inside the price
+  // taxable charges — added on top (only if applyTax is true)
   chargeLines.forEach((charge) => {
     if (!charge.applyTax || !taxes.length) return;
     taxes.forEach((t) => {
-      addedPerTax.set(t.id, (addedPerTax.get(t.id) || 0) + charge.amount * (Number(t.rate) || 0) / 100);
+      const addedCents = Math.round(charge.cents * (Number(t.rate) || 0) / 100);
+      addedPerTaxCents.set(t.id, (addedPerTaxCents.get(t.id) || 0) + addedCents);
     });
   });
 
   const taxLines = taxes
-    .map((t) => ({ id: t.id, name: t.name, rate: Number(t.rate) || 0, amount: round2(addedPerTax.get(t.id) || 0) }))
+    .map((t) => ({ id: t.id, name: t.name, rate: Number(t.rate) || 0, amount: (addedPerTaxCents.get(t.id) || 0) / 100 }))
     .filter((t) => t.amount > 0);
   const includedTaxLines = taxes
-    .map((t) => ({ id: t.id, name: t.name, rate: Number(t.rate) || 0, amount: round2(includedPerTax.get(t.id) || 0) }))
+    .map((t) => ({ id: t.id, name: t.name, rate: Number(t.rate) || 0, amount: (includedPerTaxCents.get(t.id) || 0) / 100 }))
     .filter((t) => t.amount > 0);
 
-  const taxTotal = round2(taxLines.reduce((sum, t) => sum + t.amount, 0));
-  const includedTaxTotal = round2(includedTaxLines.reduce((sum, t) => sum + t.amount, 0));
+  const taxTotalCents = Array.from(addedPerTaxCents.values()).reduce((sum, v) => sum + v, 0);
+  const includedTaxTotalCents = Array.from(includedPerTaxCents.values()).reduce((sum, v) => sum + v, 0);
 
   /* 5 — tip (never taxed) ---------------------------------------------- */
   const tipInput = input.tip || {};
   const tipType = tipInput.type === 'amount' ? 'amount' : 'percent';
   const tipValue = Math.max(0, Number(tipInput.value) || 0);
-  const tipBase = round2(discountedSubtotal + chargeTotal + taxTotal);
-  const tipAmount = round2(tipType === 'amount' ? tipValue : tipBase * tipValue / 100);
+  const tipBaseCents = discountedSubtotalCents + chargeTotalCents + taxTotalCents;
+  const tipCents = tipType === 'amount'
+    ? Math.round(tipValue * 100)
+    : Math.round(tipBaseCents * tipValue / 100);
 
   /* 6 — total ---------------------------------------------------------- */
-  const beforeRounding = round2(discountedSubtotal + chargeTotal + taxTotal + tipAmount);
-  const total = applyRounding(beforeRounding, settings.rounding);
-  const roundingAdjustment = round2(total - beforeRounding);
+  const beforeRoundingCents = discountedSubtotalCents + chargeTotalCents + taxTotalCents + tipCents;
+  const totalCents = applyRoundingCents(beforeRoundingCents, settings.rounding);
+  const roundingAdjustmentCents = totalCents - beforeRoundingCents;
 
   return {
     pricesIncludeTax: inclusive,
     rounding: settings.rounding || 'none',
-    subtotal,
+    currency: settings.currency || 'GBP',
+    subtotal: subtotalCents / 100,
     discount: {
       type: discountType,
       value: discountValue,
       reason: (discountInput.reason || '').trim(),
-      amount: discountAmount,
+      amount: discountCents / 100,
     },
-    discountedSubtotal,
-    charges: chargeLines,
-    chargeTotal,
+    discountedSubtotal: discountedSubtotalCents / 100,
+    charges: chargeLines.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+      value: c.value,
+      amount: c.amount,
+      applyTax: c.applyTax,
+      customerCanRemove: c.customerCanRemove,
+      addedByDefault: c.addedByDefault,
+    })),
+    chargeTotal: chargeTotalCents / 100,
     taxes: taxLines,
     includedTaxes: includedTaxLines,
-    taxTotal,
-    includedTaxTotal,
-    tip: { type: tipType, value: tipValue, amount: tipAmount },
-    tipBase,
-    beforeRounding,
-    roundingAdjustment,
-    total,
+    taxTotal: taxTotalCents / 100,
+    includedTaxTotal: includedTaxTotalCents / 100,
+    tip: { type: tipType, value: tipValue, amount: tipCents / 100 },
+    tipBase: tipBaseCents / 100,
+    beforeRounding: beforeRoundingCents / 100,
+    roundingAdjustment: roundingAdjustmentCents / 100,
+    total: totalCents / 100,
   };
 }
 
 /** Charges on a saved bill, for pages that only stored the result. */
 export function billFromSession(session, settings) {
+  const lines = session.lines || (session.orderIds ? [] : []);
   return computeBill({
-    lines: (session.lines || []).map((l) => ({ amount: l.amount, taxOverride: l.taxOverride })),
+    lines: (lines || []).map((l) => ({ amount: l.amount, taxOverride: l.taxOverride })),
     settings,
     removedChargeIds: session.removedChargeIds || [],
     addedChargeIds: session.addedChargeIds || [],

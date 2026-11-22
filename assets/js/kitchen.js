@@ -142,7 +142,16 @@ function open86Modal() {
       listEl.innerHTML = '<div style="padding:2.5rem 1rem;text-align:center;color:var(--muted);">' +
         '<i data-lucide="check-circle" style="width:32px;height:32px;margin:0 auto 0.5rem;display:block;opacity:0.6;"></i>' +
         '<p style="font-weight:500;">No dishes found</p>' +
-        '<p style="font-size:0.8rem;margin-top:2px;">Try changing your search or filter above.</p></div>';
+        '<p style="font-size:0.8rem;margin-top:2px;">Try changing your search or filter above.</p>' +
+        (searchTerm ? '<button class="btn btn--secondary btn--sm mt-3" type="button" id="k-clear-search"><i data-lucide="rotate-ccw"></i> Clear search</button>' : '') +
+        '</div>';
+      const clrBtn = listEl.querySelector('#k-clear-search');
+      if (clrBtn) clrBtn.addEventListener('click', () => {
+        searchTerm = '';
+        const inp = host.querySelector('#k-86-search');
+        if (inp) inp.value = '';
+        renderList();
+      });
       if (window.lucide) window.lucide.createIcons();
       return;
     }
@@ -659,6 +668,11 @@ if (page === 'kitchen-completed') {
     }).join('') : '<div class="empty"><span class="empty__icon"><i data-lucide="check"></i></span>' +
       '<p class="empty__title">Nothing served yet today</p><p class="empty__text">Orders appear here as soon as they are marked served.</p></div>';
 
+    const clearBtn = document.getElementById('k-clear-search');
+    if (clearBtn) {
+      clearBtn.style.display = term ? 'inline-flex' : 'none';
+    }
+
     if (pagesHost) {
       pagesHost.innerHTML = renderPaginationHtml(pageNo, totalPages);
     }
@@ -690,6 +704,14 @@ if (page === 'kitchen-completed') {
     pageNo = 1;
     drawCompleted();
   });
+  const clearBtn = document.getElementById('k-clear-search');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      search.value = '';
+      pageNo = 1;
+      drawCompleted();
+    });
+  }
   on('order:update', drawCompleted);
   drawCompleted();
 } else {

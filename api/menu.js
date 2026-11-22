@@ -1,48 +1,30 @@
-import { connectToDatabase } from './db.js';
+import { hasPostgres, listDocs, upsertDocs } from './_lib/pg.js';
+import { cors, preflight, jsonBody } from './_lib/http.js';
+
+/* Menu REST API on Neon Postgres, for integrations outside the browser app.
+     GET  /api/menu?clientId=           → { categories, items }
+     POST /api/menu { type: 'item' | 'category', data: { id, ... } } */
 
 export default async function handler(req, res) {
-  res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  const { db, error } = await connectToDatabase();
-  if (error || !db) {
-    return res.status(503).json({ error: error || 'MongoDB not configured' });
-  }
-
-  const itemsCol = db.collection('items');
-  const catsCol = db.collection('categories');
+  cors(res);
+  if (preflight(req, res)) return;
+  if (!hasPostgres()) return res.status(503).json({ error: 'DATABASE_URL is not configured.' });
 
   try {
     if (req.method === 'GET') {
       const { clientId } = req.query || {};
-      const filter = clientId ? { clientId } : {};
-
-      const items = await itemsCol.find(filter).toArray();
-      const categories = await catsCol.find(filter).sort({ order: 1 }).toArray();
-
+      const items = await listDocs('items', { clientId });
+      const categories = (await listDocs('categories', { clientId }))
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       return res.status(200).json({ categories, items });
     }
 
     if (req.method === 'POST') {
-      const { type, data } = req.body || {};
-      if (!data || !data.id) {
-        return res.status(400).json({ error: 'data with id is required' });
-      }
-
-      const targetCol = type === 'category' ? catsCol : itemsCol;
-      await targetCol.updateOne(
-        { id: data.id },
-        { $set: { ...data, updatedAt: new Date().toISOString() } },
-        { upsert: true }
-      );
-
-      return res.status(200).json({ success: true, data });
+      const { type, data } = jsonBody(req);
+      if (!data || !data.id) return res.status(400).json({ error: 'data with id is required' });
+      const record = { ...data, updatedAt: new Date().toISOString() };
+      await upsertDocs(type === 'category' ? 'categories' : 'items', [record]);
+      return res.status(200).json({ success: true, data: record });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
