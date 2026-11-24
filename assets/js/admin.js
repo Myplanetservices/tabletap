@@ -1257,3 +1257,4 @@ if (render) {
     host.innerHTML = '<div class="notice-banner"><i data-lucide="alert-triangle"></i><span>Something went wrong loading this page: ' + esc(err.message) + '</span></div>';
   }
 }
+document.documentElement.classList.remove('tt-pending'); // page drawn: show it (see shell-boot.js)

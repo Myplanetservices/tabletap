@@ -31,6 +31,19 @@ export function formatMoney(amount, currency) {
   }
 }
 
+/**
+ * Short elapsed time for timers: 4:07 under an hour, 2h 5m under a day, 3d 4h beyond.
+ * Never prints thousands of minutes, even for a ticket left open for days.
+ */
+export function formatElapsed(ms) {
+  const sec = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+  const mins = Math.floor(sec / 60);
+  if (mins < 60) return mins + ':' + String(sec % 60).padStart(2, '0');
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + 'h ' + (mins % 60) + 'm';
+  return Math.floor(hours / 24) + 'd ' + (hours % 24) + 'h';
+}
+
 export function timeAgo(iso) {
   if (!iso) return 'never';
   const then = new Date(iso).getTime();

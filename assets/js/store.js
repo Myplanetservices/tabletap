@@ -554,13 +554,11 @@ function seed() {
             cardMachine: true,
           },
         },
-        geofence: {
-          enabled: true,
-          lat: 19.0596,
-          lng: 72.8295,
-          radiusMeters: 250,
-          name: '14 Turner Road, Bandra West, Mumbai',
-        },
+        // Only The Olive Table's real address is known here. Every other restaurant starts with
+        // no location, and its owner registers it in Settings → Security.
+        geofence: slug === 'olive-table'
+          ? { enabled: true, locationSet: true, lat: 19.0596, lng: 72.8295, accuracy: null, radiusMeters: 100, name: '14 Turner Road, Bandra West, Mumbai' }
+          : { enabled: true, locationSet: false, lat: null, lng: null, accuracy: null, radiusMeters: 100, name: '' },
         payAtOrder: {
           enabled: true,
           defaultMethod: 'apple_pay',
@@ -1289,6 +1287,16 @@ function remoteEvent(collection, kind, record, previous) {
   const clientId = rec.clientId;
   switch (collection) {
     case 'orders':
+      if (kind !== 'insert' && record && record.status === 'ready' && (!previous || previous.status !== 'ready')) {
+        // Kitchen finished it on another device: tell the waiter it was sent to (waiterId) to come and get it.
+        return {
+          event: 'order:ready',
+          data: {
+            orderId: rec.id, clientId, tableName: rec.tableName, number: rec.number,
+            waiterId: rec.assignedWaiterId || null, waiterName: rec.assignedWaiterName || '',
+          },
+        };
+      }
       return kind === 'insert'
         ? { event: 'order:new', data: { orderId: rec.id, clientId } }
         : { event: 'order:update', data: { orderId: rec.id, clientId } };
@@ -1342,7 +1350,12 @@ function applyRemote(changes) {
     if (index === -1) list.push(change.data);
     else list[index] = change.data;
     touched = true;
-    events.push(remoteEvent(change.collection, index === -1 ? 'insert' : 'update', change.data, local));
+    const evt = remoteEvent(change.collection, index === -1 ? 'insert' : 'update', change.data, local);
+    events.push(evt);
+    // A ready alert is also an order update: pages that only listen for order:update must redraw too.
+    if (evt && evt.event === 'order:ready') {
+      events.push({ event: 'order:update', data: { orderId: change.data.id, clientId: change.data.clientId } });
+    }
   }
   if (touched) {
     db.__version = VERSION;

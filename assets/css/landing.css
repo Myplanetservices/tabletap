@@ -1,0 +1,139 @@
+/* ==========================================================================
+   TableTap — landing.css
+   Home page only: split hero with a live phone, the "Inside TableTap" screenshot
+   carousel, scroll progress bar. Colours follow style.css (chalk, graphite, cobalt).
+   Motion is added by assets/js/landing.js (GSAP + Motion); everything here also
+   reads fine with JavaScript off or with reduced motion.
+   ========================================================================== */
+
+:root {
+  --lp-cobalt: #1B3FD8;
+  --lp-cobalt-deep: #122BA0;
+  --lp-cobalt-wash: #E8ECFB;
+  --lp-graphite: #15171C;
+  --lp-chalk: #F4F2ED;
+  --lp-line: #DBD6CB;
+}
+
+/* Reading progress, top of the page */
+.scroll-progress {
+  position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 60;
+  background: var(--lp-cobalt); transform-origin: 0 50%; transform: scaleX(0);
+  pointer-events: none;
+}
+
+/* Elements Motion reveals. They only start hidden once the script is running, so a
+   failed script never leaves the page blank. */
+.motion-ready [data-reveal] { opacity: 0; }
+
+/* ---------------------------------------------------------------- hero split -- */
+.hero-split { display: grid; gap: 2.5rem; align-items: center; }
+.hero-phone-col { display: flex; justify-content: center; }
+
+@media (min-width: 992px) {
+  .hero-split { grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); gap: 3rem; }
+  .hero-split .hero-redesign__header { text-align: left; align-items: flex-start; max-width: none; margin: 0; }
+  .hero-split .hero-redesign__lead { margin-left: 0; }
+  .hero-split .hero-pillars { grid-template-columns: 1fr; max-width: 520px; margin-left: 0; }
+  .hero-split .hero-redesign__actions { justify-content: flex-start; margin-bottom: 0; }
+  .hero-redesign { padding-top: 4rem; }
+}
+.hero-split + .hero-flow-showcase { margin-top: 3.5rem; }
+
+/* ---------------------------------------------------------------- phone -------- */
+.phone { position: relative; width: min(300px, 78vw); }
+.phone__glow {
+  position: absolute; inset: 8% -18% -4% -18%; z-index: 0; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(27, 63, 216, .22), transparent 72%);
+  filter: blur(8px);
+}
+.phone__frame {
+  position: relative; z-index: 1; aspect-ratio: 390 / 800;
+  border-radius: 44px; padding: 10px; background: var(--lp-graphite);
+  box-shadow: 0 0 0 2px #2C3038, 0 40px 70px -28px rgba(17, 19, 24, .55), 0 14px 30px -18px rgba(27, 63, 216, .35);
+}
+.phone__notch {
+  position: absolute; z-index: 3; top: 16px; left: 50%; width: 88px; height: 24px;
+  transform: translateX(-50%); border-radius: 999px; background: #0B0C0F;
+}
+.phone__screen { position: relative; height: 100%; overflow: hidden; border-radius: 34px; background: #fff; }
+.phone__scroll { display: block; width: 100%; height: auto; will-change: transform; }
+.phone__dock {
+  position: absolute; z-index: 2; inset: auto 10px 12px; display: flex; gap: 8px;
+  padding: 0 4px; pointer-events: none;
+}
+.phone__dock span {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 8px 6px; border-radius: 12px; background: #fff; border: 1px solid var(--lp-line);
+  font-size: 11px; font-weight: 700; color: #111318; box-shadow: 0 6px 14px -8px rgba(17, 19, 24, .35);
+}
+.phone__home {
+  position: absolute; z-index: 3; bottom: 6px; left: 50%; width: 96px; height: 4px;
+  transform: translateX(-50%); border-radius: 99px; background: rgba(255, 255, 255, .55);
+}
+
+/* Floating status chips around the phone */
+.phone-chip {
+  position: absolute; z-index: 4; display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 14px; background: #fff; border: 1px solid var(--lp-line);
+  font-size: 12px; font-weight: 700; color: #111318; white-space: nowrap;
+  box-shadow: 0 16px 30px -16px rgba(17, 19, 24, .45);
+}
+.phone-chip small { display: block; font-weight: 500; color: #5E636B; font-size: 11px; }
+.phone-chip__dot { width: 8px; height: 8px; border-radius: 50%; background: #10B981; box-shadow: 0 0 0 4px rgba(16, 185, 129, .18); }
+.phone-chip--a { top: 14%; left: -34%; }
+.phone-chip--b { bottom: 20%; right: -30%; }
+@media (max-width: 991px) {
+  .phone-chip--a { left: -6%; } .phone-chip--b { right: -6%; }
+}
+
+/* ---------------------------------------------------------- Inside TableTap ---- */
+.inside { position: relative; background: var(--lp-graphite); color: #F3F1EC; padding: 0; overflow: hidden; }
+.inside__pin { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; gap: 1.75rem; padding: 4.5rem 0 3rem; }
+.inside__head { max-width: 760px; }
+.inside__head .badge { background: rgba(255, 255, 255, .08); color: #C9D3FF; border: 1px solid rgba(255, 255, 255, .14); }
+.inside__title { font-family: var(--font-display, inherit); font-size: clamp(2rem, 4.4vw, 3.4rem); line-height: 1.05; letter-spacing: -0.01em; margin: .75rem 0 .5rem; color: #fff; }
+.inside__sub { color: #AEB4BF; max-width: 60ch; margin: 0; }
+
+.inside__viewport { position: relative; width: 100%; overflow: hidden; }
+.inside__track { display: flex; gap: 28px; padding: 6px max(24px, calc((100vw - 1200px) / 2)); width: max-content; will-change: transform; }
+
+.shot { margin: 0; width: min(78vw, 880px); flex: none; }
+.shot__window {
+  border-radius: 16px; overflow: hidden; background: #fff; border: 1px solid #2C3038;
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .8), 0 0 0 1px rgba(255, 255, 255, .04);
+}
+.shot__chrome { display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: #1E2128; border-bottom: 1px solid #2C3038; }
+.shot__chrome i { width: 10px; height: 10px; border-radius: 50%; background: #3A3F49; }
+.shot__chrome em { margin-left: 10px; font-style: normal; font-size: 12px; color: #8B93A1; font-family: var(--font-mono, ui-monospace, monospace); }
+.shot__img { display: block; width: 100%; aspect-ratio: 1440 / 900; height: auto; object-fit: cover; object-position: top; background: #F4F2ED; }
+.shot__cap { display: flex; gap: 12px; align-items: baseline; padding: 14px 4px 0; }
+.shot__tag {
+  flex: none; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 999px; background: rgba(27, 63, 216, .25); color: #C9D3FF;
+}
+.shot__cap strong { color: #fff; font-size: 1rem; }
+.shot__cap span:last-child { color: #AEB4BF; font-size: .9rem; }
+
+.inside__meter { display: flex; align-items: center; gap: 14px; }
+.inside__bar { flex: 1; height: 3px; border-radius: 99px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.inside__bar i { display: block; height: 100%; width: 100%; background: var(--lp-cobalt); transform-origin: 0 50%; transform: scaleX(.11); }
+.inside__count { font-family: var(--font-mono, ui-monospace, monospace); font-size: 13px; color: #AEB4BF; min-width: 5ch; text-align: right; }
+
+/* Narrow screens and reduced motion: a plain swipeable strip, no pinning */
+@media (max-width: 899px), (prefers-reduced-motion: reduce) {
+  .inside__pin { min-height: 0; padding: 3.5rem 0 3rem; }
+  .inside__viewport { overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  .inside__track { padding: 6px 20px; gap: 16px; }
+  .shot { scroll-snap-align: center; width: min(86vw, 520px); }
+  .inside__meter { display: none; }
+}
+
+/* Hero and header polish used by Motion */
+.site-header { transition: box-shadow 200ms ease, background-color 200ms ease; }
+.site-header.is-scrolled { box-shadow: 0 10px 30px -22px rgba(17, 19, 24, .45); }
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-ready [data-reveal] { opacity: 1; }
+  .scroll-progress { display: none; }
+}

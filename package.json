@@ -4,7 +4,7 @@
   "description": "TableTap - QR Table Ordering & Restaurant Management Platform",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.js",
+    "build": "node scripts/sync-boot.js && node scripts/build.js",
     "start": "node server.js",
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js"

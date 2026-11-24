@@ -5,7 +5,7 @@
 
 import * as store from './store.js';
 import {
-  currentClient, getSession, getAdminSession, logout, stopImpersonation,
+  currentClient, getSession, getAdminSession, logout, floorLogout, stopImpersonation,
   OWNER_SESSION_KEY, KITCHEN_SESSION_KEY, FLOOR_SESSION_KEY,
 } from './auth.js';
 import { esc, initials } from './helpers.js';
@@ -65,6 +65,9 @@ function renderEmailAlert(topbarContainer, { isAdmin, client, session }) {
 /* auth.js has no currentSession / isImpersonating exports; derive them here. */
 function currentSession(isAdmin) {
   if (isAdmin) return getAdminSession();
+  if ((document.body.getAttribute('data-page') || '') === 'floor') {
+    return getSession(FLOOR_SESSION_KEY) || getSession(OWNER_SESSION_KEY);
+  }
   return getSession(OWNER_SESSION_KEY) || getSession(KITCHEN_SESSION_KEY) || getSession(FLOOR_SESSION_KEY);
 }
 
@@ -151,6 +154,7 @@ export function initLayout() {
 
   const client = isAdmin ? null : safe('currentClient', () => currentClient(), null);
   const session = safe('currentSession', () => currentSession(isAdmin), null) || {};
+  const isWaiter = !isAdmin && session.role === 'floor';
 
   /* ----------------------------------------------------------- Sidebar -- */
   if (sidebarContainer) {
@@ -190,6 +194,34 @@ export function initLayout() {
               <span class="app-shell__brand-sub">Super Admin</span>
             </span>
             <a class="btn btn--icon" href="login.html" id="layout-logout-btn" aria-label="Log out"><i data-lucide="log-out"></i></a>
+          </div>
+        </div>`, '');
+    } else if (isWaiter) {
+      brandHtml = safe('waiter brand', () => `
+        <div class="app-shell__brand">
+          <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+          <span class="app-shell__brand-text">
+            <span class="brand__name">TableTap</span>
+            <span class="app-shell__brand-sub">${esc(client ? client.name : '')}</span>
+          </span>
+        </div>`, '');
+      navGroupsHtml = `
+        <div class="app-shell__nav-group">
+          <p class="app-shell__nav-label">Waiter</p>
+          <a class="nav-link active" href="${location.pathname}" aria-current="page" data-nav-id="floor">
+            <i data-lucide="concierge-bell"></i>
+            <span class="nav-link__text">My tasks</span>
+          </a>
+        </div>`;
+      footerHtml = safe('waiter footer', () => `
+        <div class="app-shell__sidebar-footer">
+          <div class="row">
+            <span class="avatar">${initials(session.name || 'Waiter')}</span>
+            <span class="app-shell__brand-text">
+              <span class="owner-name">${esc(session.name || 'Waiter')}</span>
+              <span class="app-shell__brand-sub">Waiter</span>
+            </span>
+            <a class="btn btn--icon" href="../auth/waiter-login.html" id="layout-logout-btn" aria-label="Log out"><i data-lucide="log-out"></i></a>
           </div>
         </div>`, '');
     } else {
@@ -254,7 +286,7 @@ export function initLayout() {
 
   /* ----------------------------------------------------------- Top Bar -- */
   if (topbarContainer) safe('topbar', () => {
-    const pageTitle = document.body.getAttribute('data-title') || document.title.split('—')[0].split('·')[0].trim();
+    const pageTitle = isWaiter ? 'My tasks' : (document.body.getAttribute('data-title') || document.title.split('—')[0].split('·')[0].trim());
     const orderingOn = client ? (client.settings?.acceptOrders !== false && client.restrictions?.ordering !== false) : true;
     const impersonating = isImpersonating();
     const isFloorPage = activePage === 'floor';
@@ -276,11 +308,11 @@ export function initLayout() {
           <span class="app-shell__title">${esc(pageTitle)}</span>
         </div>
         <div class="app-shell__topbar-right">
-          <div class="topbar-search">
+          ${isWaiter ? '' : `<div class="topbar-search">
             <i data-lucide="search"></i>
             <label class="sr-only" for="global-search">Search</label>
             <input class="input" id="global-search" type="search" placeholder="${isAdmin ? 'Search clients…' : 'Search orders, tables…'}">
-          </div>
+          </div>`}
           ${isFloorPage ? `
             <button class="btn btn--icon btn--sm" id="floor-sound-toggle" type="button" aria-label="Toggle sound" title="Sound alerts">
               <i data-lucide="${soundEnabled ? 'volume-2' : 'volume-x'}"></i>
@@ -289,10 +321,10 @@ export function initLayout() {
               <i data-lucide="${vibrateEnabled ? 'vibrate' : 'smartphone'}"></i>
             </button>
           ` : ''}
-          <button class="btn btn--icon" type="button" aria-label="Notifications" id="topbar-bell-btn">
+          ${isWaiter ? '' : `<button class="btn btn--icon" type="button" aria-label="Notifications" id="topbar-bell-btn">
             <i data-lucide="bell"></i><span class="count-dot" id="topbar-notification-dot" style="display:none;">0</span>
-          </button>
-          ${!isAdmin ? `
+          </button>`}
+          ${!isAdmin && !isWaiter ? `
             <span class="status-pill ${orderingOn ? '' : 'status-pill--off'}" id="topbar-ordering-pill">
               <span class="dot" aria-hidden="true"></span> Ordering ${orderingOn ? 'ON' : 'OFF'}
             </span>` : ''}
@@ -355,7 +387,8 @@ export function initLayout() {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      logout();
+      if (isWaiter) floorLogout();
+      else logout();
     });
   }
 
@@ -412,6 +445,34 @@ export function initLayout() {
   }
 
   safe('icons', () => { if (window.lucide) window.lucide.createIcons(); });
+  safe('shell cache', () => saveShell(sidebarContainer, topbarContainer));
+}
+
+/* Keep the drawn shell (icons already rendered) so shell-boot.js can paint it at once next page. */
+function saveShell(sidebarContainer, topbarContainer) {
+  if (!sidebarContainer) return;
+  const body = document.body;
+  // Same keys and order as shell-boot.js, so both sides compute the same stamp.
+  const stamp = ['tqr_admin_session', 'tqr_session', 'tqr_floor_session', 'tqr_kitchen_session']
+    .map((k) => localStorage.getItem(k) || '').join('|');
+
+  // Saved without anything page-specific, so one copy serves every page of this role:
+  // shell-boot.js marks the current link and title again.
+  const side = sidebarContainer.cloneNode(true);
+  side.querySelectorAll('.nav-link').forEach((a) => { a.classList.remove('active'); a.removeAttribute('aria-current'); });
+  let topbar = '';
+  if (topbarContainer) {
+    const top = topbarContainer.cloneNode(true);
+    const alert = top.querySelector('#email-alert');
+    if (alert) alert.remove();
+    const title = top.querySelector('.app-shell__title');
+    if (title) title.textContent = '';
+    topbar = top.innerHTML;
+  }
+  localStorage.setItem(
+    'tt_shell:' + (body.getAttribute('data-role') || 'app') + ':' + (body.getAttribute('data-page') === 'floor' ? 'floor' : 'std'),
+    JSON.stringify({ stamp, sidebar: side.innerHTML, topbar }),
+  );
 }
 
 function runLayout() {

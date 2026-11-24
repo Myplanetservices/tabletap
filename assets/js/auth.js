@@ -54,7 +54,7 @@ export function kitchenLogout() {
 
 export function floorLogout() {
   localStorage.removeItem(FLOOR_SESSION_KEY);
-  location.href = ROOT + 'auth/kitchen-login.html';
+  location.href = ROOT + 'auth/waiter-login.html';
 }
 
 export function logoutTo(where) {
@@ -124,7 +124,12 @@ export function login(email, password) {
   return ownerLogin(email, password);
 }
 
-export function kitchenLogin(code, pin) {
+/**
+ * Staff PIN login. `expect` keeps the two doors apart:
+ *   'kitchen' → kitchen staff only (kitchen-login.html)
+ *   'floor'   → waiters only (waiter-login.html)
+ */
+export function kitchenLogin(code, pin, expect = '') {
   const inputCode = String(code || '').trim().toLowerCase();
   const client = query('clients', (c) => String(c.kitchenCode).toLowerCase() === inputCode)[0];
   if (!client) {
@@ -136,10 +141,18 @@ export function kitchenLogin(code, pin) {
   }
 
   if (client.status === 'suspended') throw new Error('This restaurant account is suspended. Contact support.');
-  if (!client.restrictions.kitchen) throw new Error('Kitchen panel access is turned off for this restaurant.');
-
-  const staff = query('staff', (s) => s.clientId === client.id && s.pin === String(pin || '') && s.active)[0];
-  if (!staff) throw new Error('That PIN is not right, or the staff account is deactivated.');
+  const pinMatches = query('staff', (s) => s.clientId === client.id && s.pin === String(pin || '') && s.active);
+  const wantRole = expect === 'floor' ? 'floor' : expect === 'kitchen' ? 'kitchen' : '';
+  const staff = (wantRole ? pinMatches.find((s) => (s.role === 'floor' ? 'floor' : 'kitchen') === wantRole) : pinMatches[0]);
+  if (!staff) {
+    if (wantRole && pinMatches.length) {
+      throw new Error(wantRole === 'floor'
+        ? 'That PIN belongs to kitchen staff. Use the kitchen login.'
+        : 'That PIN belongs to a waiter. Use the waiter login.');
+    }
+    throw new Error('That PIN is not right, or the staff account is deactivated.');
+  }
+  if (staff.role !== 'floor' && !client.restrictions.kitchen) throw new Error('Kitchen panel access is turned off for this restaurant.');
 
   update('staff', staff.id, { lastActive: new Date().toISOString() });
   update('clients', client.id, { lastActive: new Date().toISOString() });
@@ -186,8 +199,8 @@ export function requireRole(role) {
     // Floor app can be opened by floor staff or owner
     const floorSession = getSession(FLOOR_SESSION_KEY) || getSession(OWNER_SESSION_KEY);
     if (!floorSession || (floorSession.role !== 'floor' && floorSession.role !== 'owner')) {
-      location.replace(ROOT + 'auth/kitchen-login.html');
-      throw new Error('Redirecting to staff login');
+      location.replace(ROOT + 'auth/waiter-login.html');
+      throw new Error('Redirecting to waiter login');
     }
     return floorSession;
   }
@@ -276,6 +289,8 @@ export function createOwnerFromInvite(invite, password) {
       currency: invite.country === 'UK' ? 'GBP' : '$',
       accent: '#1F4D3A',
       acceptOrders: true,
+      // The owner registers the restaurant's real location in Settings → Security.
+      geofence: { enabled: true, locationSet: false, lat: null, lng: null, accuracy: null, radiusMeters: 100, name: '' },
       pricesIncludeTax: invite.country === 'UK',
       taxes: invite.country === 'UK'
         ? [{ id: 'tax_vat', name: 'VAT', rate: 20, enabled: true }]

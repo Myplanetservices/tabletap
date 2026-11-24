@@ -23,7 +23,7 @@
       <h1 class="kitchen-card__title">Kitchen login</h1>
       <p class="kitchen-card__sub">Enter your restaurant code and the 4-digit PIN your manager gave you.</p>
 
-      <form class="kitchen-card__form" action="#" method="post">
+      <form class="kitchen-card__form" action="#" method="post" data-login-role="kitchen">
         <div class="field">
           <label class="label" for="restaurant-code">Restaurant code</label>
           <input class="code-input" type="text" id="restaurant-code" name="restaurant-code" placeholder="e.g. COPPER" autocomplete="organization" autocapitalize="characters" spellcheck="false" required>
@@ -49,6 +49,7 @@
         </div>
       </form>
 
+      <p class="hint mt-6"><a class="auth-link" href="waiter-login.html">Waiter? Use the waiter login</a></p>
       <p class="hint mt-6">PIN changed? Your manager can reset it in Settings → Staff. Do not share it between shifts.</p>
     </div>
   </main>
@@ -62,5 +63,6 @@
 <script>if(window.lucide)lucide.createIcons();</script>
 <script src="../assets/js/ui.js"></script>
 <script type="module" src="../assets/js/auth-pages.js"></script>
+<script type="module" src="../assets/js/motion-fx.js"></script>
 </body>
 </html>

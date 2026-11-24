@@ -1360,9 +1360,12 @@
     flex-shrink: 0;
   }
 </style>
+<link rel="stylesheet" href="assets/css/landing.css">
+<script>window.__ttMotionManual = true;</script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
+<div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
 
 <header class="site-header">
   <div class="container site-header__inner">
@@ -1375,6 +1378,7 @@
       <ul class="site-nav__list">
         <li><a class="site-nav__link" href="#how-it-works" data-i18n="nav.how_it_works">How it works</a></li>
         <li><a class="site-nav__link" href="#menu-preview" data-i18n="nav.guest_menu">Guest menu</a></li>
+        <li><a class="site-nav__link" href="#inside">Inside</a></li>
         <li><a class="site-nav__link" href="#features" data-i18n="nav.features">Features</a></li>
         <li><a class="site-nav__link" href="#pricing" data-i18n="nav.pricing">Pricing</a></li>
         <li><a class="site-nav__link" href="#faq" data-i18n="nav.faq">FAQ</a></li>
@@ -1408,6 +1412,7 @@
       <ul class="mobile-nav__list">
         <li><a class="mobile-nav__link" href="#how-it-works" data-i18n="nav.how_it_works">How it works</a></li>
         <li><a class="mobile-nav__link" href="#menu-preview" data-i18n="nav.guest_menu">Guest menu</a></li>
+        <li><a class="mobile-nav__link" href="#inside">Inside</a></li>
         <li><a class="mobile-nav__link" href="#features" data-i18n="nav.features">Features</a></li>
         <li><a class="mobile-nav__link" href="#pricing" data-i18n="nav.pricing">Pricing</a></li>
         <li><a class="mobile-nav__link" href="#faq" data-i18n="nav.faq">FAQ</a></li>
@@ -1437,6 +1442,7 @@
     <div class="container">
 
       <!-- Eyebrow + Headline + Value proposition -->
+      <div class="hero-split">
       <div class="hero-redesign__header">
         
         <div class="hero-badge-wrap">
@@ -1484,7 +1490,7 @@
 
         <!-- Action CTAs -->
         <div class="hero-redesign__actions">
-          <a class="btn btn--primary btn--lg hero-btn-main" href="menu/index.html?r=olive-table&t=oli-7" target="_blank" rel="noopener">
+          <a class="btn btn--primary btn--lg hero-btn-main" href="menu/index.html?r=olive-table&t=oli-7kaa6" target="_blank" rel="noopener">
             <i data-lucide="qr-code"></i> <span data-i18n="hero.btn_guest_demo">Try Guest Menu (Table 7 Demo)</span>
           </a>
           <a class="btn btn--lg hero-btn-sub" href="kitchen/index.html?r=olive-table" target="_blank" rel="noopener">
@@ -1496,6 +1502,32 @@
         </div>
 
       </div>
+
+      <!-- Phone: the real guest menu, scrolling by itself -->
+      <div class="hero-phone-col" data-hero-phone>
+        <div class="phone">
+          <div class="phone__glow" aria-hidden="true"></div>
+          <div class="phone-chip phone-chip--a" aria-hidden="true">
+            <span class="phone-chip__dot"></span>
+            <span>New ticket<small>Table 7 · 2 items</small></span>
+          </div>
+          <div class="phone__frame">
+            <span class="phone__notch" aria-hidden="true"></span>
+            <div class="phone__screen">
+              <img class="phone__scroll" src="assets/img/shots/guest-menu-long.webp" width="585" height="3450"
+                   alt="The Olive Table guest menu on a phone: starters, mains and pizza with photos, prices and dietary tags"
+                   decoding="async" fetchpriority="high">
+            </div>
+            <div class="phone__dock" aria-hidden="true"><span>🔔 Call waiter</span><span>🧾 Ask for bill</span></div>
+            <span class="phone__home" aria-hidden="true"></span>
+          </div>
+          <div class="phone-chip phone-chip--b" aria-hidden="true">
+            <span class="phone-chip__dot"></span>
+            <span>Ready to serve<small>Sent to your waiter</small></span>
+          </div>
+        </div>
+      </div>
+      </div><!-- /.hero-split -->
 
       <!-- The Live Product Interaction Visual (Explains the loop in 1 second) -->
       <div class="hero-flow-showcase">
@@ -1699,10 +1731,77 @@
     </div>
   </section>
 
+  <!-- Inside TableTap: real screenshots, pinned horizontal scroll (GSAP) -->
+  <section class="inside" id="inside" aria-labelledby="inside-title">
+    <div class="inside__pin">
+      <div class="container inside__head">
+        <span class="badge" data-reveal><span class="dot dot--live"></span> Real screens, real data</span>
+        <h2 class="inside__title" id="inside-title" data-reveal data-reveal-delay="0.05">Inside TableTap</h2>
+        <p class="inside__sub" data-reveal data-reveal-delay="0.1">The owner panel, the kitchen pass and the waiter screen. Scroll to walk through them.</p>
+      </div>
+      <div class="inside__viewport">
+        <div class="inside__track">
+        <figure class="shot">
+          <div class="shot__window">
+            <div class="shot__chrome" aria-hidden="true"><i></i><i></i><i></i><em>tabletap.app / owner / dashboard</em></div>
+            <img class="shot__img" src="assets/img/shots/owner-dashboard.webp" width="1440" height="900" loading="lazy" decoding="async"
+                 alt="Owner dashboard screen of TableTap">
+          </div>
+          <figcaption class="shot__cap"><span class="shot__tag">Owner</span><strong>Owner dashboard</strong><span>Orders, revenue and waiter calls for the day, at a glance.</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot__window">
+            <div class="shot__chrome" aria-hidden="true"><i></i><i></i><i></i><em>tabletap.app / owner / live orders</em></div>
+            <img class="shot__img" src="assets/img/shots/owner-orders.webp" width="1440" height="900" loading="lazy" decoding="async"
+                 alt="Live orders screen of TableTap">
+          </div>
+          <figcaption class="shot__cap"><span class="shot__tag">Owner</span><strong>Live orders</strong><span>Every order as it arrives, with one-tap actions.</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot__window">
+            <div class="shot__chrome" aria-hidden="true"><i></i><i></i><i></i><em>tabletap.app / owner / menu</em></div>
+            <img class="shot__img" src="assets/img/shots/owner-menu.webp" width="1440" height="900" loading="lazy" decoding="async"
+                 alt="Menu editor screen of TableTap">
+          </div>
+          <figcaption class="shot__cap"><span class="shot__tag">Owner</span><strong>Menu editor</strong><span>Photos, prices, allergens and sold-out toggles.</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot__window">
+            <div class="shot__chrome" aria-hidden="true"><i></i><i></i><i></i><em>tabletap.app / owner / reports</em></div>
+            <img class="shot__img" src="assets/img/shots/owner-reports.webp" width="1440" height="900" loading="lazy" decoding="async"
+                 alt="Reports screen of TableTap">
+          </div>
+          <figcaption class="shot__cap"><span class="shot__tag">Owner</span><strong>Reports</strong><span>Sales, busiest hours and top dishes.</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot__window">
+            <div class="shot__chrome" aria-hidden="true"><i></i><i></i><i></i><em>tabletap.app / kitchen / pass</em></div>
+            <img class="shot__img" src="assets/img/shots/kitchen-board.webp" width="1440" height="900" loading="lazy" decoding="async"
+                 alt="The kitchen pass screen of TableTap">
+          </div>
+          <figcaption class="shot__cap"><span class="shot__tag">Kitchen</span><strong>The kitchen pass</strong><span>Tickets by stage, timers that turn amber and red.</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot__window">
+            <div class="shot__chrome" aria-hidden="true"><i></i><i></i><i></i><em>tabletap.app / waiter / my tasks</em></div>
+            <img class="shot__img" src="assets/img/shots/waiter-tasks.webp" width="1180" height="820" loading="lazy" decoding="async"
+                 alt="Waiter screen screen of TableTap">
+          </div>
+          <figcaption class="shot__cap"><span class="shot__tag">Waiter</span><strong>Waiter screen</strong><span>Orders sent to you, guest requests and your tables.</span></figcaption>
+        </figure>
+        </div>
+      </div>
+      <div class="container inside__meter" aria-hidden="true">
+        <span class="inside__bar"><i></i></span>
+        <span class="inside__count">01 / 06</span>
+      </div>
+    </div>
+  </section>
+
   <!-- Menu Preview: What guests see when they scan -->
   <section class="section section--alt" id="menu-preview">
     <div class="container">
-      <div class="section-head section-head--center">
+      <div data-reveal class="section-head section-head--center">
         <span class="badge badge--success" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:0.75rem;margin-bottom:0.75rem;">
           <span class="dot dot--live"></span> <span data-i18n="preview.badge">Real Guest Experience</span>
         </span>
@@ -1851,7 +1950,7 @@
                 <p class="text-sm muted" style="margin-bottom:14px;line-height:1.45;" data-i18n="preview.scan_desc">
                   Point your phone camera at this QR code to test the live guest ordering experience right now on Table 7.
                 </p>
-                <a class="btn btn--primary btn--sm" href="menu/index.html?r=olive-table&t=oli-7" target="_blank" rel="noopener">
+                <a class="btn btn--primary btn--sm" href="menu/index.html?r=olive-table&t=oli-7kaa6" target="_blank" rel="noopener">
                   <i data-lucide="external-link"></i> <span data-i18n="preview.open_btn">Open Table 7 Menu in Browser</span>
                 </a>
               </div>
@@ -1899,7 +1998,7 @@
   <!-- How it works: a service line -->
   <section class="section" id="how-it-works">
     <div class="container">
-      <div class="section-head">
+      <div data-reveal class="section-head">
         <h2 class="section-title">Three stops, from table to pass</h2>
         <p class="section-sub">Set up once in an afternoon. After that it is a QR code on the table and a screen at the pass.</p>
       </div>
@@ -1936,7 +2035,7 @@
   <!-- Features: Comprehensive Product Suite -->
   <section class="section" id="features">
     <div class="container">
-      <div class="section-head section-head--center">
+      <div data-reveal class="section-head section-head--center">
         <span class="badge badge--neutral" style="margin-bottom:0.75rem;" data-i18n="features.badge">Complete Hospitality Suite</span>
         <h2 class="section-title" data-i18n="features.title">Built for the floor, the pass & the back office</h2>
         <p class="section-sub" data-i18n="features.sub">
@@ -2029,12 +2128,12 @@
   <!-- Pricing: one docket -->
   <section class="section" id="pricing">
     <div class="container">
-      <div class="section-head section-head--center">
+      <div data-reveal class="section-head section-head--center">
         <h2 class="section-title">One price, paid once</h2>
         <p class="section-sub">Most table-ordering tools charge more in a month than this costs for good. No subscription, no per-cover fee, no cut of your orders.</p>
       </div>
 
-      <div class="pricing">
+      <div class="pricing" data-reveal>
         <div class="price-card">
           <span class="price-card__label">Lifetime · per restaurant</span>
           <div class="price-card__amount">
@@ -2068,12 +2167,12 @@
   <!-- FAQ -->
   <section class="section" id="faq">
     <div class="container container--narrow">
-      <div class="section-head">
+      <div data-reveal class="section-head">
         <h2 class="section-title">Before you set it up</h2>
       </div>
 
       <div class="faq" data-accordion="single">
-        <div class="faq__item">
+        <div data-reveal class="faq__item">
           <h3>
             <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-1" id="faq-1-trigger">
               Do guests need to download an app?
@@ -2087,7 +2186,7 @@
           </div>
         </div>
 
-        <div class="faq__item">
+        <div data-reveal class="faq__item">
           <h3>
             <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-2" id="faq-2-trigger">
               What hardware do I need?
@@ -2101,7 +2200,7 @@
           </div>
         </div>
 
-        <div class="faq__item">
+        <div data-reveal class="faq__item">
           <h3>
             <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-3" id="faq-3-trigger">
               Can I keep my own table numbers and QR codes?
@@ -2115,7 +2214,7 @@
           </div>
         </div>
 
-        <div class="faq__item">
+        <div data-reveal class="faq__item">
           <h3>
             <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-4" id="faq-4-trigger">
               Does it work for bars and cafés, not just restaurants?
@@ -2129,7 +2228,7 @@
           </div>
         </div>
 
-        <div class="faq__item">
+        <div data-reveal class="faq__item">
           <h3>
             <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-5" id="faq-5-trigger">
               What happens if the internet drops mid-service?
@@ -2143,7 +2242,7 @@
           </div>
         </div>
 
-        <div class="faq__item">
+        <div data-reveal class="faq__item">
           <h3>
             <button class="faq__trigger" type="button" aria-expanded="false" aria-controls="faq-6" id="faq-6-trigger">
               Is $49 really a one-time payment?
@@ -2192,10 +2291,10 @@
 <script>
   if (window.lucide) lucide.createIcons();
   if (window.QRCode && document.getElementById('homepage-qr-code')) {
-    let demoUrl = 'https://tabletap-rho.vercel.app/menu/index.html?r=olive-table&t=oli-7';
+    let demoUrl = 'https://tabletap-rho.vercel.app/menu/index.html?r=olive-table&t=oli-7kaa6';
     try {
       if (window.location && window.location.protocol.startsWith('http')) {
-        demoUrl = window.location.origin + window.location.pathname.replace('index.html', '').replace(/\/$/, '') + '/menu/index.html?r=olive-table&t=oli-7';
+        demoUrl = window.location.origin + window.location.pathname.replace('index.html', '').replace(/\/$/, '') + '/menu/index.html?r=olive-table&t=oli-7kaa6';
       }
     } catch (e) {}
     try {
@@ -2213,5 +2312,8 @@
   }
 </script>
 <script src="assets/js/ui.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+<script type="module" src="assets/js/landing.js"></script>
 </body>
 </html>

@@ -9,15 +9,16 @@ import { renderSyncDialog, pushToSheet, updateSyncChip, isSyncReady, uploadFileT
 import * as store from './store.js';
 import { legacyBreakdown, sessionForTable, sessionOrders, sessionLines, closeSession, openSessionForTable, seatTable } from './store.js';
 import { computeBill, billFromSession } from './billing.js';
-import { requireRole, currentClient, changePassword, logout, stopImpersonation } from './auth.js';
+import { requireRole, currentClient, changePassword, logout, floorLogout, stopImpersonation } from './auth.js';
 import { emit, on } from './realtime.js';
 import {
   formatMoney, formatDateTime, formatTime, timeAgo, toast, confirmDialog,
   exportCSV, debounce, esc, qs, initials, statusBadge, isToday, openDrawer, closeDrawer,
-  renderPaginationHtml,
+  renderPaginationHtml, formatElapsed,
 } from './helpers.js';
 import { playSound, showNotification, vibratePhone, showShiftOverlay } from './alerts.js';
 import { ONLINE_PAYMENTS_ENABLED, SEATING_FLOW_ENABLED } from './features.js';
+import { RADIUS_OPTIONS, DEFAULT_RADIUS, OWNER_TARGET_ACCURACY, bestFix, siteOf, isValidCoords, mapEmbedUrl, mapLinkUrl } from './geo.js';
 
 const page = document.body.getAttribute('data-page');
 const session = requireRole(page === 'floor' ? 'floor' : 'owner');
@@ -269,7 +270,7 @@ function refreshChrome() {
     dot.hidden = total === 0;
   }
   const logoutBtn = document.querySelector('.app-shell__sidebar-footer a[aria-label="Log out"]');
-  if (logoutBtn) logoutBtn.addEventListener('click', (event) => { event.preventDefault(); logout(); });
+  if (logoutBtn) logoutBtn.addEventListener('click', (event) => { event.preventDefault(); if (session.role === 'floor') floorLogout(); else logout(); });
   if (readOnly) {
     document.querySelectorAll('.app-shell__content button, .app-shell__content .btn').forEach((btn) => {
       if (btn.closest('.pagination') || btn.matches('[data-allow-readonly]')) return;
@@ -751,6 +752,16 @@ function formatNextChange(nextChangeAt, schedule) {
 }
 
 /* ------------------------------------------------------------ dashboard -- */
+/* Shown until the owner registers where the restaurant is. */
+function locationBannerHtml() {
+  const site = siteOf(client);
+  if (!site.enabled || site.set) return '';
+  return '<div class="notice-banner mb-4" role="alert" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">' +
+    '<span style="display:flex;align-items:center;gap:10px;"><i data-lucide="map-pin"></i>' +
+    '<span><strong>Set your restaurant location.</strong> Until you do, anyone can place an order from anywhere, even off a photo of your QR code.</span></span>' +
+    '<a class="btn btn--primary btn--sm" href="settings.html#security">Set location</a></div>';
+}
+
 function renderDashboard() {
   const orders = ordersOf();
   const today = orders.filter((o) => isToday(o.createdAt));
@@ -814,6 +825,7 @@ function renderDashboard() {
     'Here is how ' + client.name + ' is doing today, ' + new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + '.',
     '<a class="btn btn--secondary btn--sm" href="reports.html"><i data-lucide="trending-up"></i> Reports</a>' +
     '<a class="btn btn--primary btn--sm" href="orders.html"><i data-lucide="receipt"></i> View live orders</a>') +
+    locationBannerHtml() +
     '<div class="card mb-4" style="background:var(--surface-2, #F8F6F1); border:1px solid var(--border, rgba(0,0,0,0.08)); padding:0.75rem 1.25rem;">' +
     '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">' +
     '<div style="display:flex; align-items:center; gap:10px;">' +
@@ -2066,14 +2078,19 @@ function renderFloor() {
     });
   }
 
+  const isOwnerView = () => session.role === 'owner';
+  const myId = () => session.id;
+
   function getReadyOrders() {
     return store.ordersOf(client.id)
       .filter((o) => o.status === 'ready')
+      .filter((o) => isOwnerView() || !o.assignedWaiterId || o.assignedWaiterId === myId())
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   }
 
   function getOpenRequests() {
-    return store.query('waiterCalls', (c) => c.clientId === client.id && c.status !== 'done')
+    return store.query('waiterCalls', (c) => c.clientId === client.id && c.status !== 'done' && c.status !== 'resolved')
+      .filter((c) => isOwnerView() || c.status === 'open' || c.waiterId === myId())
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
@@ -2133,7 +2150,8 @@ function renderFloor() {
           ` : `
             <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:16px;">
               ${readyOrders.map((order) => {
-                const diffMin = Math.max(0, Math.floor((Date.now() - new Date(order.updatedAt || order.createdAt).getTime()) / 60000));
+                const readyMs = Math.max(0, Date.now() - new Date(order.readyAt || order.updatedAt || order.createdAt).getTime());
+                const diffMin = Math.floor(readyMs / 60000);
                 const isClaimedByOther = order.pickedUpBy && order.pickedUpBy !== session.name;
                 const isClaimedByMe = order.pickedUpBy === session.name;
 
@@ -2145,9 +2163,16 @@ function renderFloor() {
                         <span class="muted text-xs">Order #${order.number} · ${formatTime(order.createdAt)}</span>
                       </div>
                       <span class="badge ${diffMin > 10 ? 'badge--danger' : 'badge--warning'}" style="font-weight:700;">
-                        <i data-lucide="timer" style="width:13px;height:13px;"></i> ${diffMin}m ready
+                        <i data-lucide="timer" style="width:13px;height:13px;"></i> ${formatElapsed(readyMs)} ready
                       </span>
                     </div>
+
+                    ${order.assignedWaiterName && !order.pickedUp ? `
+                      <div style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;">
+                        <i data-lucide="send" style="width:16px;height:16px;"></i>
+                        <span>${order.assignedWaiterId === myId() ? 'Sent to you by the kitchen' : 'Sent to ' + esc(order.assignedWaiterName)}</span>
+                      </div>
+                    ` : ''}
 
                     ${order.pickedUp ? `
                       <div style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;">
@@ -2230,13 +2255,20 @@ function renderFloor() {
 
                     <div style="display:flex;gap:8px;margin-top:auto;">
                       ${!isOnMyWay ? `
-                        <button class="btn btn--secondary btn--block" type="button" data-call-way="${c.id}">
-                          <i data-lucide="navigation"></i> On my way
+                        <button class="btn btn--primary btn--block" type="button" data-call-way="${c.id}">
+                          <i data-lucide="hand"></i> Accept · on my way
                         </button>
                       ` : ''}
-                      <button class="btn btn--primary btn--block" type="button" data-call-done="${c.id}">
-                        <i data-lucide="check"></i> Done
-                      </button>
+                      ${isOnMyWay && (isOwnerView() || c.waiterId === myId()) ? `
+                        <button class="btn btn--primary btn--block" type="button" data-call-done="${c.id}">
+                          <i data-lucide="check"></i> Done
+                        </button>
+                      ` : ''}
+                      ${isOwnerView() && !isOnMyWay ? `
+                        <button class="btn btn--secondary btn--block" type="button" data-call-done="${c.id}">
+                          <i data-lucide="check"></i> Done
+                        </button>
+                      ` : ''}
                     </div>
                   </div>
                 `;
@@ -2337,7 +2369,7 @@ function renderFloor() {
     }
 
     paint(
-      head('Floor Plan', 'Live waiter station: ready orders, guest requests, tables & bills.') +
+      head(session.role === 'floor' ? 'My tasks' : 'Floor Plan', session.role === 'floor' ? 'Orders sent to you, guest requests and your tables.' : 'Live waiter station: ready orders, guest requests, tables & bills.') +
       navTabsHtml +
       contentHtml +
       '<div id="modal-host"></div>'
@@ -2395,8 +2427,15 @@ function renderFloor() {
     if (wayBtn) {
       const callId = wayBtn.getAttribute('data-call-way');
       const staffName = session.name || 'Waiter';
+      const current = store.getById('waiterCalls', callId);
+      if (!current || current.status !== 'open') {
+        toast(current && current.waiterName ? current.waiterName + ' already accepted this request' : 'This request is already taken', 'warning');
+        draw();
+        return;
+      }
       store.update('waiterCalls', callId, {
         status: 'on_my_way',
+        waiterId: session.id,
         waiterName: staffName,
         onWayAt: new Date().toISOString(),
       });
@@ -2411,6 +2450,12 @@ function renderFloor() {
     const doneBtn = event.target.closest('[data-call-done]');
     if (doneBtn) {
       const callId = doneBtn.getAttribute('data-call-done');
+      const callRow = store.getById('waiterCalls', callId);
+      if (callRow && callRow.waiterId && callRow.waiterId !== session.id && session.role !== 'owner') {
+        toast('This request belongs to ' + (callRow.waiterName || 'another waiter'), 'warning');
+        draw();
+        return;
+      }
       store.update('waiterCalls', callId, {
         status: 'done',
         completedAt: new Date().toISOString(),
@@ -2493,9 +2538,12 @@ function renderFloor() {
   });
   on('order:update', () => draw());
   on('order:ready', (payload) => {
-    playSound('orderReady');
-    vibratePhone([300, 150, 300]);
-    showNotification('Order ready for serving', payload ? `Table ${payload.tableName || ''}` : 'Kitchen marked ticket ready');
+    const forMe = !payload || !payload.waiterId || payload.waiterId === session.id || session.role === 'owner';
+    if (forMe) {
+      playSound('orderReady');
+      vibratePhone([300, 150, 300]);
+      showNotification('Order ready for you', payload ? `Table ${payload.tableName || ''}` : 'Kitchen marked ticket ready');
+    }
     draw();
   });
   on('call:new', (payload) => {
@@ -2793,9 +2841,9 @@ function renderStaff() {
     '<p class="mono strong" style="font-size:1.5rem;letter-spacing:0.12em">' + esc(client.kitchenCode) + '</p></div>' +
     '<div class="row"><span class="badge badge--success">Active</span>' +
     '<button class="btn btn--secondary btn--sm" type="button" data-copy-code><i data-lucide="copy"></i> Copy code</button></div></div>' +
-    '<p class="hint">Staff enter this code plus their PIN on kitchen-login.html. Change the code only if it has been shared outside the kitchen.</p>' +
+    '<p class="hint">Kitchen staff sign in at kitchen-login.html and waiters at waiter-login.html, each with this code plus their own PIN. Change the code only if it has been shared outside the restaurant.</p>' +
     '</div></div>' +
-    '<div class="card mt-6"><div class="card__header"><span class="card__title">Kitchen staff</span>' +
+    '<div class="card mt-6"><div class="card__header"><span class="card__title">Kitchen staff &amp; waiters</span>' +
     '<span class="muted text-xs">' + usage.staff + ' of ' + usage.limits.staff + ' seats used</span></div>' +
     '<div class="card__body"><div class="table-wrap"><table class="table table-stack"><thead><tr>' +
     '<th scope="col">Name</th><th scope="col">Role</th><th scope="col">PIN</th><th scope="col">Status</th>' +
@@ -2809,7 +2857,7 @@ function renderStaff() {
     const staff = store.query('staff', (s) => s.clientId === client.id);
     rows.innerHTML = staff.map((member) =>
       '<tr><td data-label="Name" class="table__strong">' + esc(member.name) + '</td>' +
-      '<td data-label="Role">' + (member.role === 'floor' ? 'Floor' : 'Kitchen') + '</td><td data-label="PIN">••••</td>' +
+      '<td data-label="Role">' + (member.role === 'floor' ? 'Waiter' : 'Kitchen') + '</td><td data-label="PIN">••••</td>' +
       '<td data-label="Status"><span class="badge badge--' + (member.active ? 'success' : 'neutral') + '">' +
       (member.active ? 'Active' : 'Deactivated') + '</span></td>' +
       '<td data-label="Last active">' + timeAgo(member.lastActive) + '</td>' +
@@ -2874,12 +2922,12 @@ function renderStaff() {
     const pin = String(Math.floor(1000 + Math.random() * 9000));
     modalHost.innerHTML = '<div class="modal is-open" role="dialog" aria-modal="true"><div class="modal__dialog">' +
       '<div class="modal__header"><div><p class="modal__title">Add staff member</p>' +
-      '<p class="muted text-xs">They log in with the restaurant code and this PIN.</p></div>' +
+      '<p class="muted text-xs">Kitchen staff use the kitchen login, waiters the waiter login. Both use the restaurant code and this PIN.</p></div>' +
       '<button class="btn btn--icon" type="button" data-close aria-label="Close"><i data-lucide="x"></i></button></div>' +
       '<div class="modal__body"><div class="field"><label class="label" for="staff-name">Full name</label>' +
       '<input class="input" id="staff-name" type="text" placeholder="e.g. Ravi Kumar"></div>' +
       '<div class="field"><label class="label" for="staff-role">Role</label>' +
-      '<select class="select" id="staff-role"><option value="kitchen">Kitchen</option><option value="floor">Floor</option></select></div>' +
+      '<select class="select" id="staff-role"><option value="kitchen">Kitchen staff</option><option value="floor">Waiter</option></select></div>' +
       '<div class="field"><span class="label">PIN</span><div class="card card--flat"><div class="card__body row row--between">' +
       '<span class="mono strong" style="font-size:1.25rem;letter-spacing:0.2em">' + pin + '</span>' +
       '<span class="badge badge--neutral">Generated</span></div></div>' +
@@ -3054,6 +3102,93 @@ function renderReports() {
 }
 
 /* ------------------------------------------------------------- settings -- */
+/* ---------------------------------------------------- restaurant location ---- */
+function geofenceCardHtml() {
+  const site = siteOf(client);
+  const g = settings.geofence || {};
+  const radius = site.radius;
+  const options = [...new Set([...RADIUS_OPTIONS, radius])].sort((x, y) => x - y)
+    .map((m) => '<option value="' + m + '"' + (m === radius ? ' selected' : '') + '>' + m + ' m</option>').join('');
+  return (
+    '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Only take orders from guests at the restaurant</p>' +
+    '<p class="list-row__meta">A guest has to be within your radius to place an order. Stops people ordering from home off a photo of your QR code.</p></div>' +
+    '<label class="switch"><input type="checkbox" id="set-geofence"' + (g.enabled !== false ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Location check</span></label></div>' +
+    '<div id="geo-card" class="mt-3 mb-4" style="background:var(--surface-2, #F8F6F1); padding:1rem; border-radius:10px;">' +
+    '<div class="row row--between row--wrap" style="gap:12px;align-items:flex-start;">' +
+    '<div style="min-width:220px;flex:1;"><p class="label" style="margin:0 0 4px;">Restaurant location</p>' +
+    '<p id="geo-status" class="text-sm" style="margin:0;"></p>' +
+    '<p id="geo-progress" class="muted text-xs" style="margin:4px 0 0;" aria-live="polite"></p></div>' +
+    '<button class="btn btn--primary" type="button" id="btn-geo-capture"><i data-lucide="locate-fixed"></i> Use my current location</button></div>' +
+    '<p class="hint" style="margin:8px 0 12px;">Stand inside the restaurant, near the entrance or a window, and tap the button. It listens for about 12 seconds and keeps the most accurate reading.</p>' +
+    '<div class="form-grid form-grid--3">' +
+    '<div class="field"><label class="label" for="set-geo-lat">Latitude</label><input class="input mono" id="set-geo-lat" type="number" step="0.000001" value="' + (site.set ? site.lat : '') + '" placeholder="e.g. 19.059600"></div>' +
+    '<div class="field"><label class="label" for="set-geo-lng">Longitude</label><input class="input mono" id="set-geo-lng" type="number" step="0.000001" value="' + (site.set ? site.lng : '') + '" placeholder="e.g. 72.829500"></div>' +
+    '<div class="field"><label class="label" for="set-geo-radius">Order radius</label><select class="select" id="set-geo-radius">' + options + '</select></div>' +
+    '</div>' +
+    '<input type="hidden" id="set-geo-acc" value="' + (site.accuracy || '') + '">' +
+    '<div id="geo-map-wrap" class="mt-3"></div>' +
+    '</div>'
+  );
+}
+
+function initGeofenceCard() {
+  const lat = host.querySelector('#set-geo-lat');
+  const lng = host.querySelector('#set-geo-lng');
+  const acc = host.querySelector('#set-geo-acc');
+  const radius = host.querySelector('#set-geo-radius');
+  const btn = host.querySelector('#btn-geo-capture');
+  const status = host.querySelector('#geo-status');
+  const progress = host.querySelector('#geo-progress');
+  const mapWrap = host.querySelector('#geo-map-wrap');
+  if (!lat || !lng || !btn) return;
+
+  function paintStatus() {
+    const la = parseFloat(lat.value);
+    const ln = parseFloat(lng.value);
+    if (!isValidCoords(la, ln)) {
+      status.innerHTML = '<span style="color:#A31D14;font-weight:600;">Not set yet.</span> Guests are not being location-checked until you set it.';
+      mapWrap.innerHTML = '';
+      return;
+    }
+    const accuracy = parseInt(acc.value, 10);
+    const quality = !accuracy ? '' : accuracy <= OWNER_TARGET_ACCURACY ? ' · accuracy ±' + accuracy + ' m (good)' : ' · accuracy ±' + accuracy + ' m (rough, try again outdoors or by a window)';
+    status.innerHTML = '<span style="color:#0E6A3E;font-weight:600;">Location set.</span> ' + la.toFixed(6) + ', ' + ln.toFixed(6) + esc(quality) +
+      ' · <a class="auth-link" target="_blank" rel="noopener" href="' + mapLinkUrl(la, ln) + '">Open in Maps</a>';
+    mapWrap.innerHTML = '<iframe title="Restaurant location on the map" loading="lazy" style="width:100%;height:220px;border:1px solid var(--border, rgba(0,0,0,0.12));border-radius:10px;" src="' + mapEmbedUrl(la, ln) + '"></iframe>' +
+      '<p class="hint" style="margin-top:6px;">The pin should sit on your restaurant. Guests must be within ' + esc(radius.value) + ' m of it to place an order.</p>';
+  }
+  paintStatus();
+  [lat, lng].forEach((el) => el.addEventListener('change', () => { acc.value = ''; paintStatus(); }));
+  radius.addEventListener('change', paintStatus);
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    progress.textContent = 'Getting your location… allow the location prompt if it appears.';
+    try {
+      const fix = await bestFix({
+        target: OWNER_TARGET_ACCURACY, maxWaitMs: 14000,
+        onProgress: (f) => { progress.textContent = 'Reading… best accuracy so far ±' + f.accuracy + ' m (' + f.samples + ' readings)'; },
+      });
+      lat.value = fix.lat.toFixed(6);
+      lng.value = fix.lng.toFixed(6);
+      acc.value = String(fix.accuracy);
+      progress.textContent = fix.accuracy <= OWNER_TARGET_ACCURACY
+        ? 'Done. ±' + fix.accuracy + ' m. Press "Save security" to keep it.'
+        : 'Done, but only ±' + fix.accuracy + ' m. For a tighter result, tap again near a window or outside the door. Press "Save security" to keep it.';
+      paintStatus();
+    } catch (err) {
+      const msg = err.code === 'denied' ? 'Location is blocked for this site. Allow it in your browser settings, then try again.'
+        : err.code === 'insecure' ? 'Location only works on a secure (https) page.'
+        : err.code === 'unsupported' ? 'This device cannot share its location. Type the coordinates instead.'
+        : 'Could not get a good location. Go near a window or outside and try again.';
+      progress.textContent = msg;
+      toast(msg, 'warning');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
 function renderSettings() {
   const h = settings.hours;
   const days = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']];
@@ -3135,14 +3270,7 @@ function renderSettings() {
 
     '<hr class="my-6" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">' +
     '<h3 class="card__title mb-4" style="font-size:1.05rem;">Anti-Spam & Payment Security</h3>' +
-    '<div class="list-row"><div class="list-row__main"><p class="list-row__title">GPS Geofence Protection</p>' +
-    '<p class="list-row__meta">Restricts table orders to customers physically inside your restaurant radius. Stops remote photo pranksters.</p></div>' +
-    '<label class="switch"><input type="checkbox" id="set-geofence"' + (settings.geofence?.enabled !== false ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">GPS Geofence</span></label></div>' +
-    '<div class="form-grid form-grid--3 mt-3 mb-4" style="background:var(--surface-2, #F8F6F1); padding:1rem; border-radius:10px;">' +
-    '<div class="field"><label class="label" for="set-geo-lat">Latitude</label><input class="input" id="set-geo-lat" type="number" step="0.0001" value="' + (settings.geofence?.lat || 19.0596) + '"></div>' +
-    '<div class="field"><label class="label" for="set-geo-lng">Longitude</label><input class="input" id="set-geo-lng" type="number" step="0.0001" value="' + (settings.geofence?.lng || 72.8295) + '"></div>' +
-    '<div class="field"><label class="label" for="set-geo-radius">Radius (meters)</label><input class="input" id="set-geo-radius" type="number" step="10" value="' + (settings.geofence?.radiusMeters || 250) + '"></div>' +
-    '</div>' +
+    geofenceCardHtml() +
     '<hr class="my-4" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">' +
     '<div' + (ONLINE_PAYMENTS_ENABLED ? '' : ' hidden') + '><div class="list-row"><div class="list-row__main"><p class="list-row__title">Pay-at-Order Enforcement (Apple Pay / UPI / Card)</p>' +
     '<p class="list-row__meta">Require customers to pay upfront with Apple Pay, UPI, or Card before the order fires to the kitchen. Zero unpaid food cooked.</p></div>' +
@@ -3595,6 +3723,11 @@ function renderSettings() {
     syncDbBtn.disabled = false;
   });
 
+  initGeofenceCard();
+  // settings.html#security (used by the dashboard's "Set location" button) opens that tab
+  const hashTab = location.hash.slice(1);
+  if (hashTab) { const tab = host.querySelector('[data-tab="' + CSS.escape(hashTab) + '"]'); if (tab) tab.click(); }
+
   host.querySelectorAll('[data-save]').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (readOnly) return toast('Read-only mode — changes are blocked.', 'warning');
@@ -3708,13 +3841,21 @@ function renderSettings() {
         }
 
         next.printVisitSlip = host.querySelector('#set-print-slip') ? host.querySelector('#set-print-slip').checked : false;
+        const geoLat = parseFloat(host.querySelector('#set-geo-lat')?.value);
+        const geoLng = parseFloat(host.querySelector('#set-geo-lng')?.value);
+        const geoSet = isValidCoords(geoLat, geoLng);
+        const geoOn = host.querySelector('#set-geofence') ? host.querySelector('#set-geofence').checked : true;
         next.geofence = {
-          enabled: host.querySelector('#set-geofence') ? host.querySelector('#set-geofence').checked : true,
-          lat: parseFloat(host.querySelector('#set-geo-lat')?.value) || 19.0596,
-          lng: parseFloat(host.querySelector('#set-geo-lng')?.value) || 72.8295,
-          radiusMeters: parseInt(host.querySelector('#set-geo-radius')?.value, 10) || 250,
+          enabled: geoOn,
+          locationSet: geoSet,
+          lat: geoSet ? geoLat : null,
+          lng: geoSet ? geoLng : null,
+          accuracy: geoSet ? (parseInt(host.querySelector('#set-geo-acc')?.value, 10) || null) : null,
+          radiusMeters: parseInt(host.querySelector('#set-geo-radius')?.value, 10) || DEFAULT_RADIUS,
           name: settings.geofence?.name || 'Restaurant Premises',
+          savedAt: new Date().toISOString(),
         };
+        if (geoOn && !geoSet) toast('Location check is on, but no location is set yet, so guests are not being checked.', 'warning');
         next.payAtOrder = {
           enabled: host.querySelector('#set-pay-order') ? host.querySelector('#set-pay-order').checked : true,
           methods: ['apple_pay', 'upi', 'card', 'counter'],
@@ -3987,6 +4128,8 @@ if (render) {
     host.innerHTML = '<div class="notice-banner"><i data-lucide="alert-triangle"></i><span>Something went wrong loading this page: ' + esc(err.message) + '</span></div>';
   }
 }
+
+document.documentElement.classList.remove('tt-pending'); // page drawn: show it (see shell-boot.js)
 
 /* Live updates from other tabs */
 on('order:new', (payload) => {

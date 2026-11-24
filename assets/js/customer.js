@@ -11,9 +11,10 @@ import { computeBill } from './billing.js';
 import { emit, on } from './realtime.js';
 import {
   formatMoney, formatTime, timeAgo, toast, qs, esc, el, openDrawer, closeDrawer,
-  debounce, initials, statusBadge,
+  debounce, initials, statusBadge, formatElapsed,
 } from './helpers.js';
 import { ONLINE_PAYMENTS_ENABLED } from './features.js';
+import { bestFix, judge, siteOf, formatDistance, GUEST_MAX_ACCURACY } from './geo.js';
 
 const params = new URLSearchParams(location.search);
 const CART_KEY = 'tqr_cart';
@@ -503,91 +504,132 @@ function showShareQrModal(client, table, session) {
   modal.querySelector('#close-share-modal-btn').addEventListener('click', () => modal.remove());
 }
 
-/* ------------------------------------------------------------- geofence ---- */
-function getDistanceMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371e3;
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ/2) * Math.sin(Δλ/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return Math.round(R * c);
+/* ------------------------------------------------------------- location ---- */
+/* Orders are only taken from guests at the restaurant. The restaurant's point and
+   radius are set by the owner (Settings → Security). Precision lives in geo.js:
+   the guest's phone is read for a few seconds and the best reading is used. */
+const GEO_CACHE_KEY = 'tqr_geo_last';
+const GEO_CACHE_MS = 45000; // a good reading this fresh is reused, so ordering twice in a row does not wait again
+
+function readGeoCache(clientId) {
+  try {
+    const c = JSON.parse(sessionStorage.getItem(GEO_CACHE_KEY) || 'null');
+    if (c && c.clientId === clientId && Date.now() - c.at < GEO_CACHE_MS && c.fix && c.fix.accuracy <= 60) return c.fix;
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
+function writeGeoCache(clientId, fix) {
+  try { sessionStorage.setItem(GEO_CACHE_KEY, JSON.stringify({ clientId, at: Date.now(), fix })); } catch (e) { /* ignore */ }
+}
+
+/**
+ * Where is this guest relative to the restaurant?
+ * Resolves { state, distance?, accuracy?, radius, site } with state one of:
+ *   'off' (check disabled or no location registered yet: nobody is blocked),
+ *   'inside', 'outside', 'imprecise', 'blocked' (location refused), 'failed' (no reading).
+ */
+async function checkGuestLocation(client, { fresh = false, onProgress } = {}) {
+  const site = siteOf(client);
+  if (!site.enabled || !site.set) return { state: 'off', site, radius: site.radius };
+
+  try {
+    let fix = fresh ? null : readGeoCache(client.id);
+    if (!fix) {
+      fix = await bestFix({ target: 25, maxWaitMs: 10000, onProgress });
+      if (fix.accuracy <= GUEST_MAX_ACCURACY) writeGeoCache(client.id, fix);
+    }
+    const verdict = judge(fix, site);
+    return { state: verdict.status, distance: verdict.distance, accuracy: verdict.accuracy, radius: site.radius, site };
+  } catch (err) {
+    return { state: err.code === 'denied' || err.code === 'insecure' || err.code === 'unsupported' ? 'blocked' : 'failed', radius: site.radius, site, code: err.code };
+  }
+}
+
+function locationMessage(result, restaurantName) {
+  const name = esc(restaurantName);
+  const radius = result.radius;
+  switch (result.state) {
+    case 'outside':
+      return '<strong>You are ' + formatDistance(result.distance) + ' from ' + name + '.</strong> Orders can only be placed from inside the restaurant (within ' + radius + ' m). If you are at your table, tap Check again.';
+    case 'imprecise':
+      return '<strong>Your phone\'s location is too vague (about ±' + Math.round(result.accuracy) + ' m).</strong> Move near a window or the door, make sure Wi-Fi and GPS are on, then tap Check again.';
+    case 'blocked':
+      return '<strong>Location is needed to order at ' + name + '.</strong> ' + (result.code === 'insecure'
+        ? 'This page must be opened over https.'
+        : 'Allow location for this site in your browser, then tap Check again. Or ask a staff member to take your order.');
+    default:
+      return '<strong>We could not read your location.</strong> Check that GPS is on, then tap Check again. Or ask a staff member to take your order.';
+  }
+}
+
+function renderLocationBanner(container, result, client, onRecheck) {
+  if (!container) return;
+  if (result.state === 'inside' || result.state === 'off') { container.innerHTML = ''; return; }
+  container.innerHTML =
+    '<div class="geofence-alert" role="alert" style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 14px;margin:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:0.82rem;color:#92400E;">' +
+    '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.25rem;" aria-hidden="true">📍</span><div>' + locationMessage(result, client.name) + '</div></div>' +
+    '<button type="button" class="btn btn--sm" data-geo-recheck style="background:#D97706;color:#fff;border:none;font-size:0.75rem;font-weight:700;padding:6px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;">Check again</button></div>';
+  const btn = container.querySelector('[data-geo-recheck]');
+  if (btn) btn.addEventListener('click', () => onRecheck());
+}
+
+function markOnPremise() {
+  const tableBadge = document.getElementById('menu-table') || document.getElementById('cart-table');
+  if (tableBadge && !tableBadge.querySelector('.geo-verified-pill')) {
+    const span = document.createElement('span');
+    span.className = 'geo-verified-pill';
+    span.style.cssText = 'background:#10B981;color:#fff;font-size:0.68rem;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px;display:inline-flex;align-items:center;gap:3px;vertical-align:middle;';
+    span.textContent = '✓ 📍 On-premise';
+    tableBadge.appendChild(span);
+  }
 }
 
 function initGeofenceBanner(client, table, bannerContainerId) {
   const container = document.getElementById(bannerContainerId);
   if (!container) return;
-  const settings = client.settings || {};
-  const geo = settings.geofence || { enabled: true, lat: 19.0596, lng: 72.8295, radiusMeters: 250 };
-  if (geo.enabled === false) return;
+  try { localStorage.removeItem('tqr_geo_override'); } catch (e) { /* the old demo bypass no longer exists */ }
 
-  const isOverridden = localStorage.getItem('tqr_geo_override') === 'true';
-
-  function applyVerifiedBadge() {
-    const tableBadge = document.getElementById('menu-table') || document.getElementById('cart-table');
-    if (tableBadge && !tableBadge.querySelector('.geo-verified-pill')) {
-      const span = document.createElement('span');
-      span.className = 'geo-verified-pill';
-      span.style.cssText = 'background: #10B981; color: #fff; font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; vertical-align: middle;';
-      span.innerHTML = '✓ 📍 On-Premise';
-      tableBadge.appendChild(span);
-    }
+  async function run(fresh) {
+    const site = siteOf(client);
+    if (!site.enabled || !site.set) return;
+    container.innerHTML = '<div style="margin:10px 16px;font-size:0.8rem;color:#5E636B;">📍 Checking your location…</div>';
+    const result = await checkGuestLocation(client, {
+      fresh,
+      onProgress: (f) => {
+        container.innerHTML = '<div style="margin:10px 16px;font-size:0.8rem;color:#5E636B;">📍 Checking your location… ±' + f.accuracy + ' m</div>';
+      },
+    });
+    if (result.state === 'inside') markOnPremise();
+    renderLocationBanner(container, result, client, () => run(true));
   }
+  run(false);
+}
 
-  if (isOverridden) {
-    applyVerifiedBadge();
-    return;
+/**
+ * Gate for the Place order button. Returns true when the guest may order.
+ * Shows the reason in the cart banner when they may not.
+ */
+async function guestMayOrder(client, button) {
+  const site = siteOf(client);
+  if (!site.enabled || !site.set) return true;
+
+  const label = button.innerHTML;
+  button.disabled = true;
+  button.textContent = 'Checking your location…';
+  try {
+    // A fresh reading at the moment of ordering, unless a good one was taken seconds ago.
+    const result = await checkGuestLocation(client, { fresh: false });
+    if (result.state === 'inside') return true;
+    renderLocationBanner(document.getElementById('cart-geofence-banner'), result, client, () => initGeofenceBanner(client, null, 'cart-geofence-banner'));
+    toast(result.state === 'outside' ? 'You need to be at the restaurant to place an order.' : 'We could not confirm you are at the restaurant.', 'warning');
+    const banner = document.getElementById('cart-geofence-banner');
+    if (banner && banner.scrollIntoView) banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  } finally {
+    button.innerHTML = label;
+    button.disabled = false;
   }
-
-  function showRemoteAlert(km) {
-    container.innerHTML = `
-      <div class="geofence-alert" style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 10px 14px; margin: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.82rem; color: #92400E;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 1.25rem;">📍</span>
-          <div>
-            <strong>Remote Location:</strong> Dine-in table ordering is restricted to physical tables inside The Olive Table.
-            <span style="display: block; font-size: 0.73rem; color: #B45309; margin-top: 2px;">(Device is ${km || 'outside'} away from restaurant GPS coordinates)</span>
-          </div>
-        </div>
-        <button type="button" class="btn btn--sm" id="btn-geo-sim" style="background: #D97706; color: #fff; border: none; font-size: 0.75rem; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap;">
-          Demo: Test Inside
-        </button>
-      </div>
-    `;
-    const btn = container.querySelector('#btn-geo-sim');
-    if (btn) {
-      btn.addEventListener('click', () => {
-        localStorage.setItem('tqr_geo_override', 'true');
-        toast('GPS Geofence: Simulated as seated at ' + table.name);
-        container.innerHTML = '';
-        applyVerifiedBadge();
-      });
-    }
-  }
-
-  if (!navigator.geolocation) {
-    showRemoteAlert();
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const dist = getDistanceMeters(pos.coords.latitude, pos.coords.longitude, geo.lat, geo.lng);
-      if (dist <= geo.radiusMeters) {
-        localStorage.setItem('tqr_geo_override', 'true');
-        applyVerifiedBadge();
-      } else {
-        showRemoteAlert((dist / 1000).toFixed(1) + ' km');
-      }
-    },
-    () => {
-      showRemoteAlert('outside');
-    },
-    { timeout: 3500, maximumAge: 60000 }
-  );
 }
 
 /* -------------------------------------------------------- pay at order ---- */
@@ -1155,10 +1197,7 @@ function initMenu(ctx) {
       return;
     }
 
-    const diffSec = Math.max(0, Math.floor((Date.now() - new Date(latest.createdAt).getTime()) / 1000));
-    const m = Math.floor(diffSec / 60);
-    const s = diffSec % 60;
-    const timeStr = m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : (m + ':' + (s < 10 ? '0' : '') + s);
+    const timeStr = formatElapsed(Date.now() - new Date(latest.createdAt).getTime());
     const statusLabel = latest.status === 'ready' ? 'Ready for pickup' : latest.status === 'preparing' ? 'Preparing' : 'In kitchen';
     const isReady = latest.status === 'ready';
 
@@ -1407,8 +1446,9 @@ function initCart(ctx) {
 
   updatePaymentUi(selectedMethod);
 
-  placeButton.addEventListener('click', () => {
+  placeButton.addEventListener('click', async () => {
     if (placeButton.disabled) return;
+    if (!(await guestMayOrder(client, placeButton))) return;
 
     const totals = cartTotals(cart, settings);
 
@@ -1514,13 +1554,12 @@ function nextNumber(clientId) {
 
 /* -------------------------------------------------------------- status ---- */
 function formatOrderTimer(order) {
-  const diffSec = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000));
-  const m = Math.floor(diffSec / 60);
-  const s = diffSec % 60;
-  const timeStr = m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : (m + ':' + (s < 10 ? '0' : '') + s);
+  const elapsed = Math.max(0, Date.now() - new Date(order.createdAt).getTime());
+  const m = Math.floor(elapsed / 60000);
   const etaMinutes = 15;
-  const remMinutes = Math.max(1, etaMinutes - m);
-  return 'In the kitchen · ' + timeStr + ' elapsed (Est. ~' + remMinutes + ' min remaining)';
+  // Past the estimate there is nothing useful to count down; just show how long it has been.
+  const tail = m < etaMinutes ? ' (Est. ~' + Math.max(1, etaMinutes - m) + ' min remaining)' : '';
+  return 'In the kitchen · ' + formatElapsed(elapsed) + ' elapsed' + tail;
 }
 
 function initStatus(ctx) {

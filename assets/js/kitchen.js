@@ -6,7 +6,7 @@
 import * as store from './store.js';
 import { requireRole, currentClient, logout } from './auth.js';
 import { emit, on } from './realtime.js';
-import { esc, timeAgo, toast, confirmDialog, initials, formatMoney, renderPaginationHtml } from './helpers.js';
+import { esc, timeAgo, toast, confirmDialog, initials, formatMoney, renderPaginationHtml, formatElapsed } from './helpers.js';
 import { playSound, showNotification, showShiftOverlay } from './alerts.js';
 
 const session = requireRole('kitchen');
@@ -285,16 +285,15 @@ if (btn86) {
 on('menu:update', () => update86ButtonBadge());
 
 /* ------------------------------------------------------------- tickets ---- */
+/* How long the ticket has been waiting: since it was placed while cooking, since it
+   was marked ready once it is waiting for the waiter. */
+function elapsedMs(order) {
+  const from = order.status === 'ready' ? (order.readyAt || order.updatedAt || order.createdAt) : order.createdAt;
+  return Math.max(0, Date.now() - new Date(from).getTime());
+}
+
 function formatElapsedTime(order) {
-  const diffSec = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000));
-  const m = Math.floor(diffSec / 60);
-  const s = diffSec % 60;
-  if (m >= 60) {
-    const h = Math.floor(m / 60);
-    const remM = m % 60;
-    return `${h}h ${remM}m`;
-  }
-  return m + ':' + (s < 10 ? '0' : '') + s;
+  return formatElapsed(elapsedMs(order));
 }
 
 function timerClass(minutes) {
@@ -317,8 +316,7 @@ function itemsHtml(order) {
 }
 
 function ticketHtml(order, column) {
-  const diffSec = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000));
-  const minutes = Math.floor(diffSec / 60);
+  const minutes = Math.floor(elapsedMs(order) / 60000);
   const timeStr = formatElapsedTime(order);
   const useWaiter = client.settings?.useWaiterApp !== false;
   let action = column === 'new' ? 'Start' : column === 'preparing' ? (useWaiter ? 'Mark ready' : 'Served') : 'Served';
@@ -347,7 +345,8 @@ function ticketHtml(order, column) {
     : '<span style="background: rgba(245,158,11,0.15); color: #D97706; border: 1px solid rgba(245,158,11,0.3); padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="clock" style="width:12px;height:12px;"></i> PAY SERVER</span>';
 
   const readyBadge = column === 'ready' && useWaiter
-    ? '<div style="margin:6px 0;padding:4px 8px;background:rgba(16,185,129,0.15);color:#059669;border-radius:6px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;"><i data-lucide="user-check" style="width:14px;height:14px;"></i> Waiting for waiter</div>'
+    ? '<div style="margin:6px 0;padding:4px 8px;background:rgba(16,185,129,0.15);color:#059669;border-radius:6px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;"><i data-lucide="user-check" style="width:14px;height:14px;"></i> ' +
+      (order.assignedWaiterName ? 'Sent to ' + esc(order.assignedWaiterName) : 'Waiting for waiter') + '</div>'
     : '';
 
   const newBadge = unacknowledgedOrderIds.has(order.id) ? '<span class="badge badge--danger" style="animation:pulse 1.5s infinite;margin-left:6px;font-size:11px;">NEW</span>' : '';
@@ -364,6 +363,35 @@ function ticketHtml(order, column) {
     '<button class="btn btn--primary" type="button" data-action="' + order.id + '" data-next="' +
     (column === 'new' ? 'preparing' : column === 'preparing' ? (useWaiter ? 'ready' : 'served') : 'served') + '">' + action + '</button>' +
     '</article>';
+}
+
+/* Ask the kitchen which waiter takes a finished order out.
+   Resolves to { id, name }, null (no waiters set up: any waiter may take it) or undefined (cancelled). */
+function pickWaiter(order) {
+  const useWaiter = client.settings?.useWaiterApp !== false;
+  const waiters = store.query('staff', (s) => s.clientId === client.id && s.role === 'floor' && s.active);
+  if (!useWaiter || !waiters.length) return Promise.resolve(null);
+
+  return new Promise((resolve) => {
+    const host = document.createElement('div');
+    host.innerHTML = '<div class="modal is-open" role="dialog" aria-modal="true" aria-labelledby="pick-waiter-title"><div class="modal__dialog">' +
+      '<div class="modal__header"><div><p class="modal__title" id="pick-waiter-title">Who takes it out?</p>' +
+      '<p class="muted text-xs">' + esc(order.tableName) + ' · Order #' + esc(String(order.number)) + '</p></div>' +
+      '<button class="btn btn--icon" type="button" data-cancel aria-label="Cancel"><i data-lucide="x"></i></button></div>' +
+      '<div class="modal__body"><p class="hint" style="margin-bottom:12px;">Pick the waiter. Only that waiter is notified.</p>' +
+      '<div class="row row--wrap" style="gap:8px;">' +
+      waiters.map((w) => '<button class="btn btn--secondary btn--lg" type="button" data-waiter="' + w.id + '">' + esc(w.name) + '</button>').join('') +
+      '</div></div></div></div>';
+    document.body.appendChild(host);
+    if (window.lucide) window.lucide.createIcons();
+    const done = (value) => { host.remove(); resolve(value); };
+    host.querySelector('[data-cancel]').addEventListener('click', () => done(undefined));
+    host.querySelector('.modal').addEventListener('click', (event) => { if (event.target.classList.contains('modal')) done(undefined); });
+    host.querySelectorAll('[data-waiter]').forEach((btn) => btn.addEventListener('click', () => {
+      const w = waiters.find((x) => x.id === btn.getAttribute('data-waiter'));
+      done({ id: w.id, name: w.name });
+    }));
+  });
 }
 
 const COLUMNS = [
@@ -399,31 +427,7 @@ function draw() {
       (pending ? '<span class="k-counter"><strong>' + pending + '</strong> Waiting approval</span>' : '');
   }
 
-  if (bannerHost) {
-    const openCalls = store.query('waiterCalls', (c) => c.clientId === client.id && c.status === 'open');
-    if (openCalls.length) {
-      bannerHost.innerHTML =
-        '<div style="background:linear-gradient(90deg, #F59E0B 0%, #D97706 100%);color:#000;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-weight:700;box-shadow:0 4px 12px rgba(245, 158, 11, 0.25);border-bottom:1px solid rgba(0,0,0,0.1);">' +
-        '<div style="display:flex;align-items:center;gap:10px;font-size:0.95rem;">' +
-        '<span style="font-size:1.3rem;">🔔</span>' +
-        '<span>' + openCalls.map((c) => '<strong>' + esc(c.tableName) + '</strong>: ' + (c.type === 'bill' ? 'Bill requested (' + (c.paymentMethod ? c.paymentMethod.toUpperCase() : 'Pay') + ')' : 'Waiter called')).join(' · ') + '</span>' +
-        '</div>' +
-        '<div style="display:flex;gap:6px;">' +
-        openCalls.map((c) => '<button class="btn btn--sm" style="background:#000;color:#fff;border:none;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;" type="button" data-k-done-call="' + c.id + '">Acknowledge ' + esc(c.tableName) + '</button>').join('') +
-        '</div></div>';
-      bannerHost.querySelectorAll('[data-k-done-call]').forEach((b) => {
-        b.addEventListener('click', () => {
-          const callId = b.getAttribute('data-k-done-call');
-          store.update('waiterCalls', callId, { status: 'done' });
-          emit('call:done', { id: callId });
-          emit('call:update', { clientId: client.id });
-          draw();
-        });
-      });
-    } else {
-      bannerHost.innerHTML = '';
-    }
-  }
+  // Waiter calls and bill requests are for the waiters only; the kitchen screen never shows them.
 
   if (!columnsHost) return;
 
@@ -511,10 +515,22 @@ if (columnsHost) {
     if (action) {
       const id = action.getAttribute('data-action');
       const next = action.getAttribute('data-next');
-      const order = store.update('orders', id, { status: next, updatedAt: new Date().toISOString() });
+      const patch = { status: next, updatedAt: new Date().toISOString() };
+      let waiter = null;
+      if (next === 'ready') {
+        // The kitchen names the waiter who takes this order to the table.
+        waiter = await pickWaiter(store.getById('orders', id));
+        if (waiter === undefined) return; // cancelled, order stays in Preparing
+        if (waiter) Object.assign(patch, { assignedWaiterId: waiter.id, assignedWaiterName: waiter.name, readyAt: patch.updatedAt });
+      }
+      const order = store.update('orders', id, patch);
       emit('order:update', { orderId: id, clientId: client.id });
       if (next === 'ready') {
-        emit('order:ready', { orderId: id, clientId: client.id, tableName: order.tableName, number: order.number });
+        emit('order:ready', {
+          orderId: id, clientId: client.id, tableName: order.tableName, number: order.number,
+          waiterId: waiter ? waiter.id : null, waiterName: waiter ? waiter.name : '',
+        });
+        if (waiter) toast('Sent to ' + waiter.name + ' for ' + order.tableName);
       }
       store.logActivity({
         actor: session.name,
@@ -542,8 +558,7 @@ setInterval(() => {
   document.querySelectorAll('[data-timer]').forEach((el) => {
     const order = store.getById('orders', el.getAttribute('data-timer'));
     if (!order) return;
-    const diffSec = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000));
-    const minutes = Math.floor(diffSec / 60);
+    const minutes = Math.floor(elapsedMs(order) / 60000);
     const timeStr = formatElapsedTime(order);
     el.className = 'k-timer' + timerClass(minutes);
     const textEl = el.querySelector('.k-timer__text');
@@ -624,12 +639,6 @@ on('order:new', (payload) => {
 });
 
 on('order:update', () => draw());
-on('call:new', () => {
-  beep();
-  draw();
-});
-on('call:done', () => draw());
-on('call:update', () => draw());
 
 /* --------------------------------------------------- completed page ------- */
 if (page === 'kitchen-completed') {

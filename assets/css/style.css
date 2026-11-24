@@ -5756,4 +5756,7 @@ img.avatar { font-size:0; object-fit:cover; }
   background: #1A1F26;
   color: #F1F5F9;
 }
-
+/* Page body stays hidden until its script has drawn it (shell-boot.js adds the class,
+   admin.js / owner.js remove it). The animation is a safety net: after 2s it shows anyway. */
+html.tt-pending .app-shell__content-inner { visibility:hidden; animation:tt-reveal 0s linear 2s forwards; }
+@keyframes tt-reveal { to { visibility:visible; } }

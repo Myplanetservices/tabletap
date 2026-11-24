@@ -161,9 +161,9 @@ if (kitchenForm) {
     const button = kitchenForm.querySelector('button[type="submit"]');
     button.disabled = true;
     try {
-      const sess = kitchenLogin(code, pin);
+      const sess = kitchenLogin(code, pin, kitchenForm.dataset.loginRole || '');
       if (sess && sess.role === 'floor') {
-        location.href = '../owner/floor.html';
+        location.href = '../waiter/';
       } else {
         location.href = '../kitchen/index.html';
       }
