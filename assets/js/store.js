@@ -400,8 +400,8 @@ const days = (n) => new Date(Date.now() - n * 86400000).toISOString();
 function seed() {
   const data = {
     plans: [
-      { id: 'starter', name: 'Lifetime Starter', price: 29, limits: { tables: 10, items: 80, staff: 2 } },
-      { id: 'pro', name: 'Lifetime Pro', price: 49, limits: { tables: 30, items: 200, staff: 5 } },
+      { id: 'starter', name: 'Lifetime Starter', price: 29, limits: { tables: 10, items: 80, staff: 5 } },
+      { id: 'pro', name: 'Lifetime Pro', price: 49, limits: { tables: 30, items: 200, staff: 20 } },
     ],
     admins: [
       { id: 'adm_1', name: 'Vivek Kumar', email: 'admin@tabletap.demo', password: 'admin123', role: 'super', phone: '+91 80 4718 2200' },
@@ -432,7 +432,7 @@ function seed() {
     __version: VERSION,
   };
 
-  const planLimits = (planId) => (planId === 'starter' ? { tables: 10, items: 80, staff: 2 } : { tables: 30, items: 200, staff: 5 });
+  const planLimits = (planId) => (planId === 'starter' ? { tables: 10, items: 80, staff: 5 } : { tables: 30, items: 200, staff: 20 });
 
   CLIENTS.forEach((c, i) => {
     const [name, slug, ownerName, email, country, planId, status, tableCount, code] = c;
