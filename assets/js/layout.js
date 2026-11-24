@@ -129,6 +129,7 @@ export const ADMIN_NAV = [
       { id: 'clients', label: 'Clients', href: 'clients.html', icon: 'users' },
       { id: 'invites', label: 'Invites', href: 'invites.html', icon: 'mail' },
       { id: 'activity', label: 'Activity Log', href: 'activity.html', icon: 'history' },
+      { id: 'payments', label: 'Payments', href: 'payments.html', icon: 'wallet' },
       { id: 'plans', label: 'Plans', href: 'plans.html', icon: 'credit-card' },
       { id: 'settings', label: 'Settings', href: 'settings.html', icon: 'settings' },
     ],

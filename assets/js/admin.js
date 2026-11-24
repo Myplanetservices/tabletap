@@ -1235,8 +1235,67 @@ function renderSettings() {
   });
 }
 
+/* -------------------------------------------------------------- payments -- */
+function renderPayments() {
+  const signature = () => store.getAll('payments').map((r) => r.id).join() + '|' + store.getAll('invites').map((i) => i.id + i.status).join();
+  const shown = signature();
+  // The page draws from the local cache first; redraw once a poll brings new payments or invite changes.
+  if (!window.__payWatch) window.__payWatch = setInterval(() => { if (!document.hidden && signature() !== shown) { clearInterval(window.__payWatch); window.__payWatch = null; renderPayments(); } }, 3000);
+  const rupees = (n) => '₹' + Number(n || 0).toLocaleString('en-IN');
+  const rows = store.getAll('payments').slice().sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  const sum = (list) => list.reduce((t, r) => t + (Number(r.amount) || 0), 0);
+  const total = sum(rows);
+  const month = sum(rows.filter((r) => new Date(r.paidAt) >= monthStart));
+
+  const access = (r) => {
+    const invite = store.getById('invites', r.inviteId);
+    if (!invite) return ['neutral', 'Unknown'];
+    if (invite.status === 'accepted') return ['success', 'Account created'];
+    if (invite.status === 'revoked') return ['danger', 'Revoked'];
+    if (new Date(invite.expiresAt) < new Date()) return ['neutral', 'Link expired'];
+    return ['warning', 'Link sent, not used'];
+  };
+  const mail = { sent: ['success', 'Email sent'], failed: ['danger', 'Email failed'], not_configured: ['warning', 'Email off'] };
+
+  const body = rows.map((r) => {
+    const [tone, label] = access(r);
+    const [mt, ml] = mail[r.emailStatus] || ['neutral', '—'];
+    return '<tr>' +
+      '<td data-label="Paid">' + formatDateTime(r.paidAt) + '</td>' +
+      '<td data-label="Restaurant" class="table__strong">' + esc(r.restaurant) + '<div class="muted text-xs">' + esc(r.city) + ', ' + esc(r.country) + '</div></td>' +
+      '<td data-label="Owner">' + esc(r.ownerName) + '<div class="muted text-xs">' + esc(r.email) + (r.phone ? ' · ' + esc(r.phone) : '') + '</div></td>' +
+      '<td data-label="Plan">' + esc(r.planName) + '</td>' +
+      '<td data-label="Amount" class="table__strong">' + rupees(r.amount) + '</td>' +
+      '<td data-label="Payment id"><code class="text-xs">' + esc(r.paymentId) + '</code></td>' +
+      '<td data-label="Access"><span class="badge badge--' + tone + '">' + label + '</span> <span class="badge badge--' + mt + '">' + ml + '</span></td>' +
+      '<td data-label="Actions"><a class="btn btn--icon btn--sm" href="invites.html" aria-label="Open invites"><i data-lucide="mail"></i></a></td>' +
+      '</tr>';
+  }).join('');
+
+  paint(head('Payments', 'Plans bought on the website through Razorpay. Each paid order creates an invite and emails the access link.',
+      '<button class="btn btn--secondary btn--sm" type="button" id="pay-export"><i data-lucide="download"></i> Export CSV</button>') +
+    '<div class="stat-grid">' +
+      statCard('Collected', rupees(total), 'all time') +
+      statCard('This month', rupees(month), new Date().toLocaleString('en', { month: 'long' })) +
+      statCard('Payments', String(rows.length), 'paid orders') +
+    '</div>' +
+    '<div class="card mt-6"><div class="card__header"><span class="card__title">All payments</span><span class="muted text-xs">' + rows.length + ' total</span></div>' +
+    '<div class="card__body">' + (rows.length
+      ? '<div class="table-wrap"><table class="table table-stack"><thead><tr><th scope="col">Paid</th><th scope="col">Restaurant</th><th scope="col">Owner</th><th scope="col">Plan</th><th scope="col">Amount</th><th scope="col">Payment id</th><th scope="col">Access</th><th scope="col">Actions</th></tr></thead><tbody>' + body + '</tbody></table></div>'
+      : '<p class="muted">No payments yet. They show up here as soon as someone pays on the website.</p>') +
+    '</div></div>');
+
+  const exportBtn = host.querySelector('#pay-export');
+  if (exportBtn) exportBtn.addEventListener('click', () => {
+    exportCSV([['Paid', 'Restaurant', 'Owner', 'Email', 'Phone', 'City', 'Country', 'Plan', 'Amount (INR)', 'Payment id', 'Order id']]
+      .concat(rows.map((r) => [r.paidAt, r.restaurant, r.ownerName, r.email, r.phone, r.city, r.country, r.planName, r.amount, r.paymentId, r.orderId])), 'tabletap-payments.csv');
+  });
+}
+
 /* ------------------------------------------------------------------ boot -- */
 const PAGES = {
+  payments: renderPayments,
   dashboard: renderDashboard,
   clients: renderClients,
   'client-detail': renderClientDetail,

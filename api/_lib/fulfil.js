@@ -109,6 +109,13 @@ export async function fulfilOrder({ orderId, paymentId, siteUrl }) {
     emailStatus = 'failed';
   }
   await sql(`UPDATE tt_payments SET invite_id = $2, email_status = $3 WHERE order_id = $1`, [orderId, invite.id, emailStatus]);
+  // The admin's Payments page reads this record (no card data; Razorpay holds that).
+  await upsertDocs('payments', [{
+    id: orderId, orderId, paymentId, planId: p.plan_id, planName: plan ? plan.name : p.plan_id,
+    amount: p.amount / 100, currency: p.currency, restaurant: p.restaurant, ownerName: p.owner_name,
+    email: p.email, country: p.country, city: p.city, phone: p.phone || '',
+    paidAt: new Date(now).toISOString(), inviteId: invite.id, emailStatus,
+  }]);
   try {
     await sql(
       `INSERT INTO tt_email_log (type, recipient, subject, status, error, ip) VALUES ('invite', $1, $2, $3, NULL, $4)`,
