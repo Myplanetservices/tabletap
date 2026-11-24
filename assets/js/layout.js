@@ -10,6 +10,57 @@ import {
 } from './auth.js';
 import { esc, initials } from './helpers.js';
 import { on } from './realtime.js';
+import { emailProblems, acknowledgeEmailProblems, retryEmail } from './mailer.js';
+
+const EMAIL_PROBLEM_TEXT = {
+  rate_limited: 'the hourly email limit was reached',
+  failed: 'the email service rejected them',
+  not_configured: 'the email service is not set up',
+};
+
+/* Persistent warning for undelivered emails. Admin sees all; an owner sees emails to their own address. */
+function renderEmailAlert(topbarContainer, { isAdmin, client, session }) {
+  if (!topbarContainer || (!isAdmin && session && session.role && session.role !== 'owner')) return;
+  let host = document.getElementById('email-alert');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'email-alert';
+    topbarContainer.appendChild(host);
+  }
+
+  const ownerEmail = isAdmin ? '' : ((store.getAll('owners').find((o) => client && o.clientId === client.id) || {}).email || session.email || '');
+  const draw = () => {
+    if (!isAdmin && !ownerEmail) { host.innerHTML = ''; return; }
+    const problems = emailProblems(ownerEmail);
+    if (!problems.length) { host.innerHTML = ''; return; }
+
+    const reasons = [...new Set(problems.map((p) => EMAIL_PROBLEM_TEXT[p.deliveryStatus] || 'delivery failed'))];
+    const detail = problems.find((p) => p.deliveryStatus === 'failed' && p.deliveryDetail);
+    const who = isAdmin
+      ? problems.slice(0, 3).map((p) => esc(p.to)).join(', ') + (problems.length > 3 ? ' and ' + (problems.length - 3) + ' more' : '')
+      : 'your account';
+    host.innerHTML = '<div class="banner banner--warning" role="alert" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:10px 16px;background:#FBF0DF;color:#8A5200;border-bottom:1px solid #E8D3AB;font-size:0.875rem;">' +
+      '<span style="flex:1 1 320px;"><strong>' + problems.length + (problems.length === 1 ? ' email was' : ' emails were') + ' not delivered</strong> to ' + who + ': ' +
+      esc(reasons.join(' and ')) + '.' + (detail ? ' ' + esc(String(detail.deliveryDetail).slice(0, 140)) : '') +
+      (isAdmin ? ' They are kept in the mailbox.' : ' Please tell your administrator.') + '</span>' +
+      (isAdmin ? '<button class="btn btn--xs btn--secondary" type="button" data-email-retry>Retry now</button>' : '') +
+      '<button class="btn btn--xs btn--primary" type="button" data-email-ack>Acknowledge</button></div>';
+
+    host.querySelector('[data-email-ack]').addEventListener('click', () => {
+      acknowledgeEmailProblems(problems.map((p) => p.id), (session && session.name) || '');
+    });
+    const retry = host.querySelector('[data-email-retry]');
+    if (retry) retry.addEventListener('click', () => {
+      retry.disabled = true;
+      retry.textContent = 'Retrying…';
+      problems.forEach((p) => retryEmail(p.id));
+    });
+  };
+
+  draw();
+  window.addEventListener('tt:email-status', draw);
+  on('*', draw); // changes merged from another device (e.g. an email failing on the admin's screen)
+}
 
 /* auth.js has no currentSession / isImpersonating exports; derive them here. */
 function currentSession(isAdmin) {
@@ -248,6 +299,8 @@ export function initLayout() {
         </div>
       </header>`;
   });
+
+  safe('email alert', () => renderEmailAlert(topbarContainer, { isAdmin, client, session }), null);
 
   /* ----------------------------------------------------- Event Wiring -- */
   // Mobile drawer interaction

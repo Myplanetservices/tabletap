@@ -4,6 +4,7 @@
    ========================================================================== */
 
 import { getAll, query, getById, insert, update, logActivity } from './store.js';
+import { sendPasswordChangedEmail } from './mailer.js';
 
 export const ROOT = new URL('../../', import.meta.url).href;
 export const OWNER_SESSION_KEY = 'tqr_session';
@@ -251,6 +252,7 @@ export function changePassword(sessionId, currentPassword, nextPassword) {
   if (!nextPassword || nextPassword.length < 8) throw new Error('Use at least 8 characters.');
   update('owners', owner.id, { password: nextPassword });
   logActivity({ actor: owner.name, clientId: owner.clientId, type: 'Password', details: 'Owner changed password' });
+  sendPasswordChangedEmail({ to: owner.email, name: owner.name, via: 'from the account page' });
   return true;
 }
 

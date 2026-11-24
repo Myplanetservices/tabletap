@@ -241,7 +241,7 @@ if (inviteCard) {
           `,
           actionText: 'Go to Owner Dashboard',
           actionUrl: new URL('../owner/dashboard.html', window.location.href).href,
-          footnote: 'Keep this email for your records. Log in anytime at tabletap.demo/auth/login.html.',
+          footnote: 'Keep this email for your records. Log in anytime at ' + new URL('../auth/login.html', window.location.href).href + '.',
         });
 
         sendEmail({

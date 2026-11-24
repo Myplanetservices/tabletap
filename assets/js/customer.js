@@ -13,6 +13,7 @@ import {
   formatMoney, formatTime, timeAgo, toast, qs, esc, el, openDrawer, closeDrawer,
   debounce, initials, statusBadge,
 } from './helpers.js';
+import { ONLINE_PAYMENTS_ENABLED } from './features.js';
 
 const params = new URLSearchParams(location.search);
 const CART_KEY = 'tqr_cart';
@@ -132,14 +133,15 @@ function renderVisitEnded() {
 
 export function isDeviceTrusted(tableId, session) {
   if (!session || session.status !== 'open') return false;
+  // The printed table QR is permanent: anyone who scans it joins the open visit.
+  // No per-visit QR or PIN from staff is needed.
   try {
-    const raw = localStorage.getItem('tqr_trusted_' + tableId);
-    if (!raw) return false;
-    const stored = JSON.parse(raw);
-    return !!(stored && stored.sessionId === session.id && stored.joinSecret === session.joinSecret);
-  } catch (e) {
-    return false;
-  }
+    localStorage.setItem('tqr_trusted_' + tableId, JSON.stringify({
+      sessionId: session.id,
+      joinSecret: session.joinSecret,
+    }));
+  } catch (e) { /* storage blocked: still allow */ }
+  return true;
 }
 
 export function createWaiterCall(clientId, table, type) {
@@ -214,7 +216,7 @@ export function createBillRequest(clientId, table, methodId) {
 }
 
 export function placeOrder({ client, table, cart, payment, note, guestName }) {
-  const isPayFirst = client.settings?.payments?.policy === 'pay_first';
+  const isPayFirst = ONLINE_PAYMENTS_ENABLED && client.settings?.payments?.policy === 'pay_first';
   const session = sessionForTable(client.id, table.id);
   if (!isPayFirst) {
     if (!session || session.status !== 'open' || !isDeviceTrusted(table.id, session) || session.tableId !== table.id) {
@@ -775,7 +777,9 @@ function initMenu(ctx) {
     }));
     toast("You're connected to " + table.name);
   } else {
-    // When no visit parameters are provided, device trust is retained only if previously authenticated for this open session
+    // Plain table QR: open a visit automatically if the table has none, then join it
+    const open = sessionForTable(client.id, table.id) || openSessionForTable(client.id, table);
+    isDeviceTrusted(table.id, open);
   }
 
   on('session:close', (payload) => {
@@ -1313,7 +1317,9 @@ function initCart(ctx) {
   const payGrid = document.getElementById('pay-methods-grid');
   const payDesc = document.getElementById('pay-method-desc');
   const paymentsConf = settings.payments || {};
-  const payPolicy = paymentsConf.policy || (settings.payAtOrder?.enabled !== false ? 'pay_at_order' : 'flexible');
+  const payPolicy = !ONLINE_PAYMENTS_ENABLED
+    ? 'post_pay'
+    : (paymentsConf.policy || (settings.payAtOrder?.enabled !== false ? 'pay_at_order' : 'flexible'));
   const stripe = paymentsConf.stripe || {};
   const paypal = paymentsConf.paypal || {};
   const inPerson = paymentsConf.inPerson || { cash: true, cardMachine: true };
@@ -1432,7 +1438,7 @@ function initCart(ctx) {
       return;
     }
 
-    const isPayFirst = settings.payments?.policy === 'pay_first';
+    const isPayFirst = ONLINE_PAYMENTS_ENABLED && settings.payments?.policy === 'pay_first';
     const currentSession = sessionForTable(client.id, table.id);
 
     if (!isPayFirst) {

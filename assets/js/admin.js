@@ -8,7 +8,7 @@ import {
   requireRole, getAdminSession, startImpersonation, adminLogout, platformSettings,
 } from './auth.js';
 import { emit } from './realtime.js';
-import { sendEmail, renderEmailTemplate } from './mailer.js';
+import { sendEmail, renderEmailTemplate, sendPasswordResetLink, buildInviteEmail } from './mailer.js';
 import {
   formatMoney, formatDateTime, timeAgo, toast, confirmDialog, exportCSV,
   debounce, esc, qs, initials, statusBadge, openModal, closeModal,
@@ -559,21 +559,17 @@ function renderClientDetail() {
   });
 
   host.querySelector('[data-reset]').addEventListener('click', () => {
-    const temp = 'tt-' + Math.random().toString(36).slice(2, 8);
-    store.update('owners', owner.id, { password: temp });
-    store.logActivity({ actor: session.name, clientId: client.id, type: 'Password', details: 'Temporary password issued' });
+    if (!owner || !owner.email) { toast('This restaurant has no owner email.', 'warning'); return; }
+    // The owner picks their own password from an emailed, 30-minute, single-use link.
+    sendPasswordResetLink(owner, 'owner', session.name || 'Admin');
     modalHost.innerHTML = '<div class="modal is-open" role="dialog" aria-modal="true"><div class="modal__dialog">' +
-      '<div class="modal__header"><p class="modal__title">Temporary password</p>' +
+      '<div class="modal__header"><p class="modal__title">Reset link sent</p>' +
       '<button class="btn btn--icon" type="button" data-close aria-label="Close"><i data-lucide="x"></i></button></div>' +
-      '<div class="modal__body"><p class="mono strong" style="font-size:1.5rem;text-align:center">' + temp + '</p>' +
-      '<p class="hint text-center">Shown once. Send it to ' + esc(owner.email) + ' and ask them to change it after logging in.</p></div>' +
-      '<div class="modal__footer"><button class="btn btn--secondary" type="button" data-copy>Copy</button>' +
-      '<button class="btn btn--primary" type="button" data-close>Done</button></div></div></div>';
+      '<div class="modal__body"><p class="text-center">We emailed a password reset link to <strong>' + esc(owner.email) + '</strong>.</p>' +
+      '<p class="hint text-center">The link works once and expires in 30 minutes. Their current password stays valid until they use it.</p></div>' +
+      '<div class="modal__footer"><button class="btn btn--primary" type="button" data-close>Done</button></div></div></div>';
     if (window.lucide) window.lucide.createIcons();
     modalHost.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeAll));
-    modalHost.querySelector('[data-copy]').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(temp); toast('Password copied'); } catch (err) { toast('Copy blocked — select it manually', 'warning'); }
-    });
   });
 
   host.querySelector('[data-resend]').addEventListener('click', () => {
@@ -593,25 +589,18 @@ function renderClientDetail() {
 
     if (owner && owner.email) {
       const inviteUrl = new URL(`../auth/accept-invite.html?token=${invite.token}`, window.location.href).href;
-      const html = renderEmailTemplate({
-        title: 'Your invite',
-        heading: "You're invited to TableTap",
-        preheader: `${client.name} is ready on TableTap. Set your password to open your dashboard.`,
-        bodyHtml: `
-          <p style="margin:0 0 16px;">Hi ${esc(owner.name)},</p>
-          <p style="margin:0 0 16px;">Here is your updated invite to set up <strong>${esc(client.name)}</strong> on TableTap.</p>
-          <p style="margin:0 0 16px;">Set your password to open the owner dashboard. The link expires in 7 days.</p>
-        `,
-        actionText: 'Accept invite',
-        actionUrl: inviteUrl,
-        footnote: 'If you did not expect this invite, please contact hello@tabletap.demo.',
+      const settings = platformSettings();
+      const plan = store.getById('plans', client.planId);
+      const mail = buildInviteEmail({
+        settings,
+        ownerName: owner.name,
+        restaurantName: client.name,
+        planName: plan ? plan.name : '',
+        inviteUrl,
+        expiryDays: 7,
+        senderName: (session.name || 'TableTap').split(' ')[0],
       });
-      sendEmail({
-        to: owner.email,
-        subject: `You're invited to TableTap — ${client.name}`,
-        html,
-        type: 'invite',
-      });
+      sendEmail({ to: owner.email, subject: mail.subject, html: mail.html, type: 'invite' });
     }
 
     toast('New invite link created');
@@ -816,36 +805,18 @@ function renderInvites() {
     // Send email via mailer.js
     const inviteUrl = new URL(`../auth/accept-invite.html?token=${invite.token}`, window.location.href).href;
     const plan = store.getById('plans', invite.planId);
-    const emailHtml = renderEmailTemplate({
-      title: 'Your invite',
-      heading: "You're invited to TableTap",
-      preheader: `${name} is ready on TableTap. Set your password to open your dashboard.`,
-      bodyHtml: `
-        <p style="margin:0 0 16px;">Hi ${esc(ownerName)},</p>
-        <p style="margin:0 0 16px;">
-          ${esc(session.name.split(' ')[0])} from TableTap here. <strong>${esc(name)}</strong> has been set up on the <strong>${esc(plan ? plan.name : 'Pro')}</strong> plan — QR menus for every table, live tickets on the kitchen screen, and reports for you.
-        </p>
-        <p style="margin:0 0 16px;">
-          Set your password to open the owner dashboard. The link is yours alone and expires in ${platformSettings().inviteExpiryDays || 7} days.
-        </p>
-      `,
-      actionText: 'Accept invite',
-      actionUrl: inviteUrl,
-      footnote: `
-        <strong style="color:#1C1917;">What you get</strong><br>
-        · QR menus for every table<br>
-        · Live kitchen & floor screens with real-time sound and timers<br>
-        · Menu editor with allergens, photos and sold-out toggles<br>
-        · Sales reports and analytics
-      `,
+    const settings = platformSettings();
+    const mail = buildInviteEmail({
+      settings,
+      ownerName,
+      restaurantName: name,
+      planName: plan ? plan.name : '',
+      inviteUrl,
+      expiryDays: settings.inviteExpiryDays || 7,
+      senderName: session.name.split(' ')[0],
     });
 
-    sendEmail({
-      to: email,
-      subject: `You're invited to TableTap — ${name}`,
-      html: emailHtml,
-      type: 'invite',
-    });
+    sendEmail({ to: email, subject: mail.subject, html: mail.html, type: 'invite' });
 
     toast('Invite created for ' + name);
     copyInviteLink(invite);
@@ -868,25 +839,19 @@ function renderInvites() {
       });
 
       const inviteUrl = new URL(`../auth/accept-invite.html?token=${invite.token}`, window.location.href).href;
-      const html = renderEmailTemplate({
-        title: 'Your invite',
-        heading: "You're invited to TableTap",
-        preheader: `${invite.clientName} is ready on TableTap. Set your password to open your dashboard.`,
-        bodyHtml: `
-          <p style="margin:0 0 16px;">Hi ${esc(invite.ownerName)},</p>
-          <p style="margin:0 0 16px;">Here is your resent invite to set up <strong>${esc(invite.clientName)}</strong> on TableTap.</p>
-          <p style="margin:0 0 16px;">Set your password to open the owner dashboard. The link expires in ${platformSettings().inviteExpiryDays || 7} days.</p>
-        `,
-        actionText: 'Accept invite',
-        actionUrl: inviteUrl,
+      const settings = platformSettings();
+      const plan = store.getById('plans', invite.planId);
+      const mail = buildInviteEmail({
+        settings,
+        ownerName: invite.ownerName,
+        restaurantName: invite.clientName,
+        planName: plan ? plan.name : '',
+        inviteUrl,
+        expiryDays: settings.inviteExpiryDays || 7,
+        senderName: (session.name || 'TableTap').split(' ')[0],
       });
 
-      sendEmail({
-        to: invite.email,
-        subject: `You're invited to TableTap — ${invite.clientName}`,
-        html,
-        type: 'invite',
-      });
+      sendEmail({ to: invite.email, subject: mail.subject, html: mail.html, type: 'invite' });
 
       toast('Invite resent');
       draw();

@@ -17,6 +17,7 @@ import {
   renderPaginationHtml,
 } from './helpers.js';
 import { playSound, showNotification, vibratePhone, showShiftOverlay } from './alerts.js';
+import { ONLINE_PAYMENTS_ENABLED, SEATING_FLOW_ENABLED } from './features.js';
 
 const page = document.body.getAttribute('data-page');
 const session = requireRole(page === 'floor' ? 'floor' : 'owner');
@@ -353,17 +354,21 @@ function openBillModal(sessionId, onDone) {
       '<div class="status-items">' + (orderRows || '<p class="muted text-sm">No orders on this table yet.</p>') + '</div>' +
       '<div class="summary mt-4">' + rows.join('') + '</div>' +
       discountSection +
-      '<div class="mt-5">' +
-      '<button class="btn btn--primary btn--block btn--lg" id="btn-open-terminal" type="button" style="background:#059669; border-color:#059669; font-weight:700; height:48px; display:flex; align-items:center; justify-content:center; gap:8px;">' +
-      '<i data-lucide="credit-card"></i> Take Payment / Collect Now (' + money(bill.total) + ')</button>' +
-      '</div>' +
-      '<p class="label mt-4">Quick Settle</p>' +
-      (visit.paymentMethod ? '<div class="notice-banner"><i data-lucide="wallet"></i><span>' + esc(guestPayLine({ sessionId: visit.id, paymentMethod: visit.paymentMethod })) + '</span></div>' : '') +
-      '<div class="row row--wrap mt-2">' +
-      (settings.paymentMethods || []).filter((m) => m.enabled).map((m) =>
-        '<button class="btn ' + (m.id === visit.paymentMethod ? 'btn--primary' : 'btn--secondary') +
-        '" type="button" data-pay="' + m.id + '">' + esc(m.name) + '</button>').join('') +
-      '</div><p class="hint">Paying closes the session and frees ' + esc(visit.tableName) + '.</p>' +
+      (ONLINE_PAYMENTS_ENABLED
+        ? '<div class="mt-5">' +
+          '<button class="btn btn--primary btn--block btn--lg" id="btn-open-terminal" type="button" style="background:#059669; border-color:#059669; font-weight:700; height:48px; display:flex; align-items:center; justify-content:center; gap:8px;">' +
+          '<i data-lucide="credit-card"></i> Take Payment / Collect Now (' + money(bill.total) + ')</button>' +
+          '</div>' +
+          '<p class="label mt-4">Quick Settle</p>' +
+          (visit.paymentMethod ? '<div class="notice-banner"><i data-lucide="wallet"></i><span>' + esc(guestPayLine({ sessionId: visit.id, paymentMethod: visit.paymentMethod })) + '</span></div>' : '') +
+          '<div class="row row--wrap mt-2">' +
+          (settings.paymentMethods || []).filter((m) => m.enabled).map((m) =>
+            '<button class="btn ' + (m.id === visit.paymentMethod ? 'btn--primary' : 'btn--secondary') +
+            '" type="button" data-pay="' + m.id + '">' + esc(m.name) + '</button>').join('') +
+          '</div><p class="hint">Paying closes the session and frees ' + esc(visit.tableName) + '.</p>'
+        : '<div class="mt-5"><button class="btn btn--primary btn--block btn--lg" type="button" data-pay="counter">' +
+          '<i data-lucide="check"></i> Close table</button>' +
+          '<p class="hint">Closes the visit and frees ' + esc(visit.tableName) + '. Payment is handled outside the app.</p></div>') +
       '</div></div></div>';
 
     if (window.lucide) window.lucide.createIcons();
@@ -841,7 +846,7 @@ function renderDashboard() {
         ? 'Bill · ' + (guestPayLine(call) || 'Bill requested')
         : 'Call waiter') + ' · ' + timeAgo(call.createdAt) + '</p></div>' +
       '<div class="list-row__side">' +
-      (call.type === 'bill' && call.sessionId ? '<button class="btn btn--sm" style="background:#059669; color:#fff; border-color:#059669; margin-right:6px;" type="button" data-take-pay="' + call.sessionId + '"><i data-lucide="credit-card"></i> Take Payment</button>' : '') +
+      (ONLINE_PAYMENTS_ENABLED && call.type === 'bill' && call.sessionId ? '<button class="btn btn--sm" style="background:#059669; color:#fff; border-color:#059669; margin-right:6px;" type="button" data-take-pay="' + call.sessionId + '"><i data-lucide="credit-card"></i> Take Payment</button>' : '') +
       '<button class="btn btn--secondary btn--sm" type="button" data-done-call="' + call.id + '">Done</button></div></div>').join('')
       : '<p class="muted text-sm">No open calls.</p>') +
     '</div></div></div>' +
@@ -953,10 +958,10 @@ function renderOrders() {
     cardsHost.innerHTML = slice.length ? slice.map((order) => {
       const session = order.sessionId ? store.getById('sessions', order.sessionId) : sessionForTable(client.id, order.tableId);
       const isPaid = order.paid || (session && session.status === 'paid');
-      const payBadge = isPaid
-        ? '<span class="badge badge--success" style="font-size:0.72rem; padding:2px 7px;"><span class="dot" style="background:#10B981;"></span> Paid</span>'
+      const payBadge = !ONLINE_PAYMENTS_ENABLED ? '' : isPaid
+        ?'<span class="badge badge--success" style="font-size:0.72rem; padding:2px 7px;"><span class="dot" style="background:#10B981;"></span> Paid</span>'
         : '<span class="badge badge--warning" style="font-size:0.72rem; padding:2px 7px;">Unpaid</span>';
-      const takePayBtn = (!isPaid && session && session.status === 'open')
+      const takePayBtn = (ONLINE_PAYMENTS_ENABLED && !isPaid && session && session.status === 'open')
         ? '<button class="btn btn--sm" style="background:#059669; color:#fff; border-color:#059669;" type="button" data-take-pay="' + session.id + '"><i data-lucide="credit-card"></i> Take Payment</button>' : '';
       const billBtn = session && session.status === 'open'
         ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '">View bill</button>' : '';
@@ -2050,14 +2055,16 @@ function printVisitSlip(table, session) {
 function renderFloor() {
   let activeTab = 'ready'; // 'ready', 'requests', 'tables', 'bills'
 
-  // Shift overlay for floor staff / waiter screen
-  showShiftOverlay({
-    restaurantName: client.name,
-    staffName: session.name || 'Floor Staff',
-    onStarted: () => {
-      draw();
-    },
-  });
+  // Shift overlay only for floor staff; the owner sees the floor plan directly
+  if (session.role !== 'owner') {
+    showShiftOverlay({
+      restaurantName: client.name,
+      staffName: session.name || 'Floor Staff',
+      onStarted: () => {
+        draw();
+      },
+    });
+  }
 
   function getReadyOrders() {
     return store.ordersOf(client.id)
@@ -2254,16 +2261,16 @@ function renderFloor() {
                 '<p class="table-card__seats">' + table.seats + ' seats · ' + (isOccupied ? 'Session active' : 'Ready') + '</p></div>' +
                 '<span class="badge badge--' + (isOccupied ? 'warning' : 'success') + '">' +
                 (isOccupied ? 'Occupied' : 'Free') + '</span></div>' +
-                '<div class="table-card__qr" data-view-qr="' + table.id + '"><i data-lucide="qr-code"></i></div>' +
-                (isOccupied && session && session.tableKey ? '<div class="text-xs muted text-center mt-1">Backup Key: <strong style="font-family:var(--font-mono);letter-spacing:2px;">' + esc(session.tableKey) + '</strong></div>' : '') +
-                (table.failedKeyAttempts ? '<div class="text-center mt-1"><span class="badge badge--danger" style="font-size:11px;padding:2px 8px;"><i data-lucide="shield-alert" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px;"></i>' + table.failedKeyAttempts + ' failed key attempt' + (table.failedKeyAttempts === 1 ? '' : 's') + '</span></div>' : '') +
+                (SEATING_FLOW_ENABLED ? '<div class="table-card__qr" data-view-qr="' + table.id + '"><i data-lucide="qr-code"></i></div>' : '') +
+                (SEATING_FLOW_ENABLED && isOccupied && session && session.tableKey ?'<div class="text-xs muted text-center mt-1">Backup Key: <strong style="font-family:var(--font-mono);letter-spacing:2px;">' + esc(session.tableKey) + '</strong></div>' : '') +
+                (SEATING_FLOW_ENABLED && table.failedKeyAttempts ?'<div class="text-center mt-1"><span class="badge badge--danger" style="font-size:11px;padding:2px 8px;"><i data-lucide="shield-alert" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px;"></i>' + table.failedKeyAttempts + ' failed key attempt' + (table.failedKeyAttempts === 1 ? '' : 's') + '</span></div>' : '') +
                 '<div class="table-card__actions">' +
                 (isOccupied
-                  ? (session ? '<button class="btn btn--sm" style="background:#059669; color:#fff; border-color:#059669;" type="button" data-take-pay="' + session.id + '"><i data-lucide="credit-card"></i> Take Payment</button>' : '') +
-                    '<button class="btn btn--secondary btn--sm" type="button" data-show-visit="' + table.id + '"><i data-lucide="qr-code"></i> Visit QR</button>' +
+                  ? (ONLINE_PAYMENTS_ENABLED && session ? '<button class="btn btn--sm" style="background:#059669; color:#fff; border-color:#059669;" type="button" data-take-pay="' + session.id + '"><i data-lucide="credit-card"></i> Take Payment</button>' : '') +
+                    (SEATING_FLOW_ENABLED ? '<button class="btn btn--secondary btn--sm" type="button" data-show-visit="' + table.id + '"><i data-lucide="qr-code"></i> Visit QR</button>' : '') +
                     (session ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '"><i data-lucide="receipt"></i> Bill</button>' : '') +
                     '<button class="btn btn--danger btn--sm" type="button" data-close-table="' + table.id + '"><i data-lucide="check-circle"></i> Close table</button>'
-                  : '<button class="btn btn--primary btn--sm" type="button" data-seat="' + table.id + '"><i data-lucide="user-check"></i> Seat guests</button>') +
+                  : (SEATING_FLOW_ENABLED ? '<button class="btn btn--primary btn--sm" type="button" data-seat="' + table.id + '"><i data-lucide="user-check"></i> Seat guests</button>' : '')) +
                 '</div></div>';
             }).join('')}
           </div>
@@ -2314,9 +2321,11 @@ function renderFloor() {
                       <button class="btn btn--secondary btn--block" type="button" data-bill="${session.id}">
                         <i data-lucide="receipt"></i> View Bill ${isOwnerRole ? '/ Discount' : ''}
                       </button>
-                      <button class="btn btn--primary btn--block" type="button" data-take-pay="${session.id}" style="background:#059669;border-color:#059669;">
+                      ${ONLINE_PAYMENTS_ENABLED ? `<button class="btn btn--primary btn--block" type="button" data-take-pay="${session.id}" style="background:#059669;border-color:#059669;">
                         <i data-lucide="credit-card"></i> Pay
-                      </button>
+                      </button>` : `<button class="btn btn--primary btn--block" type="button" data-close-table="${session.tableId}">
+                        <i data-lucide="check"></i> Close table
+                      </button>`}
                     </div>
                   </div>
                 `;
@@ -2546,9 +2555,9 @@ function renderTables() {
       '<div class="table-card__qr"><i data-lucide="qr-code"></i></div>' +
       '<div class="table-card__actions">' +
       (isOccupied
-        ? '<button class="btn btn--primary btn--sm" type="button" data-show-visit="' + table.id + '"><i data-lucide="qr-code"></i> Show visit QR</button>' +
+        ? (SEATING_FLOW_ENABLED ? '<button class="btn btn--primary btn--sm" type="button" data-show-visit="' + table.id + '"><i data-lucide="qr-code"></i> Show visit QR</button>' : '') +
           (session ? '<button class="btn btn--secondary btn--sm" type="button" data-bill="' + session.id + '"><i data-lucide="receipt"></i> View bill</button>' : '')
-        : '<button class="btn btn--primary btn--sm" type="button" data-seat="' + table.id + '"><i data-lucide="user-check"></i> Seat guests</button>') +
+        : (SEATING_FLOW_ENABLED ? '<button class="btn btn--primary btn--sm" type="button" data-seat="' + table.id + '"><i data-lucide="user-check"></i> Seat guests</button>' : '')) +
       '<button class="btn btn--secondary btn--sm" type="button" data-view="' + table.id + '"><i data-lucide="eye"></i> View QR</button>' +
       '<button class="btn btn--icon btn--sm" type="button" data-edit="' + table.id + '" aria-label="Edit ' + esc(table.name) + '"><i data-lucide="pencil"></i></button>' +
       '<button class="btn btn--icon btn--sm" type="button" data-del="' + table.id + '" aria-label="Delete ' + esc(table.name) + '"><i data-lucide="trash-2"></i></button>' +
@@ -3011,7 +3020,7 @@ function renderReports() {
     byHour.map(([label, count, total]) => '<tr><td class="table__strong">' + esc(label) + '</td>' +
       '<td class="table__num">' + count + '</td><td class="table__num">' + money(total) + '</td></tr>').join('') +
     '</tbody></table></div></div></div>' +
-    '<div class="card"><div class="card__header"><span class="card__title">Payments by method</span></div>' +
+    '<div class="card"' + (ONLINE_PAYMENTS_ENABLED ? '' : ' hidden') + '><div class="card__header"><span class="card__title">Payments by method</span></div>' +
     '<div class="card__body"><div class="table-wrap"><table class="table"><thead><tr><th scope="col">Method</th>' +
     '<th scope="col" class="table__num">Bills</th><th scope="col" class="table__num">Amount</th></tr></thead><tbody>' +
     Array.from(new Set([...(settings.paymentMethods || []).map((m) => m.id), ...payments.keys()])).map((key) => {
@@ -3058,7 +3067,7 @@ function renderSettings() {
 
   paint(head('Settings', 'Restaurant profile, ordering rules, hours and branding.') +
     '<div class="tabs" data-tabs><div class="tabs__list" role="tablist" aria-label="Settings sections">' +
-    ['Restaurant profile|profile', 'Ordering|ordering', 'Security|security', 'Payment Gateways & Methods|payments', 'Opening hours|hours', 'Branding|branding', 'Notifications|notify', 'Cloud & Sync|sync'].map((pair, i) => {
+    ['Restaurant profile|profile', 'Ordering|ordering', 'Security|security', 'Payment Gateways & Methods|payments', 'Opening hours|hours', 'Branding|branding', 'Notifications|notify', 'Cloud & Sync|sync'].filter((pair) => ONLINE_PAYMENTS_ENABLED || !pair.endsWith('|payments')).map((pair, i) => {
       const [label, key] = pair.split('|');
       return '<button class="tab" role="tab" type="button" data-tab="' + key + '" aria-selected="' + (i === 0) + '" tabindex="' + (i === 0 ? 0 : -1) + '">' + label + '</button>';
     }).join('') + '</div>' +
@@ -3135,17 +3144,17 @@ function renderSettings() {
     '<div class="field"><label class="label" for="set-geo-radius">Radius (meters)</label><input class="input" id="set-geo-radius" type="number" step="10" value="' + (settings.geofence?.radiusMeters || 250) + '"></div>' +
     '</div>' +
     '<hr class="my-4" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">' +
-    '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Pay-at-Order Enforcement (Apple Pay / UPI / Card)</p>' +
+    '<div' + (ONLINE_PAYMENTS_ENABLED ? '' : ' hidden') + '><div class="list-row"><div class="list-row__main"><p class="list-row__title">Pay-at-Order Enforcement (Apple Pay / UPI / Card)</p>' +
     '<p class="list-row__meta">Require customers to pay upfront with Apple Pay, UPI, or Card before the order fires to the kitchen. Zero unpaid food cooked.</p></div>' +
     '<label class="switch"><input type="checkbox" id="set-pay-order"' + (settings.payAtOrder?.enabled !== false ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Pay at order</span></label></div>' +
-    '<hr class="my-4" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">' +
-    '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Floor Plan Seated Check</p>' +
+    '<hr class="my-4" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));"></div>' +
+    '<div' + (SEATING_FLOW_ENABLED ? '' : ' hidden') + '><div class="list-row"><div class="list-row__main"><p class="list-row__title">Floor Plan Seated Check</p>' +
     '<p class="list-row__meta">Warn kitchen staff if an order arrives for a table marked Vacant on the Floor Plan so ghost orders are caught immediately.</p></div>' +
     '<label class="switch"><input type="checkbox" id="set-seated-check"' + (settings.seatedCheck?.enabled !== false ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Seated check</span></label></div>' +
     '<hr class="my-4" style="border:0;border-top:1px solid var(--border, rgba(0,0,0,0.08));">' +
     '<div class="list-row"><div class="list-row__main"><p class="list-row__title">Print visit QR slip</p>' +
     '<p class="list-row__meta">Automatically print an 80mm thermal slip with Visit QR and table key when seating guests.</p></div>' +
-    '<label class="switch"><input type="checkbox" id="set-print-slip"' + (settings.printVisitSlip ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Print visit QR slip</span></label></div>' +
+    '<label class="switch"><input type="checkbox" id="set-print-slip"' + (settings.printVisitSlip ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Print visit QR slip</span></label></div></div>' +
     '<div class="row mt-6" style="justify-content:flex-end"><button class="btn btn--primary" type="button" data-save="security">Save security</button></div>' +
     '</div></div></div>' +
 
