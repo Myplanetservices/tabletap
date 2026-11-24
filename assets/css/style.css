@@ -1321,11 +1321,13 @@ img.avatar { font-size:0; object-fit:cover; }
 }
 
 /* Pricing — one docket */
-.pricing { display:flex; justify-content:center; margin-top:var(--s-12); }
+.pricing { display:flex; justify-content:center; flex-wrap:wrap; gap:var(--s-6); margin-top:var(--s-12); }
 .price-card {
   position:relative;
+  flex:1 1 320px;
   width:100%;
   max-width:460px;
+  display:flex; flex-direction:column;
   background:var(--surface);
   border:1px solid var(--ink);
   border-radius:var(--radius);
@@ -1389,7 +1391,9 @@ img.avatar { font-size:0; object-fit:cover; }
   flex:0 0 auto;
   margin-top:4px;
 }
-.price-card .btn { margin-top:var(--s-8); }
+.price-card .btn { margin-top:auto; }
+.price-card__list { margin-bottom:var(--s-8); }
+.price-card__tag { position:absolute; top:var(--s-6); right:var(--s-6); padding:3px 10px; border-radius:999px; background:var(--accent, #1B3FD8); color:#fff; font-size:0.6875rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; }
 .price-card__fine {
   margin-top:var(--s-3);
   font-size:0.75rem;
@@ -2961,8 +2965,12 @@ img.avatar { font-size:0; object-fit:cover; }
 .form-grid { display:grid; gap:var(--s-4); }
 @media (min-width:768px) {
   .form-grid--2 { grid-template-columns:1fr 1fr; }
-  .form-grid--2 .field--full { grid-column:1 / -1; }
+  .form-grid--3 { grid-template-columns:1fr 1fr 1fr; }
+  .form-grid--2 .field--full, .form-grid--3 .field--full { grid-column:1 / -1; }
 }
+/* A field inside a grid or row is spaced by the gap, never by the stacked-field margin
+   (".field + .field" pushed the second column down and misaligned the labels). */
+:is(.form-grid, .grid, .split, .row, .field-row) > .field + .field { margin-top:0; }
 .field-row { display:flex; gap:var(--s-2); align-items:flex-end; }
 .field-row .field { flex:1; margin:0; }
 .field-row .btn { flex:0 0 auto; }

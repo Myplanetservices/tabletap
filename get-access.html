@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="assets/css/style.css">
 <style>
   .buy-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 560px) { .buy-plans { grid-template-columns: 1fr; } }
   .buy-plan { position: relative; display: block; cursor: pointer; border: 1.5px solid var(--line, #DBD6CB); border-radius: 14px; padding: 14px 16px; background: #fff; transition: border-color .15s, box-shadow .15s; }
   .buy-plan:hover { border-color: var(--muted, #5E636B); }
   .buy-plan input { position: absolute; opacity: 0; pointer-events: none; }
@@ -18,13 +19,11 @@
   .buy-plan__price { display: block; font-size: 24px; font-weight: 700; margin-top: 2px; }
   .buy-plan__alt { display: block; font-size: 12px; color: var(--muted, #5E636B); }
   .buy-plan__lim { display: block; font-size: 12px; color: var(--muted, #5E636B); margin-top: 8px; }
-  .buy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
   .buy-total { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0; margin: 4px 0 14px; border-top: 1px solid var(--line, #DBD6CB); font-size: 14px; }
   .buy-total strong { font-size: 22px; }
   .buy-error { color: #B3261E; font-size: 14px; margin: 0 0 12px; }
   .buy-check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; margin-bottom: 16px; }
   .buy-check input { margin-top: 3px; }
-  @media (max-width: 560px) { .buy-plans, .buy-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -76,7 +75,7 @@
             <input class="input" id="ownerName" name="ownerName" type="text" autocomplete="name" maxlength="80" placeholder="Owner or manager" required>
           </div>
 
-          <div class="buy-grid">
+          <div class="form-grid form-grid--2">
             <div class="field">
               <label class="label" for="country">Country</label>
               <input class="input" id="country" name="country" type="text" list="countries" autocomplete="country-name" maxlength="60" value="India" required>
