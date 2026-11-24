@@ -31,7 +31,7 @@ function heroEntrance() {
 
 function floatChips() {
   if (reduce) return;
-  document.querySelectorAll('.phone-chip').forEach((chip, i) => {
+  document.querySelectorAll('.ip-chip').forEach((chip, i) => {
     animate(chip, { y: [0, -9, 0] }, { duration: 4.2 + i, repeat: Infinity, ease: 'easeInOut', delay: i * 0.6 });
   });
 }
@@ -44,12 +44,12 @@ function progressBar() {
 
 /* ---------------------------------------------------------- GSAP: hero phone -- */
 function heroPhone() {
-  const img = document.querySelector('.phone__scroll');
-  const screen = document.querySelector('.phone__screen');
+  const img = document.querySelector('.ip__scroll');
+  const screen = document.querySelector('.ip__screen');
   if (!img || !screen || !gsap || reduce) return;
 
   const start = () => {
-    const max = img.offsetHeight - screen.clientHeight;
+    const max = img.offsetTop + img.offsetHeight - screen.clientHeight;
     if (max <= 0) return;
     // Scroll the menu down and back up, slowly, like a guest browsing it.
     const tl = gsap.timeline({ repeat: -1, yoyo: true, repeatDelay: 1.4, delay: 1.2 });
@@ -63,7 +63,7 @@ function heroPhone() {
   if (img.complete) start(); else img.addEventListener('load', start, { once: true });
 
   if (ScrollTrigger) {
-    gsap.to('.phone', {
+    gsap.to('.ip', {
       yPercent: -6, ease: 'none',
       scrollTrigger: { trigger: '.hero-redesign', start: 'top top', end: 'bottom top', scrub: true },
     });
