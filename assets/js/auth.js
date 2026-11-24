@@ -279,6 +279,7 @@ export function createOwnerFromInvite(invite, password) {
     name: invite.clientName,
     slug,
     country: invite.country,
+    city: invite.city || '',
     planId: plan.id,
     status: 'active',
     kitchenCode: invite.clientName.replace(/[^A-Za-z]/g, '').slice(0, 6).toUpperCase() + '1',
@@ -286,7 +287,7 @@ export function createOwnerFromInvite(invite, password) {
     limits: { ...plan.limits },
     restrictions: { ordering: true, readOnly: false, kitchen: true, reports: true },
     settings: {
-      currency: invite.country === 'UK' ? 'GBP' : '$',
+      currency: invite.country === 'UK' ? 'GBP' : invite.country === 'India' ? '₹' : '$',
       accent: '#1F4D3A',
       acceptOrders: true,
       // The owner registers the restaurant's real location in Settings → Security.
@@ -316,7 +317,7 @@ export function createOwnerFromInvite(invite, password) {
       paymentNote: 'Your waiter will bring the card machine to your table.',
       rounding: 'none',
       approval: false, sound: true,
-      address: '', phone: '', tagline: invite.country,
+      address: '', phone: invite.phone || '', tagline: invite.city ? invite.city + ', ' + invite.country : invite.country,
       logo: '', cover: '',
       hours: {
         mon: ['12:00', '23:00'], tue: ['12:00', '23:00'], wed: ['12:00', '23:00'],

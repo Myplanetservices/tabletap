@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get lifetime access — TableTap</title>
+<meta name="description" content="Pay once for TableTap and get your restaurant's dashboard link by email.">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .buy-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .buy-plan { position: relative; display: block; cursor: pointer; border: 1.5px solid var(--line, #DBD6CB); border-radius: 14px; padding: 14px 16px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+  .buy-plan:hover { border-color: var(--muted, #5E636B); }
+  .buy-plan input { position: absolute; opacity: 0; pointer-events: none; }
+  .buy-plan:has(input:checked) { border-color: #1B3FD8; box-shadow: 0 0 0 3px #E8ECFB; }
+  .buy-plan:has(input:focus-visible) { outline: 2px solid #1B3FD8; outline-offset: 2px; }
+  .buy-plan__name { display: block; font-weight: 700; font-size: 14px; }
+  .buy-plan__price { display: block; font-size: 24px; font-weight: 700; margin-top: 2px; }
+  .buy-plan__alt { display: block; font-size: 12px; color: var(--muted, #5E636B); }
+  .buy-plan__lim { display: block; font-size: 12px; color: var(--muted, #5E636B); margin-top: 8px; }
+  .buy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .buy-total { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0; margin: 4px 0 14px; border-top: 1px solid var(--line, #DBD6CB); font-size: 14px; }
+  .buy-total strong { font-size: 22px; }
+  .buy-error { color: #B3261E; font-size: 14px; margin: 0 0 12px; }
+  .buy-check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; margin-bottom: 16px; }
+  .buy-check input { margin-top: 3px; }
+  @media (max-width: 560px) { .buy-plans, .buy-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="auth-page">
+  <header class="auth-page__header">
+    <div class="auth-page__header-inner">
+      <a class="brand" href="index.html" aria-label="TableTap home">
+        <span class="brand__mark"><i data-lucide="qr-code"></i></span>
+        <span class="brand__name">TableTap</span>
+      </a>
+      <a class="auth-back" href="index.html#pricing"><i data-lucide="arrow-left"></i> Back to pricing</a>
+    </div>
+  </header>
+
+  <main class="auth-page__main">
+    <div class="auth-card auth-card--wide" style="max-width:640px">
+      <div data-buy-form>
+        <h1 class="auth-card__title">Get lifetime access</h1>
+        <p class="auth-card__sub">Pay once. We email your dashboard link to the address below, so use an email you can open right now.</p>
+
+        <form class="auth-card__form" id="buy-form" novalidate>
+          <fieldset style="border:0;padding:0;margin:0">
+            <legend class="label" style="margin-bottom:8px">Plan</legend>
+            <div class="buy-plans" id="buy-plans">
+              <label class="buy-plan">
+                <input type="radio" name="plan" value="starter">
+                <span class="buy-plan__name">Lifetime Starter</span>
+                <span class="buy-plan__price" data-price="starter">₹2,499</span>
+                <span class="buy-plan__alt">about $29, one-time</span>
+                <span class="buy-plan__lim">10 tables · 80 menu items · 2 staff</span>
+              </label>
+              <label class="buy-plan">
+                <input type="radio" name="plan" value="pro" checked>
+                <span class="buy-plan__name">Lifetime Pro</span>
+                <span class="buy-plan__price" data-price="pro">₹4,199</span>
+                <span class="buy-plan__alt">about $49, one-time</span>
+                <span class="buy-plan__lim">30 tables · 200 menu items · 5 staff</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label class="label" for="restaurant">Restaurant name</label>
+            <input class="input" id="restaurant" name="restaurant" type="text" autocomplete="organization" maxlength="80" placeholder="Tiffin &amp; Chai" required>
+          </div>
+
+          <div class="field">
+            <label class="label" for="ownerName">Your name</label>
+            <input class="input" id="ownerName" name="ownerName" type="text" autocomplete="name" maxlength="80" placeholder="Owner or manager" required>
+          </div>
+
+          <div class="buy-grid">
+            <div class="field">
+              <label class="label" for="country">Country</label>
+              <input class="input" id="country" name="country" type="text" list="countries" autocomplete="country-name" maxlength="60" value="India" required>
+              <datalist id="countries">
+                <option value="India"></option><option value="United Arab Emirates"></option><option value="United Kingdom"></option>
+                <option value="United States"></option><option value="Singapore"></option><option value="Australia"></option>
+                <option value="Canada"></option><option value="South Africa"></option><option value="Nepal"></option><option value="Sri Lanka"></option>
+              </datalist>
+            </div>
+            <div class="field">
+              <label class="label" for="city">City</label>
+              <input class="input" id="city" name="city" type="text" autocomplete="address-level2" maxlength="60" placeholder="Bengaluru" required>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="email">Email for your access link</label>
+            <input class="input" id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@restaurant.com" required>
+            <p class="hint">Your dashboard link and receipt are sent here after payment.</p>
+          </div>
+
+          <div class="field">
+            <label class="label" for="phone">Phone <span class="muted">(optional)</span></label>
+            <input class="input" id="phone" name="phone" type="tel" autocomplete="tel" maxlength="24" placeholder="+91 98765 43210">
+          </div>
+
+          <div class="buy-total"><span>Total today (card, UPI, netbanking)</span><strong id="buy-total">₹4,199</strong></div>
+
+          <label class="buy-check"><input type="checkbox" id="agree" required> <span>I agree to the 14-day refund policy and that the access link goes to the email above.</span></label>
+
+          <p class="buy-error" id="buy-error" role="alert" hidden></p>
+          <button class="btn btn--primary btn--lg btn--block" id="buy-submit" type="submit">Pay and get access</button>
+          <p class="hint" style="text-align:center;margin-top:10px">Secure payment by Razorpay. We never see your card details.</p>
+        </form>
+      </div>
+
+      <div class="success-state" data-buy-success hidden tabindex="-1">
+        <span class="success-state__icon"><i data-lucide="mail-check"></i></span>
+        <h2 class="success-state__title">Payment received</h2>
+        <p class="success-state__text" id="buy-success-text"></p>
+        <a class="btn btn--secondary" href="index.html">Back to home</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="auth-page__footer">
+    © 2026 TableTap · <a class="auth-link" href="mailto:hello@tabletap.app">hello@tabletap.app</a>
+  </footer>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script type="module" src="assets/js/checkout.js"></script>
+</body>
+</html>
