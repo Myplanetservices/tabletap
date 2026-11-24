@@ -4053,7 +4053,7 @@ function renderAccount() {
     '<div><div class="card"><div class="card__header"><span class="card__title">Your plan</span>' +
     '<span class="badge badge--success">Active</span></div><div class="card__body">' +
     '<div class="plan-card"><p class="plan-card__name">' + esc(plan.name) + '</p>' +
-    '<p class="plan-card__meta">Purchased ' + formatDateTime(client.createdAt) + ' · one-time ' + money(plan.price) + ' · never expires</p></div>' +
+    '<p class="plan-card__meta">Purchased ' + formatDateTime(client.createdAt) + ' · one-time ' + formatMoney(plan.price, 'USD') + ' · never expires</p></div>' +
     bar('Tables', usage.tables, usage.limits.tables) +
     bar('Menu items', usage.items, usage.limits.items) +
     bar('Staff accounts', usage.staff, usage.limits.staff) +

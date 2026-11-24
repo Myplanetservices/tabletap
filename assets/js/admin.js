@@ -115,7 +115,7 @@ function renderDashboard() {
     statCard('Suspended', String(suspended), 'logins blocked') +
     statCard('Pending invites', String(invited), 'expire in 7 days') +
     statCard('Orders today', String(ordersToday.length), 'across all clients') +
-    statCard('License revenue', formatMoney(revenue), clients.length + ' licences sold') +
+    statCard('License revenue', formatMoney(revenue, 'USD'), clients.length + ' licences sold') +
     '</div>' +
     '<div class="split mt-6"><div class="card"><div class="card__header"><span class="card__title">New clients per month</span>' +
     '<span class="muted text-xs">Last 10 months</span></div><div class="card__body">' +
@@ -423,7 +423,7 @@ function renderClientDetail() {
     '<div class="info-list__row"><span class="info-list__key">Address</span><span class="info-list__val">' + esc(client.settings.address || '—') + '</span></div>' +
     '<div class="info-list__row"><span class="info-list__key">Country</span><span class="info-list__val">' + esc(client.country) + '</span></div>' +
     '<div class="info-list__row"><span class="info-list__key">Joined</span><span class="info-list__val">' + formatDateTime(client.createdAt) + '</span></div>' +
-    '<div class="info-list__row"><span class="info-list__key">Plan</span><span class="info-list__val">' + esc(plan ? plan.name : '') + ' · ' + formatMoney(plan ? plan.price : 0) + ' one-time</span></div>' +
+    '<div class="info-list__row"><span class="info-list__key">Plan</span><span class="info-list__val">' + esc(plan ? plan.name : '') + ' · ' + formatMoney(plan ? plan.price : 0, 'USD') + ' one-time</span></div>' +
     '<div class="info-list__row"><span class="info-list__key">Kitchen code</span><span class="info-list__val mono">' + esc(client.kitchenCode) + '</span></div>' +
     '<div class="info-list__row"><span class="info-list__key">Menu link</span><span class="info-list__val">menu/index.html?r=' + esc(client.slug) + '</span></div>' +
     '</div></div></div>' +
@@ -686,7 +686,7 @@ function renderInvites() {
     '<div class="field"><label class="label" for="inv-country">Country</label><select class="select" id="inv-country">' +
     ['India', 'United Kingdom', 'United States', 'South Africa'].map((c) => '<option>' + c + '</option>').join('') + '</select></div>' +
     '<div class="field"><label class="label" for="inv-plan">Plan</label><select class="select" id="inv-plan">' +
-    store.getAll('plans').map((p) => '<option value="' + p.id + '">' + esc(p.name) + ' · ' + formatMoney(p.price) + '</option>').join('') +
+    store.getAll('plans').map((p) => '<option value="' + p.id + '">' + esc(p.name) + ' · ' + formatMoney(p.price, 'USD') + '</option>').join('') +
     '</select></div></div>' +
     '<div class="row mt-6" style="justify-content:flex-end">' +
     '<button class="btn btn--primary" type="button" data-send><i data-lucide="send"></i> Send invite</button></div></div></div>' +
@@ -1003,7 +1003,7 @@ function renderPlans() {
     isSupport ? '' : '<button class="btn btn--secondary btn--sm" type="button" data-new-plan><i data-lucide="plus"></i> New plan</button>') +
     '<div class="split split--even">' + plans.map((plan) =>
       '<div class="plan-card-lg"><p class="plan-card-lg__label">' + esc(plan.name) + '</p>' +
-      '<p class="plan-card-lg__price">' + formatMoney(plan.price) + ' <span>one-time</span></p>' +
+      '<p class="plan-card-lg__price">' + formatMoney(plan.price, 'USD') + ' <span>one-time</span></p>' +
       '<p class="muted text-sm mt-2">' + (plan.id === 'pro' ? 'The default plan for restaurants and bars running full service.' : 'For cafés and small rooms that only need the basics.') + '</p>' +
       '<div class="plan-limits"><span><strong>' + plan.limits.tables + '</strong> tables</span>' +
       '<span><strong>' + plan.limits.items + '</strong> menu items</span>' +
@@ -1016,9 +1016,9 @@ function renderPlans() {
     '<div class="table-wrap"><table class="table"><thead><tr><th scope="col">Plan</th><th scope="col" class="table__num">Price</th>' +
     '<th scope="col" class="table__num">Clients</th><th scope="col" class="table__num">Revenue</th></tr></thead><tbody>' +
     plans.map((plan) => '<tr><td class="table__strong">' + esc(plan.name) + '</td>' +
-      '<td class="table__num">' + formatMoney(plan.price) + '</td>' +
+      '<td class="table__num">' + formatMoney(plan.price, 'USD') + '</td>' +
       '<td class="table__num">' + clientsOn(plan.id) + '</td>' +
-      '<td class="table__num">' + formatMoney(clientsOn(plan.id) * plan.price) + '</td></tr>').join('') +
+      '<td class="table__num">' + formatMoney(clientsOn(plan.id) * plan.price, 'USD') + '</td></tr>').join('') +
     '</tbody></table></div></div></div><div id="modal-host"></div>');
 
   const modalHost = host.querySelector('#modal-host');
