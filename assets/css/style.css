@@ -2981,6 +2981,10 @@ img.avatar { font-size:0; object-fit:cover; }
 .guest-card__error { color:#B3261E; font-size:0.875rem; margin-bottom:10px; }
 .review-link { display:flex; align-items:center; justify-content:center; gap:8px; margin:12px 16px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); font-size:0.875rem; font-weight:600; text-decoration:none; }
 .review-link [data-lucide] { width:16px; height:16px; color:#C98A00; }
+.offer-card { display:flex; gap:12px; align-items:center; margin:12px 16px 0; padding:12px 14px; border:1px dashed var(--accent); border-radius:12px; background:var(--cobalt-wash, #E8ECFB); }
+.offer-card__icon [data-lucide] { width:22px; height:22px; color:var(--accent); }
+.offer-card__title { font-weight:700; font-size:0.9375rem; color:#111318; }
+.offer-card__text { font-size:0.8125rem; color:#3E434B; }
 .field-row { display:flex; gap:var(--s-2); align-items:flex-end; }
 .field-row .field { flex:1; margin:0; }
 .field-row .btn { flex:0 0 auto; }

@@ -15,6 +15,7 @@ import {
 } from './helpers.js';
 import { ONLINE_PAYMENTS_ENABLED } from './features.js';
 import { bestFix, judge, siteOf, formatDistance, GUEST_MAX_ACCURACY } from './geo.js';
+import { offerSettings, offerStatus, offerTitle, freeLine, OFFER_REASON } from './offer.js';
 import { initGuestPush, reviewCardHtml, reviewLinkHtml, notifyCardHtml, enableNotifications } from './guest-push.js';
 
 const params = new URLSearchParams(location.search);
@@ -217,6 +218,42 @@ export function createBillRequest(clientId, table, methodId) {
   }
 }
 
+/* ------------------------------------------------------ thank-you offer ---- */
+function visitOffer(client, session, cartSubtotal) {
+  const fresh = getById('clients', client.id) || client;
+  const offer = offerSettings(fresh, (id) => getById('items', id));
+  const orders = session ? sessionOrders(session) : [];
+  const before = session ? sessionLines(session).reduce((sum, line) => sum + line.amount, 0) : 0;
+  return { offer, status: offerStatus(offer, { session, orders, subtotal: before + cartSubtotal }) };
+}
+
+/** The offer card on the menu and cart. Nothing to claim: it applies itself. */
+function showOfferCard(anchorId, client, table, cartSubtotal) {
+  const anchor = document.getElementById(anchorId);
+  if (!anchor) return;
+  let box = document.getElementById('guest-offer');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'guest-offer';
+    anchor.insertAdjacentElement('afterend', box);
+  }
+  const { offer, status } = visitOffer(client, sessionForTable(client.id, table.id), cartSubtotal);
+  if (status.state === 'off' || status.state === 'used') { box.innerHTML = ''; return; }
+  const money = (value) => formatMoney(value, client.settings.currency);
+  let text;
+  if (status.state === 'qualifies' && cartSubtotal > 0) {
+    text = offer.type === 'percent' ? 'It will come off your bill when you place this order.' : 'It will be added to this order. Nothing to do.';
+  } else if (offer.minOrder > 0) {
+    text = cartSubtotal > 0 ? 'Add ' + money(status.missing) + ' more to get it.' : 'On orders of ' + money(offer.minOrder) + ' or more.';
+  } else {
+    text = 'With your order.';
+  }
+  box.innerHTML = '<div class="offer-card"><span class="offer-card__icon"><i data-lucide="gift"></i></span><div>' +
+    '<p class="offer-card__title">' + esc(offerTitle(offer)) + '</p>' +
+    '<p class="offer-card__text">' + esc(text) + ' Once per table visit.</p></div></div>';
+  if (window.lucide) window.lucide.createIcons();
+}
+
 export function placeOrder({ client, table, cart, payment, note, guestName }) {
   const isPayFirst = ONLINE_PAYMENTS_ENABLED && client.settings?.payments?.policy === 'pay_first';
   const session = sessionForTable(client.id, table.id);
@@ -231,6 +268,8 @@ export function placeOrder({ client, table, cart, payment, note, guestName }) {
   const approval = !!client.settings.approval;
   const isPaid = payment && payment.method !== 'counter';
   const activeSessionId = session ? session.id : null;
+  const claim = visitOffer(client, session, totals.subtotal);
+  const gift = claim.status.state === 'qualifies' && claim.offer.type === 'item' ? [freeLine(claim.offer.item)] : [];
 
   const order = insert('orders', {
     clientId: client.id,
@@ -247,7 +286,7 @@ export function placeOrder({ client, table, cart, payment, note, guestName }) {
       note: row.note,
       taxOverride: row.taxOverride || 'default',
       done: false,
-    })),
+    })).concat(gift),
     note: (note || '').trim(),
     guestName: (guestName || '').trim(),
     subtotal: totals.subtotal,
@@ -268,6 +307,13 @@ export function placeOrder({ client, table, cart, payment, note, guestName }) {
 
   if (session) {
     addOrderToSession(session.id, order.id);
+    // A percentage goes on the visit's bill, which staff and guest screens already total.
+    if (claim.status.state === 'qualifies' && claim.offer.type === 'percent') {
+      update('sessions', session.id, {
+        discount: { type: 'percent', value: claim.offer.percent, reason: OFFER_REASON },
+        offerDiscountApplied: true,
+      });
+    }
   }
   return order;
 }
@@ -1322,6 +1368,7 @@ function initCart(ctx) {
     }
 
     document.getElementById('sum-lines').innerHTML = lines.join('');
+    showOfferCard('cart-geofence-banner', client, table, totals.subtotal);
     document.getElementById('place-total').textContent = money(totals.total);
     if (window.lucide) window.lucide.createIcons();
   }
@@ -1922,6 +1969,7 @@ if (ctx.error && page !== 'unavailable') {
   goUnavailable(ctx.error, ctx);
 } else if (page === 'menu') {
   initMenu(ctx);
+  showOfferCard('menu-geofence-banner', ctx.client, ctx.table, 0);
   // Under the menu list, so it never covers ordering.
   const link = reviewLinkHtml(ctx.client);
   const anchor = document.querySelector('[data-call="waiter"]')?.parentElement;

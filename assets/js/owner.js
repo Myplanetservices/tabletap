@@ -18,6 +18,7 @@ import {
 } from './helpers.js';
 import { playSound, showNotification, vibratePhone, showShiftOverlay } from './alerts.js';
 import { ONLINE_PAYMENTS_ENABLED, SEATING_FLOW_ENABLED } from './features.js';
+import { offerSettings, offerTitle, MAX_PERCENT } from './offer.js';
 import { cleanReviewUrl, reviewSettings, REVIEW_DELAYS } from './review-link.js';
 import { RADIUS_OPTIONS, DEFAULT_RADIUS, OWNER_TARGET_ACCURACY, bestFix, siteOf, isValidCoords, mapEmbedUrl, mapLinkUrl } from './geo.js';
 
@@ -3190,6 +3191,56 @@ function initGeofenceCard() {
   });
 }
 
+function offerPanelHtml() {
+  const saved = settings.offer || {};
+  const type = saved.type === 'percent' ? 'percent' : 'item';
+  const items = store.itemsOf(client.id).slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  return '<div class="tab-panel" data-panel="offer" hidden><div class="card"><div class="card__body">' +
+    '<div class="list-row mb-4"><div class="list-row__main"><p class="list-row__title">Thank-you offer</p>' +
+    '<p class="list-row__meta">Shown on the menu and cart. Applied automatically, once per table visit, to every guest who meets the minimum.</p></div>' +
+    '<label class="switch"><input type="checkbox" id="set-offer-on"' + (saved.enabled ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Thank-you offer</span></label></div>' +
+    '<div class="form-grid form-grid--2">' +
+    '<div class="field"><label class="label" for="set-offer-type">What guests get</label><select class="select" id="set-offer-type">' +
+    '<option value="item"' + (type === 'item' ? ' selected' : '') + '>A free menu item</option>' +
+    '<option value="percent"' + (type === 'percent' ? ' selected' : '') + '>% off the total bill</option></select></div>' +
+    '<div class="field" data-offer-field="item"><label class="label" for="set-offer-item">Free item</label><select class="select" id="set-offer-item"><option value="">Choose from your menu</option>' +
+    items.map((item) => '<option value="' + item.id + '"' + (item.id === saved.itemId ? ' selected' : '') + '>' + esc(item.name) + ' · ' + money(item.price) + (item.available === false ? ' (sold out)' : '') + '</option>').join('') +
+    '</select></div>' +
+    '<div class="field" data-offer-field="percent"><label class="label" for="set-offer-percent">Discount (%)</label><input class="input" id="set-offer-percent" type="number" inputmode="numeric" min="1" max="' + MAX_PERCENT + '" value="' + (Number(saved.percent) || 10) + '"></div>' +
+    '<div class="field"><label class="label" for="set-offer-min">Minimum order (0 for none)</label><input class="input" id="set-offer-min" type="number" inputmode="decimal" min="0" step="1" value="' + (Number(saved.minOrder) || 0) + '"></div>' +
+    '</div>' +
+    '<p class="hint mt-4" id="offer-preview" aria-live="polite"></p>' +
+    '<p class="hint">This offer is separate from reviews. Don’t promise it in return for a review or rating: Google bans that.</p>' +
+    '<div class="row mt-6" style="justify-content:flex-end"><button class="btn btn--primary" type="button" data-save="offer">Save offer</button></div>' +
+    '</div></div></div>';
+}
+
+function readOfferForm() {
+  return {
+    enabled: host.querySelector('#set-offer-on').checked,
+    type: host.querySelector('#set-offer-type').value,
+    itemId: host.querySelector('#set-offer-item').value,
+    percent: Math.round(Number(host.querySelector('#set-offer-percent').value) || 0),
+    minOrder: Math.max(0, Number(host.querySelector('#set-offer-min').value) || 0),
+  };
+}
+
+function initOfferPanel() {
+  const panel = host.querySelector('[data-panel="offer"]');
+  if (!panel) return;
+  const draw = () => {
+    const draft = readOfferForm();
+    panel.querySelectorAll('[data-offer-field]').forEach((field) => { field.hidden = field.getAttribute('data-offer-field') !== draft.type; });
+    const offer = offerSettings({ ...client, settings: { ...settings, offer: draft } }, (id) => store.getById('items', id));
+    panel.querySelector('#offer-preview').textContent = offer.active
+      ? 'Guests see: ' + offerTitle(offer) + (offer.minOrder ? ' on orders of ' + money(offer.minOrder) + ' or more.' : ' with their order.')
+      : 'Guests see no offer right now.';
+  };
+  panel.addEventListener('input', draw);
+  panel.addEventListener('change', draw);
+  draw();
+}
+
 function reviewsPanelHtml() {
   const saved = settings.reviews || {};
   const { delayMinutes } = reviewSettings(client);
@@ -3232,7 +3283,7 @@ function renderSettings() {
 
   paint(head('Settings', 'Restaurant profile, ordering rules, hours and branding.') +
     '<div class="tabs" data-tabs><div class="tabs__list" role="tablist" aria-label="Settings sections">' +
-    ['Restaurant profile|profile', 'Ordering|ordering', 'Security|security', 'Payment Gateways & Methods|payments', 'Opening hours|hours', 'Branding|branding', 'Notifications|notify', 'Google reviews|reviews', 'Cloud & Sync|sync'].filter((pair) => ONLINE_PAYMENTS_ENABLED || !pair.endsWith('|payments')).map((pair, i) => {
+    ['Restaurant profile|profile', 'Ordering|ordering', 'Security|security', 'Payment Gateways & Methods|payments', 'Opening hours|hours', 'Branding|branding', 'Notifications|notify', 'Google reviews|reviews', 'Guest offer|offer', 'Cloud & Sync|sync'].filter((pair) => ONLINE_PAYMENTS_ENABLED || !pair.endsWith('|payments')).map((pair, i) => {
       const [label, key] = pair.split('|');
       return '<button class="tab" role="tab" type="button" data-tab="' + key + '" aria-selected="' + (i === 0) + '" tabindex="' + (i === 0 ? 0 : -1) + '">' + label + '</button>';
     }).join('') + '</div>' +
@@ -3428,6 +3479,7 @@ function renderSettings() {
     '</div>' +
 
     reviewsPanelHtml() +
+    offerPanelHtml() +
 
     '<div class="tab-panel" data-panel="sync" hidden><div class="card"><div class="card__body">' +
     '<h3 class="card__title mb-2">Google Sheets & Google Drive Integration</h3>' +
@@ -3757,6 +3809,7 @@ function renderSettings() {
 
   initGeofenceCard();
   initReviewsPanel();
+  initOfferPanel();
   // settings.html#security (used by the dashboard's "Set location" button) opens that tab
   const hashTab = location.hash.slice(1);
   if (hashTab) { const tab = host.querySelector('[data-tab="' + CSS.escape(hashTab) + '"]'); if (tab) tab.click(); }
@@ -3801,6 +3854,16 @@ function renderSettings() {
         store.update('clients', client.id, { settings: next });
         emit('settings:update', { clientId: client.id });
         toast('Ordering settings saved');
+      }
+      if (which === 'offer') {
+        const offer = readOfferForm();
+        if (offer.enabled && offer.type === 'item' && !offer.itemId) return toast('Choose the free menu item.', 'warning');
+        if (offer.enabled && offer.type === 'percent' && !(offer.percent >= 1 && offer.percent <= MAX_PERCENT)) return toast('Enter a discount from 1 to ' + MAX_PERCENT + '%.', 'warning');
+        next.offer = offer;
+        settings.offer = offer;
+        store.update('clients', client.id, { settings: next });
+        emit('settings:update', { clientId: client.id });
+        toast(offer.enabled ? 'Guest offer is on' : 'Guest offer saved');
       }
       if (which === 'reviews') {
         const typed = host.querySelector('#set-review-url').value.trim();
