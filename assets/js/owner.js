@@ -18,6 +18,7 @@ import {
 } from './helpers.js';
 import { playSound, showNotification, vibratePhone, showShiftOverlay } from './alerts.js';
 import { ONLINE_PAYMENTS_ENABLED, SEATING_FLOW_ENABLED } from './features.js';
+import { cleanReviewUrl, reviewSettings, REVIEW_DELAYS } from './review-link.js';
 import { RADIUS_OPTIONS, DEFAULT_RADIUS, OWNER_TARGET_ACCURACY, bestFix, siteOf, isValidCoords, mapEmbedUrl, mapLinkUrl } from './geo.js';
 
 const page = document.body.getAttribute('data-page');
@@ -3189,6 +3190,35 @@ function initGeofenceCard() {
   });
 }
 
+function reviewsPanelHtml() {
+  const saved = settings.reviews || {};
+  const { delayMinutes } = reviewSettings(client);
+  return '<div class="tab-panel" data-panel="reviews" hidden><div class="card"><div class="card__body">' +
+    '<div class="list-row mb-4"><div class="list-row__main"><p class="list-row__title">Ask guests for a Google review</p>' +
+    '<p class="list-row__meta">Shows a “Review us on Google” button after the food is served, and sends one reminder to guests who turned notifications on.</p></div>' +
+    '<label class="switch"><input type="checkbox" id="set-review-on"' + (saved.enabled ? ' checked' : '') + '><span class="switch__track"></span><span class="sr-only">Ask for Google reviews</span></label></div>' +
+    '<div class="field"><label class="label" for="set-review-url">Google review link</label>' +
+    '<input class="input" id="set-review-url" type="url" inputmode="url" maxlength="500" placeholder="https://g.page/r/…/review" value="' + esc(saved.url || '') + '">' +
+    '<p class="hint">In your Google Business Profile, choose “Ask for reviews” and copy the link. Only Google links are accepted.</p></div>' +
+    '<div class="row row--wrap mt-4"><button class="btn btn--secondary btn--sm" type="button" id="btn-review-test"><i data-lucide="external-link"></i> Test link</button></div>' +
+    '<div class="field mt-4"><label class="label" for="set-review-delay">Send the reminder</label><select class="select" id="set-review-delay">' +
+    REVIEW_DELAYS.map((m) => '<option value="' + m + '"' + (m === delayMinutes ? ' selected' : '') + '>' + (m ? m + ' minutes after serving' : 'As soon as the food is served') + '</option>').join('') +
+    '</select><p class="hint">Reminders go out while your kitchen or dashboard screen is open. Notifications reach Android phones; iPhone guests see the button on the order page.</p></div>' +
+    '<p class="hint mt-4">Google’s rules: ask every guest the same way and never offer a reward for a review.</p>' +
+    '<div class="row mt-6" style="justify-content:flex-end"><button class="btn btn--primary" type="button" data-save="reviews">Save review settings</button></div>' +
+    '</div></div></div>';
+}
+
+function initReviewsPanel() {
+  const test = host.querySelector('#btn-review-test');
+  if (!test) return;
+  test.addEventListener('click', () => {
+    const url = cleanReviewUrl(host.querySelector('#set-review-url').value);
+    if (!url) return toast('Paste a Google review link first.', 'warning');
+    window.open(url, '_blank', 'noopener');
+  });
+}
+
 function renderSettings() {
   const h = settings.hours;
   const days = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']];
@@ -3202,7 +3232,7 @@ function renderSettings() {
 
   paint(head('Settings', 'Restaurant profile, ordering rules, hours and branding.') +
     '<div class="tabs" data-tabs><div class="tabs__list" role="tablist" aria-label="Settings sections">' +
-    ['Restaurant profile|profile', 'Ordering|ordering', 'Security|security', 'Payment Gateways & Methods|payments', 'Opening hours|hours', 'Branding|branding', 'Notifications|notify', 'Cloud & Sync|sync'].filter((pair) => ONLINE_PAYMENTS_ENABLED || !pair.endsWith('|payments')).map((pair, i) => {
+    ['Restaurant profile|profile', 'Ordering|ordering', 'Security|security', 'Payment Gateways & Methods|payments', 'Opening hours|hours', 'Branding|branding', 'Notifications|notify', 'Google reviews|reviews', 'Cloud & Sync|sync'].filter((pair) => ONLINE_PAYMENTS_ENABLED || !pair.endsWith('|payments')).map((pair, i) => {
       const [label, key] = pair.split('|');
       return '<button class="tab" role="tab" type="button" data-tab="' + key + '" aria-selected="' + (i === 0) + '" tabindex="' + (i === 0 ? 0 : -1) + '">' + label + '</button>';
     }).join('') + '</div>' +
@@ -3396,6 +3426,8 @@ function renderSettings() {
 
     '<div class="row mt-6" style="justify-content:flex-end"><button class="btn btn--primary btn--lg" type="button" data-save="payments"><i data-lucide="save"></i> Save Payment Gateways &amp; Settings</button></div>' +
     '</div>' +
+
+    reviewsPanelHtml() +
 
     '<div class="tab-panel" data-panel="sync" hidden><div class="card"><div class="card__body">' +
     '<h3 class="card__title mb-2">Google Sheets & Google Drive Integration</h3>' +
@@ -3724,6 +3756,7 @@ function renderSettings() {
   });
 
   initGeofenceCard();
+  initReviewsPanel();
   // settings.html#security (used by the dashboard's "Set location" button) opens that tab
   const hashTab = location.hash.slice(1);
   if (hashTab) { const tab = host.querySelector('[data-tab="' + CSS.escape(hashTab) + '"]'); if (tab) tab.click(); }
@@ -3768,6 +3801,18 @@ function renderSettings() {
         store.update('clients', client.id, { settings: next });
         emit('settings:update', { clientId: client.id });
         toast('Ordering settings saved');
+      }
+      if (which === 'reviews') {
+        const typed = host.querySelector('#set-review-url').value.trim();
+        const url = cleanReviewUrl(typed);
+        const enabled = host.querySelector('#set-review-on').checked;
+        if (typed && !url) return toast('Paste a Google review link, such as https://g.page/r/…/review', 'warning');
+        if (enabled && !url) return toast('Add your Google review link first.', 'warning');
+        next.reviews = { enabled, url, delayMinutes: Number(host.querySelector('#set-review-delay').value) };
+        settings.reviews = next.reviews;
+        store.update('clients', client.id, { settings: next });
+        emit('settings:update', { clientId: client.id });
+        toast(enabled ? 'Google review requests are on' : 'Google review settings saved');
       }
       if (which === 'hours') {
         const hours = {};

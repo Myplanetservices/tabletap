@@ -15,6 +15,7 @@ import {
 } from './helpers.js';
 import { ONLINE_PAYMENTS_ENABLED } from './features.js';
 import { bestFix, judge, siteOf, formatDistance, GUEST_MAX_ACCURACY } from './geo.js';
+import { initGuestPush, reviewCardHtml, reviewLinkHtml, notifyCardHtml, enableNotifications } from './guest-push.js';
 
 const params = new URLSearchParams(location.search);
 const CART_KEY = 'tqr_cart';
@@ -1646,11 +1647,17 @@ function initStatus(ctx) {
         order.status === 'ready' ? 'Ready — waiting for waiter pickup.' :
           order.status === 'pending_approval' ? 'Waiting for the restaurant to accept your order.' :
             formatOrderTimer(order)) + '</span></div></div>' +
+      notifyCardHtml(client, order) +
+      (order.status === 'served' ? reviewCardHtml(getById('clients', client.id) || client)
+        : isRejected || isVoided ? '' : reviewLinkHtml(getById('clients', client.id) || client)) +
       '<div class="status-actions">' +
       '<a class="btn btn--secondary" href="index.html?r=' + encodeURIComponent(client.slug) + '&t=' + encodeURIComponent(table.token) + '">Order more</a>' +
       '<button class="btn btn--primary" type="button" data-call="waiter"><i data-lucide="bell"></i> Call waiter</button></div>';
 
     if (window.lucide) window.lucide.createIcons();
+
+    const notifyBtn = host.querySelector('[data-notify-me]');
+    if (notifyBtn) notifyBtn.addEventListener('click', () => enableNotifications(order.id, render));
 
     const callBtn = host.querySelector('[data-call]');
     if (callBtn) {
@@ -1666,6 +1673,7 @@ function initStatus(ctx) {
   }
 
   render();
+  initGuestPush(render);
   on('order:update', (payload) => {
     if (!payload || payload.orderId === order.id) render();
   });
@@ -1694,6 +1702,12 @@ function initStatus(ctx) {
 
 /* --------------------------------------------------------------- bill ----- */
 function initBill(ctx) {
+  // The review button sits under the bill, outside the part that redraws.
+  const billReview = reviewCardHtml(ctx.client);
+  if (billReview) {
+    document.getElementById('bill-body').insertAdjacentHTML('afterend', billReview);
+    if (window.lucide) window.lucide.createIcons();
+  }
   const { client, table } = ctx;
   const settings = client.settings;
   const money = (value) => formatMoney(value, settings.currency);
@@ -1908,6 +1922,13 @@ if (ctx.error && page !== 'unavailable') {
   goUnavailable(ctx.error, ctx);
 } else if (page === 'menu') {
   initMenu(ctx);
+  // Under the menu list, so it never covers ordering.
+  const link = reviewLinkHtml(ctx.client);
+  const anchor = document.querySelector('[data-call="waiter"]')?.parentElement;
+  if (link && anchor) {
+    anchor.insertAdjacentHTML('beforebegin', link);
+    if (window.lucide) window.lucide.createIcons();
+  }
 } else if (page === 'cart') {
   initCart(ctx);
 } else if (page === 'status') {

@@ -2971,6 +2971,16 @@ img.avatar { font-size:0; object-fit:cover; }
 /* A field inside a grid or row is spaced by the gap, never by the stacked-field margin
    (".field + .field" pushed the second column down and misaligned the labels). */
 :is(.form-grid, .grid, .split, .row, .field-row) > .field + .field { margin-top:0; }
+
+/* Guest notification and Google review cards */
+.guest-card { text-align:center; }
+.guest-card__title { font-weight:700; font-size:1rem; }
+.guest-card__text { font-size:0.875rem; color:var(--muted); margin:4px 0 12px; }
+.guest-card__text:last-child { margin-bottom:0; }
+.guest-card__text [data-lucide] { width:16px; height:16px; vertical-align:-3px; }
+.guest-card__error { color:#B3261E; font-size:0.875rem; margin-bottom:10px; }
+.review-link { display:flex; align-items:center; justify-content:center; gap:8px; margin:12px 16px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); font-size:0.875rem; font-weight:600; text-decoration:none; }
+.review-link [data-lucide] { width:16px; height:16px; color:#C98A00; }
 .field-row { display:flex; gap:var(--s-2); align-items:flex-end; }
 .field-row .field { flex:1; margin:0; }
 .field-row .btn { flex:0 0 auto; }

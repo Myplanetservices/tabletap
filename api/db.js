@@ -1,5 +1,6 @@
 import { hasPostgres, loadAll, changesSince, applyChanges } from './_lib/pg.js';
 import { cors, preflight, jsonBody } from './_lib/http.js';
+import { onOrderChanges, flushDue } from './_lib/push.js';
 
 /* The app's data API. Neon Postgres is the source of truth; every page's
    store.js talks to it:
@@ -20,6 +21,8 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const since = (req.query || {}).since;
+      // Screens poll every few seconds, which is when due review reminders go out.
+      if (since) await flushDue().catch((err) => console.error('push flush:', err.message));
       return res.status(200).json(since ? await changesSince(since) : await loadAll());
     }
 
@@ -30,7 +33,10 @@ export default async function handler(req, res) {
       if (upserts.length + deletes.length > MAX_BATCH) {
         return res.status(413).json({ error: `At most ${MAX_BATCH} changes per request.` });
       }
-      return res.status(200).json({ success: true, ...(await applyChanges({ upserts, deletes })) });
+      const result = await applyChanges({ upserts, deletes });
+      // Guest notifications must never make a save fail.
+      await onOrderChanges(upserts).catch((err) => console.error('push on order:', err.message));
+      return res.status(200).json({ success: true, ...result });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
